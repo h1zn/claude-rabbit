@@ -409,7 +409,7 @@ export class Renderer {
     if (p.pole || p.hang) return 'spring';
     if (p.knock > 0) return 'hurt';
     if (p.swimming && !p.onGround) return Math.abs(p.vx) > 0.6 ? 'jumpFwd' : 'fall';
-    if (p.special > 0) return p.special < p.windup ? 'uppercutWindup' : 'uppercut';
+    if (p.special > 0) return p.special <= p.windup ? 'uppercutWindup' : 'uppercut';
     if (p.stomping) return 'stomp';
     if (p.hovering) return p.shootPose > 0 ? 'hoverShoot' : 'hover';
     if (p.doubleJumped && p.vy < 0 && !p.onGround) return 'doubleJump';
@@ -443,7 +443,7 @@ export class Renderer {
     const y = Math.round(lerp(p.prevY, p.y, alpha) + p.h - f.ay + 2);
     if (p.onGround && !p.pole) this.footShadow(lerp(p.prevX, p.x, alpha) + p.w / 2, p.y + p.h, 22);
     if (p.rush > 0) this.glow(x + f.w / 2, y + f.h / 2, 34, `hsla(${(game.time * 12) % 360},100%,60%,0.45)`);
-    if (p.special > 0 && p.special >= p.windup) this.glow(x + f.w / 2, y + 12, 22, 'rgba(255,214,90,0.5)');
+    if (p.special > 0 && p.special > p.windup) this.glow(x + f.w / 2, y + 12, 22, 'rgba(255,214,90,0.5)');
     if (p.stomping) this.glow(x + f.w / 2, y + f.h, 20, 'rgba(255,255,255,0.4)');
     if (p.shield > 0 && (p.shield > 210 || game.time % 8 < 5)) this.shieldRing(game, x + f.w / 2, y + f.h / 2);
     if (p.pole) {

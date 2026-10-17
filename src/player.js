@@ -6,9 +6,9 @@ import { PHYS, PLAYER, TILE } from './config.js';
 import { eventFields } from './jj2/files.js';
 import { EV } from './jj2/level.js';
 
-const HANG = 14;
+const HANG = 14;         // px from a vine down to the top of a hanging body
 const KICK_WINDUP = 8;   // tuned: Spaz's and Lori's kicks
-const KICK_END = 30;   // px from a vine down to the top of a hanging body
+const KICK_END = 30;
 
 export class Player {
   constructor(x, y) {
@@ -28,7 +28,7 @@ export class Player {
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
-      hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null,
+      hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0,
     });
   }
@@ -166,7 +166,7 @@ export class Player {
         this.jumping = true;
         audio.play('jump');
         game.dust(this.cx, this.y + this.h, 4);
-      } else if (this.character === 'spaz' && controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping) {
+      } else if (this.character === 'spaz' && controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && !this.launched) {
         // Spaz: one extra jump in the air instead of the copter ears.
         if (!this.doubleJumped) {
           this.doubleJumped = true;
@@ -176,7 +176,7 @@ export class Player {
           audio.play('jump');
           game.ring(this.cx, this.y + this.h, '#ffffff');
         }
-      } else if (controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && this.vy > -PHYS.hoverEngage) {
+      } else if (controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && !this.launched && this.vy > -PHYS.hoverEngage) {
         // Original copter: each press re-arms 70 ticks; it only engages near
         // the top of a jump or while falling.
         this.hovering = true;
@@ -237,6 +237,8 @@ export class Player {
       this.vy = Math.min(this.vy, PHYS.maxFall);
     }
     audio.hover(this.hovering);
+    // Only the gravity branch spends the launch tick; any other mode ends it.
+    if (this.special > 0 || this.swimming || this.floatUp || this.stomping || this.hovering) this.launched = false;
 
     this.collide(game);
     if (level.areas) this.areaPush(level);
@@ -275,7 +277,9 @@ export class Player {
   // Tubes and vines (original JJ2 levels). Returns true when it moved Kip.
   jj2Move(game, input) {
     const level = game.level;
-    this.swimming = (level.water !== Infinity && this.cy > level.water) || level.areaAt(this.cx, this.cy) === EV.WATER_BLOCK;
+    // In water, unless leaping out of it.
+    this.swimming = ((level.water !== Infinity && this.cy > level.water) || level.areaAt(this.cx, this.cy) === EV.WATER_BLOCK)
+      && !(this.jumping && this.vy < -3);
     this.floatUp = level.areaAt(this.cx, this.cy) === EV.FLOAT_UP || level.areaAt(this.cx, this.y + this.h - 2) === EV.FLOAT_UP;
     // A tube carries Kip at its own speed, straight through its walls.
     if (level.areaAt(this.cx, this.cy) === EV.TUBE) {
@@ -302,6 +306,7 @@ export class Player {
         const line = ty * TILE + (level.vineY.get(ty * level.w + tx) ?? 8);
         if (hy >= line - 8 && hy <= line + 12) {
           this.hang = { hook: id === EV.HOOK, line };
+          this.doubleJumped = false;
           this.y = line + HANG;
           Object.assign(this, { vx: 0, vy: 0, hovering: false, stomping: false, jumping: false, special: 0 });
           game.audio.hover(false);
@@ -324,7 +329,7 @@ export class Player {
       game.audio.play('jump');
       return false;
     }
-    if (input.pressed('down')) { release(4, 8); this.y += 4; return false; }
+    if (input.pressed('down')) { release(4, 8); this.y += 4; this.anim = 'fall'; return true; }
     const dir = (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0);
     if (dir) this.facing = dir;
     let vx = 0;
@@ -365,6 +370,7 @@ export class Player {
   }
 
   grabPole(pole, game) {
+    this.hang = null;
     // Fling speed grows with the speed Kip arrives at (measured cap 20).
     const entry = Math.hypot(this.vx, this.vy);
     this.poleSpeed = Math.max(PHYS.poleMinFling, Math.min(PHYS.poleMaxFling, entry * 1.5 + 6));
@@ -495,7 +501,9 @@ export class Player {
     this.invuln = PHYS.hurtInvulnTicks;
     this.knock = 20;
     this.special = 0;
+    if (this.pole) this.poleCool = 24;
     this.pole = null;
+    if (this.hang) { this.hang = null; this.hangCool = 20; }
     this.stomping = false;
     const away = this.cx < fromX ? -1 : 1;
     this.vx = away * PHYS.hurtKnockX;

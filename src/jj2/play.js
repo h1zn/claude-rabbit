@@ -30,15 +30,16 @@ export function jj2Tick(game) {
       level.waterTarget = height * TILE;
       if (instant || level.water === Infinity) level.water = level.waterTarget;
     }
-    // Collapsing scenery gives way after being stood on for a moment.
+    // Collapsing scenery gives way after being stood on for 30 ticks.
     if (p.onGround && level.collapse.size) {
       const ty = Math.floor((p.y + p.h + 2) / TILE);
-      for (const tx of [Math.floor((p.cx - 6) / TILE), Math.floor((p.cx + 6) / TILE)]) {
+      for (const tx of new Set([Math.floor((p.cx - 6) / TILE), Math.floor((p.cx + 6) / TILE)])) {
+        if (tx < 0 || tx >= level.w) continue;
         const i = ty * level.w + tx;
         if (!level.collapse.has(i)) continue;
         const t = level.collapse.get(i) + 1;
         level.collapse.set(i, t);
-        if (t === 30) game.hitTile(tx, ty, { stomp: true, speed: true });
+        if (t >= 30) game.hitTile(tx, ty, { collapse: true });
       }
     }
   }

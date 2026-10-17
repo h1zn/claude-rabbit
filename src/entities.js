@@ -611,7 +611,7 @@ export class Spring {
   update(game) {
     if (this.squash > 0) this.squash--;
     const p = game.player;
-    if (p.dead || p.pole) return;
+    if (p.dead || p.pole || p.hang) return;
     if (this.dir) {
       if (!overlap(this, p)) return;
       p.vx = this.dir * PHYS.springSide;

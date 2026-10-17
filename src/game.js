@@ -52,6 +52,8 @@ export class Game {
 
   loadLevel(index, freshPlayer = false) {
     this.levelIndex = index;
+    // What the player brought into the level, for RESTART LEVEL.
+    this.startStats = { score: this.score, gems: this.gems, coins: this.coins, food: this.food || 0 };
     this.level = levelDef(index)(this.party ? { party: true } : {});
     const theme = this.level.meta.theme;
     if (this.level.jj2) {
@@ -136,6 +138,9 @@ export class Game {
     this.audio.startMusic(this.level.meta.music, { restart: true });
   }
 
+  // Undo a level's progress before restarting it.
+  restoreStart() { if (this.startStats) Object.assign(this, this.startStats); }
+
   // ---------------------------------------------------------------- effects and helpers
 
   addScore(points, x, y) {
@@ -193,7 +198,7 @@ export class Game {
     p.prevX = p.x; p.prevY = p.y;
     p.vx = 0; p.vy = 0;
     p.warpLock = target;
-    p.stomping = false; p.hovering = false;
+    p.stomping = false; p.hovering = false; p.hang = null; p.platform = null;
     this.audio.play('secret');
     this.flash('#ffffff', 8);
     this.effect('sparkle', p.cx, p.cy);

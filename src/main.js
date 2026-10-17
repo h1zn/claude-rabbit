@@ -106,40 +106,78 @@ function startPendingLevel() {
 // ---------------------------------------------------------------- party lobby
 
 async function hostParty() {
-  net = new Net();
-  if (!(await net.connect())) { screens.lobby = { status: 'error', error: net.error }; return; }
-  net.send({ t: 'host' });
+  const conn = net = new Net();
+  const ok = await conn.connect();
+  if (conn !== net) return;            // left while connecting
+  if (!ok) { screens.lobby = { status: 'error', error: conn.error }; return; }
+  conn.send({ t: 'host' });
 }
 
 async function joinParty(code) {
   if (!net) {
-    net = new Net();
-    if (!(await net.connect())) { screens.lobby = { status: 'error', error: net.error }; return; }
+    const conn = net = new Net();
+    const ok = await conn.connect();
+    if (conn !== net) return;
+    if (!ok) { screens.lobby = { status: 'error', error: conn.error }; return; }
   }
   net.send({ t: 'join', code });
 }
 
-async function startParty(index, role) {
+// While a party level loads, the lobby stops reading messages so the
+// rival's first moves wait in the inbox for the game.
+let partyLoading = false;
+
+// Load a party level; false if it failed or the player left meanwhile.
+async function preparePartyLevel(index) {
   const def = levelDef(index);
-  if (def.prepare) {
-    screens.lobby.status = 'loading';
-    try { await def.prepare(); } catch (e) { screens.lobby = { status: 'error', error: e.message }; return; }
+  if (!def.prepare) return true;
+  const conn = net;
+  partyLoading = true;
+  screens.lobby.status = 'loading';
+  try {
+    await def.prepare();
+  } catch (e) {
+    screens.lobby = { status: 'error', error: e.message };
+    return false;
+  } finally {
+    partyLoading = false;
   }
+  return !!net && net === conn && net.status === 'open' && scene === 'title' && screens.lobby.status !== 'error';
+}
+
+function startParty(index, role) {
   game.newParty(index, new Party(net, role));
   irisTime = 0;
   go('play');
 }
 
+// The host loads the level first, then tells the guest to start.
+async function hostStart(index) {
+  if (partyLoading || !net) return;
+  if (!(await preparePartyLevel(index))) return;
+  net.send({ t: 'start', level: index });
+  startParty(index, 'host');
+}
+
+async function guestStart(index) {
+  if (await preparePartyLevel(index)) startParty(index, 'guest');
+}
+
 function lobbyTick() {
-  if (!net) return;
-  for (const m of net.take()) {
+  if (!net || partyLoading) return;
+  const msgs = net.take();
+  for (let k = 0; k < msgs.length; k++) {
+    const m = msgs[k];
     const L = screens.lobby;
     if (m.t === 'hosted') Object.assign(L, { status: 'open', code: m.code, urls: m.urls });
     else if (m.t === 'peer') L.peer = true;
     else if (m.t === 'joined') Object.assign(L, { status: 'open', joined: true, code: m.code, error: null });
     else if (m.t === 'error') L.error = m.why;
-    else if (m.t === 'start') { startParty(m.level, 'guest'); return; }
-    else if (m.t === 'left') { L.peer = false; if (L.joined) screens.lobby = { status: 'error', error: 'The host left.' }; }
+    else if (m.t === 'start') {
+      net.inbox.unshift(...msgs.slice(k + 1));   // keep the rest for the game
+      guestStart(m.level);
+      return;
+    } else if (m.t === 'left') { L.peer = false; if (L.joined) screens.lobby = { status: 'error', error: 'The host left.' }; }
   }
 }
 
@@ -147,7 +185,7 @@ function lobbyTick() {
 
 function tick() {
   input.sample();
-  if (input.pressed('mute') && screens.sub !== 'join') audio.toggleMute();
+  if (input.pressed('mute') && !(scene === 'title' && screens.sub === 'join')) audio.toggleMute();
   sceneTime++;
   switch (scene) {
     case 'splash':
@@ -161,15 +199,11 @@ function tick() {
       if (action.startsWith('level:')) showCard(levelKey(action.slice(6)), true);
       else if (action === 'options') { audio.setVolumes(save.options.music, save.options.sfx); writeSave(save); }
       else if (action === 'save') { writeSave(save); game.character = save.character; }
-      else if (action === 'reset') { save = { ...loadSave(), unlocked: 1, levels: {} }; writeSave(save); game.unlocked = 1; }
+      else if (action === 'reset') { save = { ...save, unlocked: 1, levels: {} }; writeSave(save); game.unlocked = 1; }
       else if (action === 'host') hostParty();
       else if (action.startsWith('join:')) joinParty(action.slice(5));
       else if (action === 'leave') { if (net) net.close(); net = null; }
-      else if (action.startsWith('party-start:')) {
-        const index = levelKey(action.slice(12));
-        net.send({ t: 'start', level: index });
-        startParty(index, 'host');
-      }
+      else if (action.startsWith('party-start:')) hostStart(levelKey(action.slice(12)));
       break;
     }
     case 'card':
@@ -206,6 +240,7 @@ function tick() {
       } else if (game.state === 'gameover') {
         // "Continue?": YES starts the level again with fresh lives.
         game.overTime = (game.overTime || 0) + 1;
+        if (game.overTime === 1) screens.continueYes = true;
         const answer = game.overTime > 40 ? screens.continueInput(input) : null;
         if (answer === 'yes') showCard(game.levelIndex, true);
         else if (answer === 'no') toMenu();
@@ -217,7 +252,7 @@ function tick() {
     case 'paused': {
       const action = screens.pauseInput(input);
       if (action === 'resume') go('play');
-      else if (action === 'restart') showCard(game.levelIndex, false);
+      else if (action === 'restart') { game.restoreStart(); showCard(game.levelIndex, false); }
       else if (action === 'quit') toMenu();
       break;
     }
@@ -253,7 +288,8 @@ function loop(now) {
   last = now;
   let steps = 0;
   while (acc >= TICK_MS) {
-    tick();
+    // A failing tick is reported once and the game keeps running.
+    try { tick(); } catch (e) { if (!loop.reportedTick) { console.error(e); loop.reportedTick = true; } }
     acc -= TICK_MS;
     if (++steps > MAX_CATCHUP_TICKS) { acc = 0; break; }
   }

@@ -173,7 +173,11 @@ function tinted(font, color) {
   return font.tints.get(color);
 }
 
+// Marks the fonts lack, spelled out.
+const spell = (str) => str.replace(/%/g, ' percent').replace(/\s*\+\s*/g, ' and ');
+
 export function jjWidth(font, str, scale = 1) {
+  str = spell(str);
   let w = 0;
   for (const ch of str) {
     const [f, g, k] = glyph(font, ch);
@@ -195,7 +199,7 @@ function glyph(font, ch) {
 // Draw text in a JJ2 font: `color` tints it, `wave` makes the letters bob
 // (the menu's selected item), `t` drives the wave.
 export function jjText(ctx, font, str, x, y, { scale = 1, align = 'left', color = null, wave = 0, t = 0, alpha = 1 } = {}) {
-  str = str.replace(/%/g, ' percent').replace(/\+/g, 'and');
+  str = spell(str);
   let cx = x - (align === 'center' ? jjWidth(font, str, scale) / 2 : align === 'right' ? jjWidth(font, str, scale) : 0);
   ctx.save();
   ctx.globalAlpha = alpha;

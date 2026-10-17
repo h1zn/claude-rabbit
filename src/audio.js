@@ -127,11 +127,17 @@ class ModElement {
     this.loaded = false;
     this.wanted = false;
     this.onended = null;
+    this.failed = false;
+    this.onFail = null;
     this.ready = import('../vendor/chiptune3/chiptune3.js').then(({ ChiptuneJsPlayer }) => new Promise((resolve) => {
       const player = new ChiptuneJsPlayer({ context: ctx, repeatCount: -1 });
-      player.onInitialized(() => { player.gain.connect(out); resolve(player); });
-      player.onError(() => resolve(null));
-    })).catch(() => null);
+      // The worklet can fail without a word: give up after a few seconds.
+      const timer = setTimeout(() => resolve(null), 6000);
+      player.onInitialized(() => { clearTimeout(timer); player.gain.connect(out); resolve(player); });
+      // A pause asked for while the song was still loading.
+      player.onMetadata(() => { if (!this.wanted) player.pause(); });
+      player.onError(() => { clearTimeout(timer); this.fail(); resolve(null); });
+    })).catch(() => null).then((p) => { if (!p) this.fail(); return p; });
   }
 
   get currentTime() { return 0; }
@@ -150,6 +156,12 @@ class ModElement {
   pause() {
     this.wanted = false;
     this.ready.then((p) => { if (p && this.loaded) p.pause(); });
+  }
+
+  fail() {
+    if (this.failed) return;
+    this.failed = true;
+    if (this.onFail) this.onFail();
   }
 }
 const TRACK_VOLUME = 0.42;   // background level, well under the effects
@@ -394,7 +406,7 @@ export class Audio {
   startMusic(name, { restart = false, onEnd = null } = {}) {
     if (!this.ctx) return;
     this.stopSynth();
-    if (TRACKS[name] && TRACKS[name].mod && !this.ctx.audioWorklet) name = TRACKS[name].fallback;
+    if (TRACKS[name] && TRACKS[name].mod && (!this.ctx.audioWorklet || (this.tracks[name] && this.tracks[name].el.failed))) name = TRACKS[name].fallback;
     if (TRACKS[name]) return this.playTrack(name, restart, onEnd);
     this.fadeTrack(true);
     const song = SONGS[name];
@@ -424,6 +436,8 @@ export class Audio {
       let el;
       if (def.mod) {
         el = new ModElement(this.ctx, def.mod, gain);
+        // Tracker music that can't play hands over to a recorded track.
+        el.onFail = () => { if (this.track === name && def.fallback) this.startMusic(def.fallback, { restart: true }); };
       } else {
         el = new window.Audio(def.url || `Soundtracks/${encodeURIComponent(def.file)}`);
         el.loop = def.loop !== false;

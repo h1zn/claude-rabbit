@@ -163,7 +163,8 @@ export class JJ2Level extends Level {
             if (!mask) break;
             const [, speed] = id === EV.DESTRUCT ? eventFields(ev.params, [10, 5]) : [0, 0];
             ch = speed > 0 ? 'p' : id === EV.BUTTSTOMP || id === EV.GEMSTOMP ? 'm' : 'x';
-            if (id === EV.COLLAPSE) this.collapse.set(i, 0);
+            // Collapsing scenery ('K') only gives way under the player's feet.
+            if (id === EV.COLLAPSE) { this.collapse.set(i, 0); ch = 'K'; }
             // Destructible animated tiles hold their first frame until broken,
             // then show the last one (rubble, or nothing).
             if (tile.anim >= 0) {
@@ -373,7 +374,7 @@ export class JJ2Level extends Level {
   }
 
   // Tile-level answers for enemies, shots and the HUD.
-  solid(tx, ty) { const c = this.at(tx, ty); return c === '=' || c === '#' || c === 'x' || c === 'm' || c === 'p'; }
+  solid(tx, ty) { const c = this.at(tx, ty); return c === '=' || c === '#' || c === 'x' || c === 'm' || c === 'p' || c === 'K'; }
   slope(tx, ty) { return this.at(tx, ty) === 's'; }
   groundish(tx, ty) { return this.solid(tx, ty) || this.at(tx, ty) === 's' || this.at(tx, ty) === '^'; }
   shotHits(x, y) { return this.solidPx(x, y); }
@@ -383,8 +384,13 @@ export class JJ2Level extends Level {
     return this.kind[ty * this.w + tx] === ONE_WAY;
   }
 
-  breakTile(tx, ty, opts) {
-    const r = super.breakTile(tx, ty, opts);
+  breakTile(tx, ty, opts = {}) {
+    let r;
+    if (this.at(tx, ty) === 'K') {
+      if (!opts.collapse) return false;
+      this.tiles[ty][tx] = '.';
+      r = true;
+    } else r = super.breakTile(tx, ty, opts);
     if (r && this.at(tx, ty) === '.') {
       const i = ty * this.w + tx;
       this.layer[i] = this.broken.get(i) || 0;
@@ -428,7 +434,7 @@ export class JJ2Level extends Level {
   move(body, dx, dy, { dropThrough = false, climb = false } = {}) {
     const result = { left: false, right: false, top: false, bottom: false, slope: false };
     const stepH = climb ? 10 : 3;
-    const enemy = !!body.type;
+    const enemy = !!body.type && climb;   // stop-enemy areas turn walkers only
     let left = Math.abs(dx);
     const dir = Math.sign(dx);
     while (left > 0) {
@@ -452,12 +458,16 @@ export class JJ2Level extends Level {
 
     const prevBottom = body.y + body.h;
     if (dy > 0) {
+      // Feet already inside a one-way tile (dropping through it, or after
+      // jumping up into it) don't land on it until they are out.
+      const startRow = Math.floor(prevBottom - 0.001);
+      const inside = !this.feetClear(body, startRow, true) && this.feetClear(body, startRow, false);
       let rest = dy;
       while (rest > 0) {
         const step = Math.min(1, rest);
         const ny = body.y + step;
         const row = Math.floor(ny + body.h - 0.001);
-        const oneWay = !dropThrough && row >= Math.floor(prevBottom - 0.001);
+        const oneWay = !dropThrough && !inside;
         if (!this.feetClear(body, row, oneWay)) {
           body.y = row - body.h;
           result.bottom = true;

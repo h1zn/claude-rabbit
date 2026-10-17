@@ -121,7 +121,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def level_list(self):
         """The JJ2 level packs in Levels/: each folder's .j2l and .j2t files."""
         packs = []
-        root = os.path.join(os.getcwd(), 'Levels')
+        root = os.path.join(self.directory, 'Levels')
         if os.path.isdir(root):
             for name in sorted(os.listdir(root)):
                 folder = os.path.join(root, name)

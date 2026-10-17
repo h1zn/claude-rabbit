@@ -284,7 +284,7 @@ export class Screens {
       this.star(x + w - 54, y + h - 14, 8, true);
       this.med(`${totalStars(save)}/${LEVELS.length * 3}`, x + w - 42, y + h - 22, { scale: 0.6 });
     }
-    wrap(ep.blurb, 34).slice(0, 3).forEach((line, i) => this.med(line, 470, y + h + 10 + i * 14, { align: 'center', scale: 0.55 }));
+    wrap(ep.blurb, 34).slice(0, 5).forEach((line, i) => this.med(line, 470, y + h + 10 + i * 14, { align: 'center', scale: 0.55 }));
   }
 
   // Minimap of a level for its select card.
@@ -391,7 +391,7 @@ export class Screens {
       } else {
         this.med(def.error ? 'Can not load' : 'Loading...', bx + bw / 2, by + bh / 2 - 8, { align: 'center', scale: 0.7 });
       }
-      wrap(def.error || def.pack.blurb, 40).slice(0, 4).forEach((line, i) => this.med(line, bx + bw / 2, by + bh + 24 + i * 13, { align: 'center', scale: 0.52, color: def.error ? '#ff9a9a' : null }));
+      wrap(def.error || def.pack.blurb, 40).slice(0, 5).forEach((line, i) => this.med(line, bx + bw / 2, by + bh + 24 + i * 13, { align: 'center', scale: 0.52, color: def.error ? '#ff9a9a' : null }));
     }
   }
 
@@ -416,7 +416,7 @@ export class Screens {
       arcadeText(ctx, a, 60, 128 + i * 16, { size: 10, shadow: false, top: '#ffd54a', bottom: '#ffb02e' });
       arcadeText(ctx, b, 200, 128 + i * 16, { size: 10, shadow: false, top: '#ffffff', bottom: '#cfe6ff' });
     });
-    this.blink(t, 'Press ENTER', 290, 12);
+    this.blink(t, 'Press ENTER', 290);
   }
 
   options(t, save) {
@@ -454,7 +454,7 @@ export class Screens {
     }
     if (L.status === 'error') {
       arcadeText(ctx, L.error || 'Connection failed.', VIEW_W / 2, 160, { size: 10, align: 'center', shadow: false, top: '#ffd0d8', bottom: '#ff8a8a' });
-      this.blink(t, 'Press ENTER', 250, 12);
+      this.blink(t, 'Press ENTER', 250);
       return;
     }
     if (this.sub === 'host') {
@@ -464,7 +464,7 @@ export class Screens {
       (L.urls || []).slice(0, 2).forEach((u, i) => arcadeText(ctx, `Friend opens ${u}`, VIEW_W / 2, 190 + i * 13, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' }));
       const lv = levelDef(PARTY_LEVELS[this.partyLevel]);
       arcadeText(ctx, `< ${lv.title} >`, VIEW_W / 2, 224, { size: 14, align: 'center', top: '#ffffff', bottom: '#ffd54a' });
-      if (L.peer) this.blink(t, 'Player 2 is here! Press ENTER to start', 256, 12);
+      if (L.peer) this.blink(t, 'Player 2 is here! Press ENTER to start', 256);
       else arcadeText(ctx, 'Waiting for player 2' + '.'.repeat(1 + Math.floor(t / 20) % 3), VIEW_W / 2, 256, { size: 12, align: 'center' });
       return;
     }
@@ -539,7 +539,7 @@ export class Screens {
         if (back || (choose && this.jj2Index === n)) { this.sub = 'episodes'; return null; }
         if (!choose) return null;
         const def = list[this.jj2Index];
-        if (def.error) { this.audio.play('denied'); return null; }
+        if (def.error) { def.error = null; this.audio.play('menu'); return null; }   // try loading again
         this.audio.play('select');
         return `level:${def.key}`;
       }
@@ -574,7 +574,7 @@ export class Screens {
         if (back || (choose && this.lobby.status === 'error')) { this.sub = 'party'; this.menu = 0; return 'leave'; }
         if (input.pressed('left')) { this.partyLevel = (this.partyLevel + PARTY_LEVELS.length - 1) % PARTY_LEVELS.length; this.audio.play('menu'); }
         if (input.pressed('right')) { this.partyLevel = (this.partyLevel + 1) % PARTY_LEVELS.length; this.audio.play('menu'); }
-        if (choose && this.lobby.peer) return `party-start:${PARTY_LEVELS[this.partyLevel]}`;
+        if (choose && this.lobby.peer && this.lobby.status !== 'loading') return `party-start:${PARTY_LEVELS[this.partyLevel]}`;
         return null;
       case 'join':
         if (back || (choose && this.lobby.status === 'error')) { this.sub = 'party'; this.menu = 1; return 'leave'; }
@@ -713,7 +713,7 @@ export class Screens {
     arcadeText(ctx, `GEMS ${game.gems}   COINS ${game.coins}`, VIEW_W / 2, 212, { size: 12, align: 'center' });
     const credits = ['Sprites, tiles, sound effects and music: Jazz Jackrabbit 2 (c) Epic MegaGames', 'Sprite rips via The Spriters Resource - not owned by this project', 'Thanks for playing!'];
     credits.forEach((c, i) => arcadeText(ctx, c, VIEW_W / 2, 250 + i * 18, { size: 10, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' }));
-    if (t > 120) this.blink(t, 'Press ENTER', VIEW_H - 26, 12);
+    if (t > 120) this.blink(t, 'Press ENTER', VIEW_H - 26);
   }
 }
 
