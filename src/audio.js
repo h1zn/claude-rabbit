@@ -105,12 +105,39 @@ const SONGS = {
 
 import { SFX_COUNT, SFX_MAP } from './sfxmap.js';
 
+// Recorded soundtracks (Soundtracks/). Anything not listed here plays one of
+// the synthesized songs above instead.
+export const TRACKS = {
+  intro: { file: '0. Intro.mp3', loop: false },
+  title: { file: '1. Menu.mp3' },
+  castle: { file: '2. Castle.mp3' },
+  carrotus: { file: '3. Carrotus.mp3' },
+  beach: { file: '7. Beach Bunny.mp3' },
+  jungle: { file: 'C. Jungle Fevah.mp3' },
+};
+const TRACK_VOLUME = 0.42;   // background level, well under the effects
+const FADE = 1.2;            // seconds for fades between tracks
+
 export class Audio {
   constructor() {
     this.ctx = null;
     this.muted = false;
     this.song = null;
     this.hoverNode = null;
+    this.tracks = {};       // name -> { el, gain }
+    this.track = null;      // name of the playing recorded track
+    this.musicVol = 0.7;    // 0..1 options
+    this.sfxVol = 0.9;
+  }
+
+  // Volume options (0..1), applied now or when audio unlocks.
+  setVolumes(music, sfx) {
+    this.musicVol = music;
+    this.sfxVol = sfx;
+    if (!this.ctx) return;
+    this.trackBus.gain.value = TRACK_VOLUME * music / 0.7;
+    this.musicBus.gain.value = 0.5 * music / 0.7;
+    this.sfxBus.gain.value = sfx;
   }
 
   unlock() {
@@ -131,6 +158,9 @@ export class Audio {
     this.musicBus = c.createGain();
     this.musicBus.gain.value = 0.5;
     this.musicBus.connect(this.master);
+    this.trackBus = c.createGain();
+    this.trackBus.gain.value = TRACK_VOLUME;
+    this.trackBus.connect(this.master);
     // Echo send for a fuller music sound.
     const delay = c.createDelay(1);
     delay.delayTime.value = 0.19;
@@ -141,6 +171,7 @@ export class Audio {
     this.musicBus.connect(delay);
     delay.connect(feedback).connect(delay);
     delay.connect(wet).connect(this.master);
+    this.setVolumes(this.musicVol, this.sfxVol);
     const length = c.sampleRate;
     this.noiseBuffer = c.createBuffer(1, length, c.sampleRate);
     const data = this.noiseBuffer.getChannelData(0);
@@ -320,9 +351,14 @@ export class Audio {
 
   // ---------------------------------------------------------------- music
 
-  startMusic(name) {
+  // Play a song by name: a recorded track if there is one, else a synth song.
+  // `restart` starts a track from the top; otherwise a track that was paused
+  // (say, during a sugar rush) picks up where it left off.
+  startMusic(name, { restart = false, onEnd = null } = {}) {
     if (!this.ctx) return;
-    this.stopMusic();
+    this.stopSynth();
+    if (TRACKS[name]) return this.playTrack(name, restart, onEnd);
+    this.fadeTrack(true);
     const song = SONGS[name];
     if (!song) return;
     this.song = { def: song, step: 0, next: this.ctx.currentTime + 0.1 };
@@ -330,9 +366,58 @@ export class Audio {
   }
 
   stopMusic() {
+    this.stopSynth();
+    this.fadeTrack(true);
+  }
+
+  stopSynth() {
     clearInterval(this.timer);
     this.timer = null;
     this.song = null;
+  }
+
+  // The <audio> element and gain node for a track, made on first use.
+  trackNode(name) {
+    if (!this.tracks[name]) {
+      const def = TRACKS[name];
+      const el = new window.Audio(`Soundtracks/${encodeURIComponent(def.file)}`);
+      el.loop = def.loop !== false;
+      el.preload = 'auto';
+      const gain = this.ctx.createGain();
+      gain.gain.value = 0;
+      this.ctx.createMediaElementSource(el).connect(gain).connect(this.trackBus);
+      this.tracks[name] = { el, gain };
+    }
+    return this.tracks[name];
+  }
+
+  playTrack(name, restart, onEnd) {
+    if (this.track && this.track !== name) this.fadeTrack(false);
+    const t = this.trackNode(name);
+    const now = this.ctx.currentTime;
+    if (restart) t.el.currentTime = 0;
+    t.el.onended = onEnd;
+    t.gain.gain.cancelScheduledValues(now);
+    t.gain.gain.setValueAtTime(t.gain.gain.value, now);
+    t.gain.gain.linearRampToValueAtTime(1, now + FADE);
+    clearTimeout(t.pauseTimer);
+    const p = t.el.play();
+    if (p && p.catch) p.catch(() => {});
+    this.track = name;
+  }
+
+  // Fade the current track out, then pause it (it keeps its position).
+  fadeTrack(clear) {
+    const name = this.track;
+    if (!name) return;
+    const t = this.tracks[name];
+    const now = this.ctx.currentTime;
+    t.gain.gain.cancelScheduledValues(now);
+    t.gain.gain.setValueAtTime(t.gain.gain.value, now);
+    t.gain.gain.linearRampToValueAtTime(0, now + FADE * 0.6);
+    clearTimeout(t.pauseTimer);
+    t.pauseTimer = setTimeout(() => t.el.pause(), FADE * 600 + 50);
+    if (clear) this.track = null;
   }
 
   scheduleMusic() {

@@ -25,20 +25,8 @@
       ctx.fillStyle = '#fff'; ctx.fillText(label, x, y + 10);
       x += w + 10; rowH = Math.max(rowH, h);
     };
-    if (location.search.includes('decor')) {
-      for (const [k, v] of Object.entries(s.decor)) (Array.isArray(v) ? v : [v]).forEach((img, i) => put(img, `${k}${i}`, 2));
-      window.sheetDone = true;
-      throw new Error('decor only');
-    }
-    for (const [name, frames] of Object.entries(s.kip)) frames.forEach((f, i) => put(f.right, `${name}${i}`));
-    for (const k of ['bugbot', 'blobble', 'buzzwing', 'frostmite']) s[k].forEach((f, i) => put(f.right, `${k}${i}`));
-    for (const [c, frames] of Object.entries(s.gems)) put(frames[0], c);
-    put(s.coin[0], 'coin'); put(s.coin[2], 'coin2');
-    for (const [k, img] of Object.entries(s.food)) put(img, k);
-    put(s.berry, 'berry'); put(s.crate, 'crate'); put(s.spring[0], 'spring'); put(s.spring[1], 'spring2');
+    // The procedural sprites still in use: spikes and scenery.
     for (const [k, img] of Object.entries(s.spikes)) put(img, 'spikes ' + k);
-    put(s.lantern[0], 'lantern'); put(s.lantern[1], 'lantern on'); put(s.sign[0], 'sign'); put(s.sign[3], 'sign3');
-    put(s.shot, 'shot'); put(s.spreadShot, 'spread');
     for (const [k, v] of Object.entries(s.decor)) (Array.isArray(v) ? v : [v]).forEach((img, i) => put(img, `${k}${i}`, 2));
     window.sheetDone = true;
   </script>

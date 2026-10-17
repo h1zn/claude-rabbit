@@ -13,10 +13,14 @@ import { LEVELS } from '../src/levels.js';
 const OPEN_BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u']);
 const SOLID = new Set(['#', '=', 'i']);
 const SLOPE = new Set(['/', '\\', 'q', 'r', 'y', 'z']);
-const JUMP = 5;          // standing jump height in tiles
-const RUN_JUMP = 7;      // running jump, needs a runway
-const SUPER_JUMP = 8;    // crouch + jump
-const SPRING = { S: 12, T: 20, U: 29 };
+// Measured in game with the original physics (tiles of rise): standing jump
+// 4.1, walking jump 4.6, running jump 6.5, super jump 6.5, springs 7.9 /
+// 13.2 / 18.5. The search keeps a little margin.
+const JUMP = 3;          // from a standstill
+const WALK_JUMP = 4;     // with 2+ tiles of walk-up
+const RUN_JUMP = 6;      // with 4+ tiles of run-up
+const SUPER_JUMP = 6;    // crouch + jump, straight up
+const SPRING = { S: 7, T: 12, U: 18 };
 const PICKUPS = new Set('*gbv$@o+%1AFQ'.split(''));
 
 function check(make, index) {
@@ -30,7 +34,7 @@ function check(make, index) {
   const support = (x, y) => SOLID.has(at(x, y)) || at(x, y) === '-' || SLOPE.has(at(x, y)) || OPEN_BLOCKS.has(at(x, y));
   // Kip stands at (x, y) when his two cells are free and something holds him.
   const stand = (x, y) => y >= 1 && free(x, y) && free(x, y - 1) && !OPEN_BLOCKS.has(at(x, y))
-    && !OPEN_BLOCKS.has(at(x, y - 1)) && at(x, y) !== '^' && support(x, y + 1);
+    && !OPEN_BLOCKS.has(at(x, y - 1)) && at(x, y) !== '^' && at(x, y) !== '~' && at(x, y - 1) !== '~' && support(x, y + 1);
   const passable = (x, y) => x >= 0 && x < w && y < h && (y < 0 || open(x, y));
   const colClear = (x, y0, y1) => { for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) if (!passable(x, y)) return false; return true; };
   const rowClear = (y, x0, x1) => { for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) if (!passable(x, y) || !passable(x, y - 1)) return false; return true; };
@@ -70,8 +74,8 @@ function check(make, index) {
   const flown = new Set(); // cells passed through on a spring ride
   while (queue.length) {
     const [x, y] = queue.shift();
-    const runway = [-1, 1].some((d) => [1, 2, 3].every((k) => stand(x - d * k, y)));
-    const up = Math.max(JUMP, runway ? RUN_JUMP : 0);
+    const runway = (n) => [-1, 1].some((d) => Array.from({ length: n }, (_, k) => k + 1).every((k) => stand(x - d * k, y)));
+    const up = runway(4) ? RUN_JUMP : runway(2) ? WALK_JUMP : JUMP;
     // Walk and drop off ledges.
     for (const d of [-1, 1]) {
       if (passable(x + d, y) && passable(x + d, y - 1)) {
@@ -83,7 +87,9 @@ function check(make, index) {
     // Jumps (with hover for distance).
     for (let ty = Math.max(1, y - SUPER_JUMP); ty < Math.min(h, y + 30); ty++) {
       const dy = y - ty;
-      const maxDx = dy > 0 ? (dy <= up ? 9 : 2) : 10 + Math.min(12, -dy);
+      // Copter glide: 4 px across per px down (walk cap over a 1 px/tick descent).
+      const reachUp = up === RUN_JUMP ? 12 : up === WALK_JUMP ? 7 : 4;
+      const maxDx = dy > 0 ? (dy <= up ? reachUp : 2) : Math.min(40, (up === RUN_JUMP ? 14 : 8) + 4 * -dy);
       if (dy > up && dy > SUPER_JUMP) continue;
       for (let tx = x - maxDx; tx <= x + maxDx; tx++) {
         if (!stand(tx, ty)) continue;
@@ -116,7 +122,7 @@ function check(make, index) {
       if (!arc(x, y, p.tx, p.ty + 1, p.ty + 1)) continue;
       poleHit.add(key);
       if (p.ch === 'I') {
-        for (let ty = Math.max(1, p.ty - 11); ty <= p.ty + 12; ty++) for (let tx = p.tx - 6; tx <= p.tx + 6; tx++) if (stand(tx, ty) && colClear(p.tx, Math.min(ty, p.ty) - 1, p.ty) && arc(p.tx, p.ty, tx, ty, Math.min(ty, p.ty) - 1)) push(tx, ty);
+        for (let ty = Math.max(1, p.ty - 7); ty <= p.ty + 12; ty++) for (let tx = p.tx - 6; tx <= p.tx + 6; tx++) if (stand(tx, ty) && colClear(p.tx, Math.min(ty, p.ty) - 1, p.ty) && arc(p.tx, p.ty, tx, ty, Math.min(ty, p.ty) - 1)) push(tx, ty);
       } else {
         for (const d of [-1, 1]) {
           for (let k = 1; k <= 20; k++) {
@@ -140,6 +146,9 @@ function check(make, index) {
   // Something at (x, y) is reachable when a reachable stand can jump to it.
   const reach = (x, y) => {
     if ([-1, 0, 1].some((d) => flown.has(`${x + d},${y}`))) return true;
+    // In the air over a gap: reachable stands on both sides, a little below.
+    const side = (dir) => { for (let k = 1; k <= 12; k++) for (let sy = y + 1; sy <= y + 6; sy++) if (seen.has(`${x + dir * k},${sy}`)) return true; return false; };
+    if (passable(x, y) && side(-1) && side(1)) return true;
     for (let sy = y; sy <= y + RUN_JUMP + 1; sy++) {
       for (let sx = x - 3; sx <= x + 3; sx++) {
         if (seen.has(`${sx},${sy}`) && colClear(sx, y, sy) && rowClear(Math.max(y, 1) + (y === sy ? 0 : 1), sx, x)) return true;
@@ -174,7 +183,7 @@ function check(make, index) {
   const stands = [...seen].length;
   console.log(`${index + 1}. ${make.title}: ${w}x${h} tiles, ${stands} reachable spots, ${coins} coins, `
     + `${count.o || 0} food, ${['*', 'g', 'b', 'v'].map((c) => count[c] || 0).join('/')} gems r/g/b/p, `
-    + `${['w', 'k', 'n', 'h', 'f', 'd'].reduce((n, c) => n + (count[c] || 0), 0)} enemies, ${count.X || 0} secrets, ${warps.length} warps`);
+    + `${['w', 'k', 'n', 'h', 'f', 'd', 'J', 'G'].reduce((n, c) => n + (count[c] || 0), 0)} enemies, ${count.X || 0} secrets, ${warps.length} warps`);
   // Merge runs like "pickup o unreachable at 20,9" .. "at 77,9" into one line.
   const merged = [];
   for (const p of problems) {

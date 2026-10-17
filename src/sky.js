@@ -113,6 +113,36 @@ const THEMES = {
   },
 };
 
+// Night jungle: moonlit teal, glowing canopy silhouettes.
+THEMES.grove = {
+  gradient: [[0, '#05031a'], [0.45, '#14104a'], [0.75, '#0b4a5c'], [1, '#1f8a6a']],
+  stars: 120,
+  sun: { x: 0.24, y: 0.2, r: 26, color: '#eaffd8', glow: 'rgba(160,255,200,0.25)' },
+  build: () => [
+    { img: silhouette(320, ['#0e1a3a', '#0a1430'], 90, [[2, 30, 0.6], [6, 14, 1.8]], { trees: { count: 50, min: 30, max: 70, color: '#0a1838', kind: 'round' }, seed: 21 }), factor: 0.12, y: 90 },
+    { img: silhouette(300, ['#082a2e', '#061e22'], 80, [[3, 20, 1.1], [9, 8, 0.3]], { trees: { count: 60, min: 40, max: 90, color: '#06262a', kind: 'round' }, seed: 22 }), factor: 0.3, y: 140 },
+  ],
+};
+// Candy land: pastel sky, a rainbow, cotton clouds.
+THEMES.candy = {
+  gradient: [[0, '#6ac8ff'], [0.4, '#a8b8ff'], [0.75, '#ffb0e0'], [1, '#ffe0f0']],
+  rainbow: true,
+  build: () => [
+    { img: clouds(31), factor: 0.05, y: 30, drift: 0.15 },
+    { img: silhouette(260, ['#ff9ad0', '#f080c0'], 70, [[2, 26, 0.4], [5, 12, 2.0]], { snow: '#fff0fa', snowDepth: 16 }), factor: 0.12, y: 130 },
+    { img: clouds(37), factor: 0.25, y: 150, drift: 0.3 },
+  ],
+};
+// Volcano forge: smouldering reds behind glowing peaks.
+THEMES.forge = {
+  gradient: [[0, '#0a0204'], [0.5, '#2a0608'], [0.8, '#6a1008'], [1, '#c0300c']],
+  stars: 40,
+  build: () => [
+    { img: silhouette(320, ['#1a0606', '#120404'], 110, [[1, 60, 0.5], [3, 26, 1.7], [8, 10, 0.2]], { snow: '#ff5a1a', snowDepth: 6 }), factor: 0.1, y: 70 },
+    { img: silhouette(280, ['#0c0303', '#080202'], 90, [[2, 30, 2.4], [7, 12, 0.9]]), factor: 0.3, y: 140 },
+  ],
+};
+
 export class Sky {
   constructor(theme) {
     this.def = THEMES[theme] || THEMES.meadow;
@@ -138,6 +168,7 @@ export class Sky {
       ctx.fillStyle = sun.color; ctx.beginPath(); ctx.arc(x, y, sun.r, 0, TAU); ctx.fill();
     }
     if (this.def.aurora) this.aurora(ctx, camX, time);
+    if (this.def.rainbow) this.rainbow(ctx, camX);
     if (this.theme === 'crystal') this.shafts(ctx, camX, time);
     for (const layer of this.layers) {
       const drift = layer.drift ? time * layer.drift : 0;
@@ -159,6 +190,17 @@ export class Sky {
         const h = 50 + Math.sin(wx * 0.02 + time * 0.016 + band * 2) * 30;
         ctx.fillRect(x, top, 3, Math.max(10, h));
       }
+    });
+    ctx.restore();
+  }
+
+  rainbow(ctx, camX) {
+    const x = VIEW_W * 0.6 - ((camX * 0.02) % 200);
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ['#ff4a4a', '#ff9a3a', '#ffe84a', '#5ae05a', '#4ac0ff', '#8a6aff'].forEach((c, i) => {
+      ctx.strokeStyle = c; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.arc(x, VIEW_H * 0.95, 230 - i * 7, Math.PI, 0); ctx.stroke();
     });
     ctx.restore();
   }
@@ -202,6 +244,12 @@ export class Weather {
       } else if (this.kind === 'leaves') {
         p.y += 0.25 + p.z * 0.5;
         p.x += Math.sin(time * 0.015 + p.phase) * 0.9 + 0.3;
+      } else if (this.kind === 'embers') {
+        p.y -= 0.4 + p.z * 0.9;
+        p.x += Math.sin(time * 0.03 + p.phase) * 0.5;
+      } else if (this.kind === 'fireflies') {
+        p.x += Math.sin(time * 0.013 + p.phase * 7) * 0.5;
+        p.y += Math.cos(time * 0.011 + p.phase * 5) * 0.4;
       } else {
         p.y -= 0.1 + p.z * 0.2;
         p.x += Math.sin(time * 0.01 + p.phase) * 0.3;
@@ -228,6 +276,29 @@ export class Weather {
         ctx.fillStyle = ['#e8a030', '#d86a20', '#f0d050', '#6ac04a'][Math.floor(p.spin * 4)];
         const w = Math.abs(Math.sin(time * 0.05 + p.phase)) * 3 + 1;
         ctx.fillRect(x, y, Math.round(w), 2);
+      } else if (this.kind === 'embers') {
+        ctx.globalAlpha = 0.5 + Math.sin(time * 0.1 + p.phase * 9) * 0.4;
+        ctx.fillStyle = p.spin > 0.6 ? '#ffe08a' : p.spin > 0.3 ? '#ff8a2a' : '#ff4a1a';
+        ctx.fillRect(x, y, p.z > 0.9 ? 3 : 2, p.z > 0.9 ? 3 : 2);
+        ctx.globalAlpha = 1;
+      } else if (this.kind === 'fireflies') {
+        const on = Math.sin(time * 0.04 + p.phase * 11);
+        if (on > 0) {
+          ctx.globalAlpha = on;
+          ctx.fillStyle = 'rgba(200,255,120,0.25)';
+          ctx.fillRect(x - 3, y - 3, 7, 7);
+          ctx.fillStyle = '#f0ffa0';
+          ctx.fillRect(x - 1, y - 1, 2, 2);
+          ctx.globalAlpha = 1;
+        }
+      } else if (this.kind === 'sparkles') {
+        const tw = Math.sin(time * 0.08 + p.phase * 13);
+        if (tw > 0.3) {
+          ctx.globalAlpha = tw;
+          ctx.fillStyle = ['#ffffff', '#ffd0f0', '#c0f0ff', '#fff4a0'][Math.floor(p.spin * 4)];
+          ctx.fillRect(x, y - 2, 1, 5); ctx.fillRect(x - 2, y, 5, 1);
+          ctx.globalAlpha = 1;
+        }
       } else {
         ctx.globalAlpha = 0.4 + Math.sin(time * 0.05 + p.phase) * 0.3;
         ctx.fillStyle = p.spin > 0.5 ? '#7ae8ff' : '#ff9ae8';

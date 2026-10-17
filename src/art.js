@@ -16,6 +16,56 @@ function cutTiles(image, [c, r, cols, rows, clear = []]) {
   return canvas;
 }
 
+// Recolour a tileset in place: each pixel's brightness picks a colour along
+// `stops` ([[0..1, '#rrggbb'], ...]), so one tileset can become a new world.
+function gradientMap(ts, stops) {
+  const rgb = stops.map(([at, hex]) => [at, parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]);
+  const lut = new Uint8ClampedArray(256 * 3);
+  for (let v = 0; v < 256; v++) {
+    const t = v / 255;
+    let k = 0;
+    while (k < rgb.length - 2 && t > rgb[k + 1][0]) k++;
+    const [a0, r0, g0, b0] = rgb[k]; const [a1, r1, g1, b1] = rgb[k + 1];
+    const f = Math.max(0, Math.min(1, (t - a0) / (a1 - a0 || 1)));
+    lut[v * 3] = r0 + (r1 - r0) * f; lut[v * 3 + 1] = g0 + (g1 - g0) * f; lut[v * 3 + 2] = b0 + (b1 - b0) * f;
+  }
+  const d = ts.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const v = Math.round(d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11);
+    d[i] = lut[v * 3]; d[i + 1] = lut[v * 3 + 1]; d[i + 2] = lut[v * 3 + 2];
+  }
+  // Keep the drawable copy in step with the pixel data.
+  const ctx = ts.image.getContext('2d');
+  const img = ctx.getImageData(0, 0, ts.w, ts.h);
+  img.data.set(d);
+  ctx.putImageData(img, 0, 0);
+}
+
+// A copy of a sheet with its greens turned red (the party-mode rival).
+function tintSheet(sheet) {
+  const recolor = (src) => {
+    const c = document.createElement('canvas');
+    c.width = src.width; c.height = src.height;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(src, 0, 0);
+    const img = ctx.getImageData(0, 0, c.width, c.height);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i]; const g = d[i + 1]; const b = d[i + 2];
+      // Green-dominant pixels swap their green and red channels.
+      if (d[i + 3] && g > r * 1.15 && g > b * 1.05) { d[i] = g; d[i + 1] = Math.round(r * 0.6); d[i + 2] = Math.round(b * 0.7); }
+    }
+    ctx.putImageData(img, 0, 0);
+    return c;
+  };
+  const map = new Map();
+  for (const f of sheet.frames) map.set(f, { ...f, right: recolor(f.right), left: recolor(f.left) });
+  const anims = {};
+  for (const [k, a] of Object.entries(sheet.anims)) anims[k] = { ...a, frames: a.frames.map((f) => map.get(f)) };
+  return { frames: [...map.values()], anims };
+}
+
 export async function buildArt() {
   const art = buildSprites();
   art.hero = await loadSheet('assets/hero.json');
@@ -32,10 +82,12 @@ export async function buildArt() {
   art.tilesets = {};
   for (const [name, t] of Object.entries(TILESETS)) {
     const pixels = await loadTileset(t.image);
+    if (t.gradient) gradientMap(pixels, t.gradient);
     const props = {};
     for (const [kind, list] of Object.entries(t.props || {})) props[kind] = list.map((r) => cutTiles(pixels.image, r));
     art.tilesets[name] = { ...t, pixels, props };
   }
+  art.heroRed = tintSheet(art.hero);
   // Screens draw the hero through `art.kip[anim][i].right/left`.
   const pick = (name) => art.hero.anims[name].frames;
   art.kip = {

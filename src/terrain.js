@@ -43,6 +43,9 @@ export const TERRAIN_THEMES = {
 TERRAIN_THEMES.castle = { ...TERRAIN_THEMES.meadow, stone: TERRAIN_THEMES.winter.stone };
 TERRAIN_THEMES.town = TERRAIN_THEMES.meadow;
 TERRAIN_THEMES.tube = { ...TERRAIN_THEMES.crystal };
+TERRAIN_THEMES.grove = TERRAIN_THEMES.crystal;
+TERRAIN_THEMES.candy = TERRAIN_THEMES.winter;
+TERRAIN_THEMES.forge = TERRAIN_THEMES.meadow;
 
 const BACK_DIM = 0.5;
 
@@ -53,6 +56,7 @@ export class TerrainRenderer {
     this.themeName = themeName;
     this.sprites = sprites;
     this.chunks = new Map();
+    this.jobs = new Map();   // chunks being painted in the background
     // Ground drawn from a tileset when the theme has one.
     const tsName = THEME_TILESET[themeName];
     this.tileset = tsName && sprites.tilesets ? sprites.tilesets[tsName] : null;
@@ -74,27 +78,45 @@ export class TerrainRenderer {
     return 0;
   }
 
+  // A chunk's canvas, painted now if it isn't ready (finishing any
+  // background job for it first).
   chunk(cx, cy) {
     const key = cx + cy * 1000;
     let c = this.chunks.get(key);
     if (!c) {
-      c = this.paintChunk(cx, cy);
-      this.chunks.set(key, c);
+      const job = this.jobs.get(key) || this.startChunk(cx, cy);
+      this.stepChunk(job, CHUNK);
+      c = this.finishChunk(job);
     }
     return c;
   }
 
-  paintChunk(cx, cy) {
+  // Chunks are painted column by column, so background painting can be
+  // spread over several frames.
+  startChunk(cx, cy) {
     const canvas = makeCanvas(CHUNK, CHUNK);
     const ctx = canvas.getContext('2d');
-    const img = ctx.createImageData(CHUNK, CHUNK);
-    const d = img.data;
+    const job = { key: cx + cy * 1000, canvas, ctx, img: ctx.createImageData(CHUNK, CHUNK), ox: cx * CHUNK, oy: cy * CHUNK, x: 0, capPx: [], underPx: [] };
+    this.jobs.set(job.key, job);
+    return job;
+  }
+
+  finishChunk(job) {
+    job.ctx.putImageData(job.img, 0, 0);
+    if (!this.tileset) this.overhangs(job.ctx, job.capPx, job.underPx, job.ox, job.oy);
+    this.props(job.ctx, job.ox, job.oy);
+    this.jobs.delete(job.key);
+    this.chunks.set(job.key, job.canvas);
+    return job.canvas;
+  }
+
+  // Paint up to `cols` more pixel columns of a chunk.
+  stepChunk(job, cols) {
+    const d = job.img.data;
     const t = this.theme;
-    const ox = cx * CHUNK;
-    const oy = cy * CHUNK;
-    const capPx = [];   // exposed surfaces for overhang decoration
-    const underPx = []; // undersides for icicles
-    for (let x = 0; x < CHUNK; x++) {
+    const { ox, oy, capPx, underPx } = job;
+    const end = Math.min(CHUNK, job.x + cols);
+    for (let x = job.x; x < end; x++) {
       const wx = ox + x;
       if (wx >= this.level.pixelW) break;
       // Find the run start for the first pixel by scanning up a little.
@@ -138,7 +160,13 @@ export class TerrainRenderer {
           const k = m === 2 && this.tileset.stone ? this.stonePixel(wx, wy, depth) : this.tilePixel(wx, wy, depth);
           const td = this.tileset.pixels.data;
           if (td[k + 3] === 0) continue;
-          d[i] = td[k] * shade; d[i + 1] = td[k + 1] * shade; d[i + 2] = td[k + 2] * shade; d[i + 3] = 255;
+          // Rim light on left edges, shade on right edges: reads as solid.
+          if (depth > 6) {
+            if (!this.material(wx + 1, wy)) shade *= 0.6;
+            else if (!this.material(wx + 3, wy)) shade *= 0.82;
+            else if (!this.material(wx - 1, wy)) shade *= 1.25;
+          }
+          d[i] = Math.min(255, td[k] * shade); d[i + 1] = Math.min(255, td[k + 1] * shade); d[i + 2] = Math.min(255, td[k + 2] * shade); d[i + 3] = 255;
           continue;
         }
         const color = m === 2 ? this.stoneColor(wx, wy, depth) : this.groundColor(wx, wy, depth);
@@ -152,10 +180,8 @@ export class TerrainRenderer {
         d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255;
       }
     }
-    ctx.putImageData(img, 0, 0);
-    if (!this.tileset) this.overhangs(ctx, capPx, underPx, ox, oy);
-    this.props(ctx, ox, oy);
-    return canvas;
+    job.x = end;
+    return job.x >= CHUNK;
   }
 
   // True when the tile below this ground pixel's tile is open air.
@@ -169,10 +195,12 @@ export class TerrainRenderer {
   // Dimmed back wall behind caves and interiors.
   backPixel(d, i, wx, wy, kind = 1) {
     let r; let g; let b; let k = BACK_DIM;
+    // Terrain casts a soft drop shadow down-right onto the back wall.
+    const shadow = this.material(wx - 7, wy - 9) ? 0.5 : this.material(wx - 4, wy - 5) ? 0.72 : 1;
     if (kind === 2 && this.tileset?.stone) {
       const j = this.stonePixel(wx, wy, 999);
       const td = this.tileset.pixels.data;
-      k = 0.62;
+      k = 0.62 * shadow;
       d[i] = td[j] * k; d[i + 1] = td[j + 1] * k; d[i + 2] = td[j + 2] * k; d[i + 3] = 255;
       return;
     }
@@ -196,6 +224,7 @@ export class TerrainRenderer {
       [r, g, b] = hex(this.groundColor(wx, wy, 200));
       k = BACK_DIM * 0.8;
     }
+    k *= shadow;
     d[i] = r * k; d[i + 1] = g * k; d[i + 2] = b * k; d[i + 3] = 255;
   }
 
@@ -355,11 +384,15 @@ export class TerrainRenderer {
     for (let cy = r0; cy <= r1; cy++) {
       for (let cx = c0; cx <= c1; cx++) ctx.drawImage(this.chunk(cx, cy), cx * CHUNK - camX, cy * CHUNK - camY);
     }
-    // Paint at most one chunk next to the view per frame, so chunks are
-    // usually ready before they scroll in.
+    // Paint the next chunk around the view a slice at a time (a few ms per
+    // frame), so chunks are usually ready before they scroll in.
     for (let cy = Math.max(0, r0 - 1); cy <= Math.min(this.rows - 1, r1 + 1); cy++) {
       for (let cx = Math.max(0, c0 - 1); cx <= Math.min(this.cols - 1, c1 + 1); cx++) {
-        if (!this.chunks.has(cx + cy * 1000)) { this.chunk(cx, cy); return; }
+        const key = cx + cy * 1000;
+        if (this.chunks.has(key)) continue;
+        const job = this.jobs.get(key) || this.startChunk(cx, cy);
+        if (this.stepChunk(job, 48)) this.finishChunk(job);
+        return;
       }
     }
   }

@@ -38,7 +38,7 @@ class Enemy {
     game.enemiesKilled++;
     game.audio.play('kill');
     game.explode(this.cx, this.y + this.h / 2, this.color || '#ffd54a');
-    game.addScore(this.score, this.cx, this.y);
+    game.addScore(this.score * game.bump(), this.cx, this.y);
   }
 
   begin() {
@@ -88,7 +88,7 @@ export class Turtle extends Enemy {
   stomped(game) {
     this.dead = true;
     game.enemiesKilled++;
-    game.addScore(this.score, this.cx, this.y);
+    game.addScore(this.score * game.bump(), this.cx, this.y);
     game.audio.play('stomp');
     game.effect('poof', this.cx, this.y + this.h / 2);
     game.enemies.push(new Shell(this.x, this.y + this.h));
@@ -311,7 +311,146 @@ export class Dragonfly extends Enemy {
   sprite(art) { return this.anim(art, 'dragonfly', 3); }
 }
 
-const ENEMIES = { w: Turtle, k: Lizard, n: Demon, h: Frog, f: Bat, d: Dragonfly };
+// True when no solid tile lies on the straight line between two points.
+function clearShot(level, x0, y0, x1, y1) {
+  const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 16);
+  for (let i = 1; i < n; i++) {
+    if (level.solid(Math.floor((x0 + ((x1 - x0) * i) / n) / TILE), Math.floor((y0 + ((y1 - y0) * i) / n) / TILE))) return false;
+  }
+  return true;
+}
+
+// Shooter, measured: its projectile starts at 2 px/tick and speeds up by
+// 0.125 px/tick² along its line; 70 ticks between throws. The measured range
+// is 128 px; tuned up to 224 here so the monkey matters.
+export class Monkey extends Enemy {
+  constructor(x, y) {
+    super('monkey', x, y - 34 + TILE, 26, 34, 2, 300);
+    this.cool = 40 + Math.floor(Math.random() * 40);
+    this.throwT = 0;
+    this.color = '#ff7a2a';
+  }
+
+  update(game) {
+    this.begin();
+    const { player, level } = game;
+    this.vy = Math.min(this.vy + ENEMY.gravity, ENEMY.maxFall);
+    const hit = level.move(this, 0, this.vy, {});
+    if (hit.bottom) this.vy = 0;
+    this.facing = Math.sign(player.cx - this.cx) || this.facing;
+    if (this.cool > 0) this.cool--;
+    if (this.throwT > 0 && ++this.throwT === 12) {
+      const sx = this.cx + this.facing * 10; const sy = this.y + 8;
+      const dx = player.cx - sx; const dy = player.cy - sy;
+      const d = Math.hypot(dx, dy) || 1;
+      game.enemyShots.push(new EnemyShot('banana', sx, sy, (dx / d) * ENEMY.shotSpeed, (dy / d) * ENEMY.shotSpeed));
+      game.audio.play('shoot');
+    }
+    if (this.throwT >= 24) this.throwT = 0;
+    if (this.cool === 0 && this.throwT === 0 && this.near(game, ENEMY.shooterRange) && !player.dead
+      && clearShot(level, this.cx, this.y + 8, player.cx, player.cy)) {
+      this.throwT = 1;
+      this.cool = ENEMY.shotCooldown;
+    }
+  }
+
+  sprite(art) {
+    return this.throwT > 0 ? frameAt(art.enemy.anims.monkeyThrow, this.throwT, 5) : this.anim(art, 'monkeyIdle', 8);
+  }
+}
+
+// Bomb lizard: wanders slowly and lobs bombs that bounce once and blow up.
+export class Bomber extends Enemy {
+  constructor(x, y) {
+    super('bomber', x, y - 40 + TILE, 24, 40, 2, 300);
+    this.vx = -0.4;
+    this.cool = 60;
+    this.throwT = 0;
+    this.color = '#ffd54a';
+  }
+
+  update(game) {
+    this.begin();
+    const { player, level } = game;
+    if (this.cool > 0) this.cool--;
+    if (this.throwT > 0) {
+      this.throwT++;
+      this.vy = Math.min(this.vy + ENEMY.gravity, ENEMY.maxFall);
+      if (level.move(this, 0, this.vy, {}).bottom) this.vy = 0;
+      this.facing = Math.sign(player.cx - this.cx) || this.facing;
+      if (this.throwT === 16) {
+        const dx = player.cx - this.cx;
+        const b = new EnemyShot('bomb', this.cx + this.facing * 8, this.y + 6, Math.max(-4, Math.min(4, dx / 38)), -4.5);
+        game.enemyShots.push(b);
+      }
+      if (this.throwT > 30) this.throwT = 0;
+      return;
+    }
+    this.walk(game, 0.4);
+    if (this.cool === 0 && this.near(game, ENEMY.shooterRange) && !player.dead
+      && clearShot(level, this.cx, this.y + 8, player.cx, player.cy)) {
+      this.throwT = 1;
+      this.cool = ENEMY.shotCooldown + 30;
+    }
+  }
+
+  sprite(art) {
+    return this.throwT > 0 ? frameAt(art.enemy.anims.bomberThrow, this.throwT, 5) : this.anim(art, 'bomber', 7);
+  }
+}
+
+// A thrown banana (straight, speeding up) or a bomb (lobbed, bounces once,
+// then explodes). Kip's shots knock either out of the air.
+export class EnemyShot {
+  constructor(kind, x, y, vx, vy) {
+    Object.assign(this, { kind, x: x - 8, y: y - 8, w: 16, h: 16, vx, vy, life: kind === 'bomb' ? 110 : 140, t: 0, bounced: false });
+    this.prevX = this.x; this.prevY = this.y;
+  }
+
+  update(game) {
+    this.prevX = this.x; this.prevY = this.y;
+    this.t++;
+    const { level } = game;
+    if (this.kind === 'banana') {
+      const s = Math.hypot(this.vx, this.vy) || 1;
+      this.vx += (this.vx / s) * ENEMY.shotAccel;
+      this.vy += (this.vy / s) * ENEMY.shotAccel;
+      this.x += this.vx; this.y += this.vy;
+      if (level.solid(Math.floor((this.x + 8) / TILE), Math.floor((this.y + 8) / TILE))) this.pop(game);
+    } else {
+      this.vy = Math.min(this.vy + ENEMY.gravity, 6);
+      const hit = level.move(this, this.vx, this.vy, {});
+      if (hit.left || hit.right) this.vx = -this.vx * 0.5;
+      if (hit.bottom) {
+        if (this.bounced) this.explode(game);
+        else { this.bounced = true; this.vy = -2.5; this.vx *= 0.6; }
+      }
+    }
+    if (--this.life <= 0) (this.kind === 'bomb' ? this.explode(game) : (this.dead = true));
+  }
+
+  pop(game) {
+    this.dead = true;
+    game.effect('hitSpark', this.x + 8, this.y + 8);
+  }
+
+  explode(game) {
+    if (this.dead) return;
+    this.dead = true;
+    game.effect('explosion', this.x + 8, this.y + 8);
+    game.audio.play('kill');
+    game.shake(5);
+    const p = game.player;
+    if (Math.hypot(p.cx - (this.x + 8), p.cy - (this.y + 8)) < 44) p.hurt(game, this.x + 8);
+  }
+
+  sprite(art) {
+    if (this.kind === 'bomb') return frameAt(art.enemy.anims.bomb, this.t, 3);
+    return art.items.anims.food.frames[21];
+  }
+}
+
+const ENEMIES = { w: Turtle, k: Lizard, n: Demon, h: Frog, f: Bat, d: Dragonfly, J: Monkey, G: Bomber };
 
 export function makeEnemy(ch, px, py) {
   const Kind = ENEMIES[ch];
@@ -351,7 +490,16 @@ export class Pickup {
     return null;
   }
 
-  update() { this.t++; }
+  update(game) {
+    this.t++;
+    // Gems dropped in party mode fly out and fall until they land.
+    if (this.falling) {
+      this.vy = Math.min(this.vy + 0.2, 6);
+      const hit = game.level.move(this, this.vx, this.vy, {});
+      if (hit.left || hit.right) this.vx = -this.vx * 0.5;
+      if (hit.bottom) { this.vy = 0; this.vx *= 0.6; if (Math.abs(this.vx) < 0.1) this.falling = false; }
+    }
+  }
 
   sprite(art) {
     const a = art.items.anims;
@@ -378,7 +526,7 @@ export class Pickup {
       }
       game.gems += this.value;
       game.levelGems += this.value;
-      game.addScore(this.score, cx, this.y);
+      game.addScore(this.score * game.bump(), cx, this.y);
       game.audio.play('gem');
       game.ring(cx, cy, RING[this.color]);
     } else if (this.kind === 'coin') {
@@ -470,7 +618,7 @@ export class Spring {
     if (p.vy >= 0 && feet >= this.y && feet <= this.y + 18 && p.x + p.w > this.x + 4 && p.x < this.x + this.w - 4) {
       p.y = this.y - p.h;
       p.vy = PHYS.springs[this.color];
-      p.jumping = false; p.onGround = false; p.stomping = false;
+      p.jumping = false; p.jumpCut = false; p.onGround = false; p.stomping = false;
       p.hoverLeft = PHYS.hoverTicks;
       p.springLock = 0;
       this.launch(game, p.cx, this.y + 6);
@@ -528,8 +676,15 @@ export class Sign {
       this.hit++;
       this.speed = Math.max(0.04, this.speed * 0.985);
       if (this.hit % 4 === 0) game.spark(this.x + 20 + (Math.random() - 0.5) * 30, this.y + 10, ['#ffd54a', '#5ee8ff', '#ff7ad9'][this.hit % 3]);
-      if (this.hit === 70) game.completeLevel();
-    } else if (game.state === 'play' && !game.player.dead && overlap(this, game.player)) {
+      if (this.hit === 70 && !game.party) game.completeLevel();
+    } else if (game.party && game.state === 'play' && !game.player.dead && overlap(this, game.player)) {
+      // Party: the sign only counts with enough gems.
+      if (game.gems >= 100 && !game.party.result) {
+        this.hit = 1;
+        this.speed = 0.6 + Math.abs(game.player.vx) * 0.18;
+        game.party.win(game);
+      } else if (game.levelTime % 60 === 0) game.banner('NEED 100 GEMS!', 50);
+    } else if (!game.party && game.state === 'play' && !game.player.dead && overlap(this, game.player)) {
       // Measured: the sign spins faster the faster Kip runs into it; 1000 points.
       this.hit = 1;
       this.speed = 0.6 + Math.abs(game.player.vx) * 0.18;

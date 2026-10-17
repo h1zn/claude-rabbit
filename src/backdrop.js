@@ -26,11 +26,13 @@ export const BACKDROPS = {
     { rect: [0, 24, 10, 6], fill: true, sx: 0.3, sy: 0.3, dim: 0.5 },
   ],
   beach: [
-    { rect: [0, 24, 8, 5], fill: true, stretch: true, sx: 0.04, sy: 0.02 },
     { rect: [0, 48, 9, 6], sx: 0.18, sy: 0.08, bottom: 40, gap: 700, strip: true },
     { rect: [0, 20, 10, 4], sx: 0.35, sy: 0.18, bottom: -10, gap: 900, strip: true },
   ],
 };
+
+// Tileset backdrops drawn over a procedural sky instead of a sky tile.
+export const BACKDROP_SKY = { beach: 'meadow' };
 
 function cutLayer(tileset, layer) {
   const [c, r, cols, rows] = layer.rect;
@@ -54,7 +56,8 @@ function cutLayer(tileset, layer) {
     for (let i = 0; i < d.length; i += 4) {
       const lav = d[i] > 220 && d[i + 1] > 170 && d[i + 1] < 210 && d[i + 2] > 245;
       const label = d[i] < 12 && d[i + 1] < 12 && d[i + 2] > 160;
-      if (lav || label) d[i + 3] = 0;
+      const filler = d[i] === 0 && d[i + 1] < 70 && d[i + 2] > 120;  // blue placeholder tiles
+      if (lav || label || filler) d[i + 3] = 0;
     }
     ctx.putImageData(img, 0, 0);
   }
@@ -69,7 +72,8 @@ function cutLayer(tileset, layer) {
 }
 
 export class Backdrop {
-  constructor(tileset, name, level) {
+  constructor(tileset, name, level, sky = null) {
+    this.sky = sky;
     this.layers = BACKDROPS[name].map((l) => cutLayer(tileset, l));
     // Camera height at which `bottom` offsets apply: resting near the ground
     // (the level's surface row when it has caves below it).
@@ -77,7 +81,8 @@ export class Backdrop {
     this.refY = ground - VIEW_H;
   }
 
-  draw(ctx, camX, camY) {
+  draw(ctx, camX, camY, time) {
+    if (this.sky) this.sky.draw(ctx, camX, camY, time);
     for (const l of this.layers) {
       const w = l.canvas.width; const h = l.canvas.height;
       const step = w + (l.gap || 0);

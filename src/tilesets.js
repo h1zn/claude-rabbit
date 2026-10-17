@@ -63,5 +63,23 @@ export const TILESETS = {
   },
 };
 
+// Recoloured worlds: a base tileset's layout with a gradient map over it.
+TILESETS.grove = {
+  ...TILESETS.beach,
+  props: {},
+  gradient: [[0, '#0a0420'], [0.28, '#4a1288'], [0.52, '#1a9a9a'], [0.76, '#8af56a'], [1, '#fffac8']],
+};
+TILESETS.candy = {
+  ...TILESETS.winter,
+  gradient: [[0, '#2a0b3a'], [0.3, '#8a2a7a'], [0.6, '#ff6fb0'], [0.85, '#ffc4e4'], [1, '#ffffff']],
+};
+TILESETS.forge = {
+  ...TILESETS.castle,
+  props: { window: TILESETS.castle.props.window },
+  gradient: [[0, '#070102'], [0.3, '#3a0a08'], [0.6, '#a4280c'], [0.85, '#ff8a1c'], [1, '#ffe9a8']],
+};
+
 // Level theme -> tileset.
-export const THEME_TILESET = { meadow: 'beach', winter: 'winter', castle: 'castle', town: 'town', tube: 'tube' };
+export const THEME_TILESET = {
+  meadow: 'beach', winter: 'winter', castle: 'castle', town: 'town', tube: 'tube', grove: 'grove', candy: 'candy', forge: 'forge',
+};

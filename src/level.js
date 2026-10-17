@@ -9,7 +9,7 @@ import { TILE } from './config.js';
 //   p  speed block (only running into it at full speed breaks it)
 //   Y  switch crate (break it to flip every switch block in the level)
 //   u  switch block (solid until flipped)   i  ghost switch block (solid once flipped)
-//   -  one-way platform          ^  spikes (hurt, not solid)
+//   -  one-way platform          ^  spikes (hurt, not solid)   ~  lava (hurts, not solid)
 //   /  45° slope rising right    \  45° slope falling right
 //   q  gentle rise, lower half   r  gentle rise, upper half
 //   y  gentle fall, upper half   z  gentle fall, lower half
@@ -20,12 +20,12 @@ import { TILE } from './config.js';
 //   * red gem  g green gem  b blue gem  v purple gem  $ silver coin  @ gold coin
 //   o food  + carrot  % full carrot  1 extra life  A spread-shot crate
 //   F fastfire  Q fire-shield monitor (shoot or stomp it open)
-//   w turtle  k lizard  n demon  h frog  f bat  d dragonfly
+//   w turtle  k lizard  n demon  h frog  f bat  d dragonfly  J monkey (throws)  G bomb lizard
 // Warps and hint signs carry data, so they are objects (Builder.warp/hint).
 const SOLID = new Set(['#', '=', 'x', 'm', 'c', 'p', 'Y', 'u']);
 // Blocks drawn from the shared block sheet instead of the terrain.
 export const BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u', 'i']);
-const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQwknhfd'.split(''));
+const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQwknhfdJG'.split(''));
 
 // Surface height (pixels from the tile's top) at local x in [0, TILE].
 export const SLOPES = {
@@ -212,6 +212,7 @@ export class Builder {
   block(x, y, w, h) { return this.fill(x, y, w, h, '='); }
   breakable(x, y, w, h) { return this.fill(x, y, w, h, 'x'); }
   spikes(x, y, w) { return this.fill(x, y, w, 1, '^'); }
+  lavaPool(x, y, w, h = 1) { return this.fill(x, y, w, h, '~'); }
 
   row(x, y, n, ch, step = 1) {
     for (let i = 0; i < n; i++) this.put(x + i * step, y, ch);
@@ -300,6 +301,7 @@ export class Level {
   slope(tx, ty) { return SLOPES[this.at(tx, ty)] !== undefined; }
   platform(tx, ty) { return this.at(tx, ty) === '-'; }
   spike(tx, ty) { return this.at(tx, ty) === '^'; }
+  lava(tx, ty) { return this.at(tx, ty) === '~'; }
   // Anything you can stand on: used for ledge checks and tile art.
   groundish(tx, ty) { return this.solid(tx, ty) || this.slope(tx, ty); }
 
@@ -444,7 +446,7 @@ export class Level {
     const y1 = Math.floor((body.y + body.h - 0.01) / TILE);
     for (let ty = y0; ty <= y1; ty++) {
       for (let tx = x0; tx <= x1; tx++) {
-        if (this.spike(tx, ty) && body.y + body.h > ty * TILE + TILE / 2) return true;
+        if ((this.spike(tx, ty) || this.lava(tx, ty)) && body.y + body.h > ty * TILE + TILE / 2) return true;
       }
     }
     return false;

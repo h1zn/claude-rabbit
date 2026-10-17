@@ -19,21 +19,24 @@ step per *game tick*. Values below are converted to pixels per tick.
 | Tick rate | 1 tick = 14 ms (~71.4 Hz) | timer: `timeGetTime() / 14` (`sub_48DE60`) | measured |
 | Fixed-step loop | one physics step per elapsed tick, resync if >35 behind | main loop `sub_43F5D0` | measured |
 | Tile size | 32 px | position / `0x200000` = tile index | measured |
-| Jump launch | `vy = -10.0 - abs(vx) / 4` | player update `sub_435800`; default `-655360` set in player init `sub_42F5D0` | measured |
-| Variable jump (button released while rising) | if `vy < -1.0`: `vy += 0.5`; else if `vy < -0.25`: `vy += 0.25`; else `vy = 0` | `sub_435800` | measured |
-| Ground friction (no input) | speed moves toward 0 by 0.244 px/tick each tick | `sub_435800` (16000) | measured |
-| Walk acceleration | 0.183 px/tick² | `sub_435800` (12000) | measured |
-| Run acceleration (run held) | 0.366 px/tick² | `sub_435800` (24000) | measured |
-| Coasting decel | 0.122 walk / 0.427 run, and speed × 31/32 per tick | `sub_435800` (8000 / 28000) | measured |
-| Hover (slow-fall ability) | gravity 0.0078 while falling, 0.375 while rising, fall speed capped at 1.0 | `sub_435800` copter branch | measured |
-| Stomp bounce off an enemy | `vy = -8 - vy / 2` (jump held) or `-4 - vy / 2` | interaction `sub_439B00` | measured |
-| Hurt knockback | `vx = ±4.0`, `vy -= 4.0` | `sub_4305A0` | measured |
-| Power-up timers | 2100 / 1050 ticks (30 s / 15 s) | `sub_439B00` | measured |
-| Camera | eases 1/4 of the distance per tick, with a look-ahead in the run direction | camera `sub_43E440` | measured |
-| Gravity | 0.30 px/tick² | not located (applied through pointer-relative code) | **tuned** to give a ~5-tile standing jump |
-| Ground speed caps | 4.0 walk / 8.0 run | caps of 2 / 4 were found only in the free-move branch | **tuned** for the fast feel |
+| Jump launch | `vy = -(10 + abs(vx) / 4)`; the launch tick moves at full speed | `sub_435800`, `sub_42F5D0`; Jazz2 Resurrection | measured |
+| Rise gravity | 0.375 with jump held; after release 0.875, then 0.625 once rising slower than 1 px/tick | Jazz2 Resurrection | measured |
+| Fall gravity | 0.125 (the floaty JJ2 fall) | Jazz2 Resurrection | measured |
+| Movement cap | applied movement is clamped to 8 px/tick on both axes (speed above it is momentum) | Jazz2 Resurrection | measured |
+| Walk / dash | caps 4 / 16 (internal); accel 0.183 / 0.366 in the input direction, ground and air alike | `sub_435800` (12000 / 24000); Jazz2 Resurrection | measured |
+| Dash grace | the dash outlives the Run key by 16 ticks, then speed snaps to walk speed | Jazz2 Resurrection | measured |
+| Coasting decel | 0.122 walk / 0.427 dash with no direction held | `sub_435800` (8000 / 28000) | measured |
+| Copter (hover) | each press re-arms 70 ticks; engages once rising slower than 2.4; descends at 129/128 px/tick (wind-up 1/128); horizontal speed capped at walk speed | `sub_435800`; Jazz2 Resurrection | measured |
+| Camera | eases 1/4 of the distance per tick; leads 28 px walking, 120 px dashing; drops 60 px for a butt-stomp | `sub_43E440`; Jazz2 Resurrection | measured |
 | Terminal fall speed | 12.0 px/tick | player update | measured |
-| Spring launch | red -16; green/blue measured -24/-32, used -20/-24 | `sub_404430` | red measured; green/blue scaled to the tuned gravity |
+| Springs | red -16, green -24, blue -32 (about 8, 13 and 19 tiles with the rise cap) | `sub_404430` | measured |
+| Butt-stomp speed | 10 px/tick | Jazz2 Resurrection | measured |
+
+Measured in game with these values: standing jump 4.1 tiles, running jump 6.7
+tiles high and about 19 across, super jump 6.7. Jazz2 Resurrection
+(github.com/deathkiller/jazz2-native, `Player.h`) documents the original's
+per-tick values from traces of the real game; they agree with the IDA reads
+where both exist.
 
 ## Prototype scope
 
@@ -118,9 +121,18 @@ From IDA (the level event handlers) and the manual.
 | Coin Warp | warps to a bonus area once you have enough coins | IDA, manual |
 | Exit | reach the exit sign; some exits are guarded by a boss | manual |
 | Gems | end-of-level bonus and extra lives (the clone: one per 100 gems) | manual (the 100 is tuned) |
-| Super jump | from a full crouch, over 60% higher; smashes blocks above | manual |
+| Super jump | from a full crouch, 60% higher (launch x1.39 with the rise cap); smashes blocks above | manual |
 | Blast / countdown / speed / butt-stomp blocks | shoot / shoot N times / run through at full speed / butt-stomp | manual |
 | Switch blocks | breaking a switch crate removes solid switch blocks and makes ghost ones solid | manual |
 | Fastfire | each one cuts the fire delay by 3 ticks, down to 6 | IDA |
 | Shields | last 2100 ticks (30 s); each hit takes 5 s off instead of a heart | IDA, manual |
 | Super carrot | full health, 350 ticks of invulnerability | IDA |
+
+## Shooters (loop 5)
+
+| Thing | Value | Status |
+| --- | --- | --- |
+| Projectile | 2 px/tick, +0.125 px/tick² along its line | measured (`sub_4071F0`) |
+| Cooldown | 70 ticks | measured |
+| Range | measured 128 px; the clone uses 224 so shooters matter | tuned |
+| Bomb lizard | lobs a bomb that bounces once and explodes (44 px radius) | clone design |

@@ -21,7 +21,7 @@ export class Player {
       invuln: 0, knock: 0, dropThrough: 0, shotCooldown: 0, shootPose: 0,
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
-      crouchT: 0, superJump: false, shield: 0,
+      crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0,
     });
   }
@@ -42,7 +42,7 @@ export class Player {
 
     if (this.dead) {
       this.deadTimer++;
-      this.vy = Math.min(this.vy + PHYS.gravity, PHYS.maxFall);
+      this.vy = Math.min(this.vy + PHYS.riseGravity, PHYS.maxFall);
       this.y += this.vy;
       this.anim = 'hurt';
       return;
@@ -61,10 +61,14 @@ export class Player {
 
     const controlled = this.knock === 0 && this.special === 0 && this.springLock === 0;
     const dir = controlled ? (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0) : 0;
-    const running = input.held('run') || this.rush > 0;
+    // Dash: holding Run (or a sugar rush) keeps it active; it outlives the
+    // key by 16 ticks and then the speed snaps straight back to walk speed.
+    if (input.held('run') || this.rush > 0) this.dash = PHYS.dashGrace;
+    else if (this.dash > 0 && --this.dash === 0 && Math.abs(this.vx) > PHYS.walkMax) this.vx = Math.sign(this.vx) * PHYS.walkMax;
+    const dashing = this.dash > 0;
     const boost = this.rush > 0 ? PHYS.rushSpeedScale : 1;
-    const accel = (running ? PHYS.runAccel : PHYS.walkAccel) * boost;
-    const max = (running ? PHYS.runMax : PHYS.walkMax) * boost;
+    const accel = (dashing ? PHYS.runAccel : PHYS.walkAccel) * boost;
+    const max = (dashing && !this.hovering ? PHYS.runMax : PHYS.walkMax) * boost;
     const crouching = controlled && this.onGround && input.held('down') && !dir;
     this.crouchT = crouching ? this.crouchT + 1 : 0;
     if (dir) {
@@ -75,18 +79,14 @@ export class Player {
       this.facing = dir;
     }
 
-    // ---- horizontal
-    if (this.onGround) {
-      if (dir) {
-        if (Math.sign(this.vx) === -dir) this.vx += dir * PHYS.groundFriction;
-        this.vx = accelerate(this.vx, dir, accel, max, PHYS.groundFriction);
-      } else {
-        this.vx = approach(this.vx, 0, PHYS.groundFriction);
-      }
-    } else if (dir) {
-      this.vx = accelerate(this.vx, dir, accel * PHYS.airAccelScale, max, accel * PHYS.airAccelScale);
+    // While coptering, horizontal speed tops out at the walk cap (original).
+    if (this.hovering && Math.abs(this.vx) > PHYS.walkMax) this.vx = approach(this.vx, Math.sign(this.vx) * PHYS.walkMax, PHYS.dashDecel);
+    // ---- horizontal: one table for ground and air (original). Input
+    // accelerates toward the cap; speed above it (springs, poles) bleeds off.
+    if (dir) {
+      this.vx = accelerate(this.vx, dir, accel, max, PHYS.walkDecel);
     } else if (this.knock === 0 && this.springLock === 0) {
-      this.vx *= PHYS.airDrag;
+      this.vx = approach(this.vx, 0, dashing ? PHYS.dashDecel : PHYS.walkDecel);
     }
 
     // ---- special: uppercut (hold Up + Shoot). Measured timing: 16-tick
@@ -125,20 +125,22 @@ export class Player {
       } else if (this.jumpBuffer > 0 && (this.onGround || this.coyote > 0)) {
         // Measured: vy = jumpBase - |vx| / 4 (running jumps go higher). From a
         // full crouch it is a super jump (manual: 60% higher, smashes blocks).
-        this.vy = PHYS.jumpBase - Math.abs(this.vx) / PHYS.jumpRunBonusDivisor;
         this.superJump = this.onGround && this.crouchT >= PHYS.superJumpCoil;
-        if (this.superJump) {
-          this.vy *= PHYS.superJumpScale;
-          audio.play('uppercut');
-        }
+        this.vy = PHYS.jumpBase * (this.superJump ? PHYS.superJumpScale : 1) - Math.abs(this.vx) / PHYS.jumpRunBonusDivisor;
+        this.jumpCut = false;
+        this.launched = true;  // the launch tick moves at full speed, no gravity yet
+        if (this.superJump) audio.play('uppercut');
         this.onGround = false;
         this.coyote = 0;
         this.jumpBuffer = 0;
         this.jumping = true;
         audio.play('jump');
         game.dust(this.cx, this.y + this.h, 4);
-      } else if (controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && this.hoverLeft > 0 && !this.stomping) {
+      } else if (controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && this.vy > -PHYS.hoverEngage) {
+        // Original copter: each press re-arms 70 ticks; it only engages near
+        // the top of a jump or while falling.
         this.hovering = true;
+        this.hoverLeft = PHYS.hoverTicks;
         this.jumpBuffer = 0;
       } else if (controlled && input.pressed('down') && !this.onGround && !this.stomping) {
         // Buttstomp: brief hang, then slam down.
@@ -164,12 +166,15 @@ export class Player {
         : Math.min(this.vy + PHYS.hoverRiseDecel, 0);
       if (this.animTime % 4 === 0) game.trail(this.cx + (Math.random() * 8 - 4), this.y + this.h + 2, '#ffb02e');
     } else {
-      // Measured variable jump: releasing while rising damps the climb.
-      if (this.jumping && !this.superJump && this.vy < 0 && !input.held('jump')) {
-        const cut = PHYS.jumpCut.find((c) => this.vy < c.below);
-        this.vy = cut ? this.vy + cut.add : 0;
-      }
-      this.vy = Math.min(this.vy + PHYS.gravity, PHYS.maxFall);
+      // Original variable jump: releasing jump makes the rest of the rise
+      // heavier (0.875, then 0.625 below 1 px/tick); the held rise is 0.375
+      // and the fall a floaty 0.125.
+      if (this.jumping && !this.superJump && this.vy < 0 && !input.held('jump')) this.jumpCut = true;
+      if (this.launched) this.launched = false;
+      else this.vy += this.vy < 0
+        ? (this.jumpCut ? (this.vy < -1 ? PHYS.riseGravityCut : PHYS.riseGravityCutApex) : PHYS.riseGravity)
+        : PHYS.fallGravity;
+      this.vy = Math.min(this.vy, PHYS.maxFall);
     }
     audio.hover(this.hovering);
 
@@ -233,9 +238,10 @@ export class Player {
     if (this.poleT < this.poleHold && !(this.poleT > 8 && input.pressed('jump'))) return;
     this.pole = null;
     this.poleCool = 24;
+    this.jumpCut = false;
     if (pole.vertical) {
       this.vx = this.poleDir * 2;
-      this.vy = -this.poleSpeed * 0.8;
+      this.vy = -this.poleSpeed;
       this.y = pole.py - this.h - 4;
     } else {
       this.vx = this.poleDir * this.poleSpeed;
@@ -250,7 +256,7 @@ export class Player {
   }
 
   fall(game) {
-    this.vy = Math.min(this.vy + PHYS.gravity, PHYS.maxFall);
+    this.vy = Math.min(this.vy + (this.vy < 0 ? PHYS.riseGravity : PHYS.fallGravity), PHYS.maxFall);
     this.collide(game);
   }
 
@@ -260,10 +266,15 @@ export class Player {
     const impact = this.vy;
     const grounded = this.onGround;
     const vx = this.vx;
-    const hit = level.move(this, this.vx, this.vy, { dropThrough: this.dropThrough > 0, climb: grounded });
+    // Original: speed is momentum; movement is capped at 8 px/tick (rising
+    // too). A dash reads 16 but travels 8; the extra still boosts jumps.
+    const cap = PHYS.moveCap * (this.rush > 0 ? PHYS.rushSpeedScale : 1);
+    const dx = Math.max(-cap, Math.min(cap, this.vx));
+    const dy = Math.max(-PHYS.moveCap, this.vy);
+    const hit = level.move(this, dx, dy, { dropThrough: this.dropThrough > 0, climb: grounded });
     if (hit.left || hit.right) {
       // Speed blocks only give way to a full-speed run (or a sugar rush).
-      const fast = Math.abs(vx) >= PHYS.runMax * 0.9 || this.rush > 0;
+      const fast = Math.abs(vx) >= PHYS.moveCap * 0.95 || this.rush > 0;
       const tx = Math.floor((hit.right ? this.x + this.w + 1 : this.x - 1) / TILE);
       let broke = false;
       if (fast) {
@@ -298,6 +309,7 @@ export class Player {
       }
       this.vy = 0;
       this.jumping = false;
+      this.jumpCut = false;
       this.superJump = false;
       this.hovering = false;
       this.hoverLeft = PHYS.hoverTicks;
@@ -310,6 +322,7 @@ export class Player {
   // Measured knockback: vx = ±4, vy -= 4.
   hurt(game, fromX, { spikes = false } = {}) {
     if (this.invuln > 0 || this.dead || this.rush > 0) return;
+    if (game.party) { game.party.hit(game, fromX); return; }
     if (this.shield > 0) {
       // Manual: a shield soaks the hit but loses 5 seconds.
       this.shield = Math.max(0, this.shield - PLAYER.shieldHitCost);
@@ -340,6 +353,7 @@ export class Player {
     const base = jumpHeld ? PHYS.stompBounceHeld : PHYS.stompBounce;
     this.vy = base - Math.min(this.vy, 12) / 2;
     this.jumping = jumpHeld;
+    this.jumpCut = false;
     this.stomping = false;
     this.hoverLeft = PHYS.hoverTicks;
   }

@@ -8,47 +8,47 @@ export const VIEW_W = 640;
 export const VIEW_H = 360;
 
 export const PHYS = {
-  walkAccel: 12000 / 65536,       // measured 0.183
-  runAccel: 24000 / 65536,        // measured 0.366
-  walkMax: 4.0,                   // tuned
-  runMax: 8.0,                    // tuned
-  groundFriction: 16000 / 65536,  // measured 0.244 per tick toward zero
-  airDrag: 31 / 32,               // measured coasting factor
-  airAccelScale: 0.6,             // tuned: air control relative to ground
-  gravity: 0.30,                  // tuned (see SPEC.md)
-  maxFall: 12.0,                  // measured: falling speed is capped at 12 px/tick
-  jumpBase: -10.0,                // measured (-655360 / 65536)
-  jumpRunBonusDivisor: 4,         // measured: vy = jumpBase - |vx| / 4
-  // Measured variable-jump damping when the button is released while rising.
-  jumpCut: [
-    { below: -1.0, add: 0.5 },
-    { below: -0.25, add: 0.25 },
-  ],
-  hoverFallGravity: 512 / 65536,     // measured
-  hoverRiseDecel: 24576 / 65536,     // measured
-  hoverMaxFall: 1.0,                 // measured
-  hoverTicks: 140,                   // tuned: 2 s of hover per airtime
+  // Horizontal (original JJ2 values via Jazz2 Resurrection's measurements,
+  // which agree with the IDA reads: 12000/24000 accel, 8000/28000 decel).
+  walkAccel: 12000 / 65536,       // 0.183, input direction, ground and air alike
+  runAccel: 24000 / 65536,        // 0.366 while the dash is active
+  walkDecel: 8000 / 65536,        // 0.122 with no direction held
+  dashDecel: 28000 / 65536,       // 0.427 with no direction held while dashing
+  walkMax: 4.0,                   // walk speed cap
+  runMax: 16.0,                   // dash speed cap (internal speed)
+  moveCap: 8.0,                   // applied movement is clamped to 8 px/tick on both axes
+  dashGrace: 16,                  // the dash outlives the Run key by 16 ticks, then snaps to walk speed
+  // Vertical.
+  riseGravity: 0.375,             // rising with jump held
+  riseGravityCut: 0.875,          // rising after jump was released...
+  riseGravityCutApex: 0.625,      // ...once the rise is slower than 1 px/tick
+  fallGravity: 0.125,             // falling
+  maxFall: 12.0,                  // fall speed cap
+  jumpBase: -10.0,                // jump launch: vy = -(10 + |vx| / 4)
+  jumpRunBonusDivisor: 4,
+  hoverFallGravity: 512 / 65536,     // copter: 1/128 while falling
+  hoverRiseDecel: 24576 / 65536,     // copter: 0.375 while still rising
+  hoverMaxFall: 129 / 128,           // copter descent speed
+  hoverTicks: 70,                    // original: each jump press re-arms 70 ticks of copter
+  hoverEngage: 2.40625,              // original: the copter engages once rising slower than this
   stompBounceHeld: -8.0,             // measured: vy = -8 - vy/2
   stompBounce: -4.0,                 // measured: vy = -4 - vy/2
   hurtKnockX: 4.0,                   // measured
   hurtKnockY: -4.0,                  // measured
   hurtInvulnTicks: 105,              // tuned: 1.5 s
-  springLaunch: -16.0,               // measured: red spring sets vy = -16
-  // Measured green/blue springs are -24/-32, but with this clone's tuned
-  // gravity those would throw Kip 30 and 53 tiles, so they are scaled down.
-  springs: { red: -16.0, green: -20.0, blue: -24.0 },
+  springs: { red: -16.0, green: -24.0, blue: -32.0 },  // measured (about 8, 13 and 19 tiles high)
   springSide: 16.0,                  // measured: sideways red spring sets vx = 16
   poleHoldTicks: 70,                 // measured: a swinging pole holds Kip up to 70 ticks
   poleMaxFling: 20.0,                // measured: fling speed is capped at 20 px/tick
   poleMinFling: 10.0,                // tuned
   uppercutWindup: 16,                // measured: special move freezes 16 ticks
   uppercutEnd: 45,                   // measured: rises while tick <= 45
-  stompAccel: 0.9,                   // tuned buttstomp
-  stompFall: 12.0,                   // tuned buttstomp speed
+  stompAccel: 0.9,                   // tuned buttstomp wind-down
+  stompFall: 10.0,                   // buttstomp speed 10 px/tick
   rushTicks: 1400,                   // measured: sugar rush lasts 1400 ticks (20 s)
-  rushSpeedScale: 1.3,               // tuned
+  rushSpeedScale: 1.25,              // tuned
   foodForRush: 100,                  // measured: every 100th food starts a rush
-  superJumpScale: Math.sqrt(1.6),    // manual: the super jump goes 60% higher
+  superJumpScale: 1.39,              // manual: 60% higher (with the 8 px/tick rise cap)
   superJumpCoil: 10,                 // tuned: ticks crouched before it is ready
   coyoteTicks: 6,                    // tuned: grace after leaving a ledge
   jumpBufferTicks: 6,                // tuned
@@ -56,8 +56,9 @@ export const PHYS = {
 
 export const CAMERA = {
   ease: 1 / 4,          // measured: camera closes 1/4 of the gap per tick
-  lookAhead: 14,        // tuned: px of look-ahead per px/tick of speed
-  maxLookAhead: 110,
+  walkLead: 28,         // original: leads 28 px while walking...
+  dashLead: 120,        // ...and 120 px while dashing
+  leadStep: 2,          // px per tick the lead moves toward its target
   verticalBias: -24,
 };
 
@@ -92,4 +93,8 @@ export const ENEMY = {
   hopCloseRange: 160,
   hopSmall: -2.0,
   hopBig: -5.0,
+  shotSpeed: 2.0,           // measured shooter projectile: 2 px/tick...
+  shotAccel: 0.125,         // ...speeding up by 0.125 px/tick² along its line
+  shotCooldown: 70,         // measured: 70 ticks between shots
+  shooterRange: 224,        // measured 128; tuned up so shooters matter
 };

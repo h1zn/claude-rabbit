@@ -1,0 +1,140 @@
+import { Builder, over, scenery, shape } from './kit.js';
+
+// Beach: three layers of ground with open caves between them (back wall below
+// row 26), sky islands linked by swinging poles, and the exit plateau in the
+// east, reached only with the blue spring at the bottom of the canyon.
+export function sunnySpires() {
+  const L = new Builder(200, 56);
+  L.wall(0, 26, 186, 30);
+  L.profile([[0, 22], [26, 22], [30, 18], [40, 18], [44, 22], [70, 22]], 4);
+  L.profile([[76, 22], [100, 22], [104, 20], [118, 20], [122, 22], [150, 22]], 4);
+  L.profile([[10, 34], [28, 34]], 4);
+  L.profile([[35, 32], [60, 32], [64, 30], [80, 30], [84, 32], [120, 32]], 4);
+  L.profile([[127, 32], [165, 32]], 4);
+  L.profile([[0, 46], [50, 46], [54, 42], [90, 42], [94, 46], [140, 46], [146, 40], [186, 40]]);
+  L.ground(186, 200, 24);
+
+  // ---- Upper ground.
+  L.put(3, 21, 'P');
+  L.hint(6, 21, 'Explore everywhere! Three layers of ground,\nsky islands, secrets and a Coin Warp.');
+  over(L, 9, 0, 'arc', 'o', 2);
+  shape(L, 16, 18, 'line3', '*');
+  L.on(20, 'A');
+  L.on(24, 'w');
+  L.put(38, 17, 'S');                                   // spring to the sky islands
+  over(L, 32, 0, 'hump', 'o', 2);
+  L.on(48, 'h');
+  over(L, 54, 0, 'arc', 'o', 2);
+  L.on(60, 'k');
+  over(L, 125, 0, 'arc', 'o', 2);
+  over(L, 143, 0, 'arc', 'o', 2);
+  // A hole to the middle band, marked by a gem arrow pointing down.
+  shape(L, 71, 15, 'arrowUp', '*');
+  L.on(84, 'w');
+  over(L, 86, 0, 'line5', 'o', 2);
+  // Stash on the hilltop: stone roof and back wall, speed blocks in front.
+  L.block(107, 15, 8, 1).block(114, 16, 1, 4).speedBlocks(107, 16, 1, 4);
+  L.put(109, 19, '@').put(110, 19, 'F').put(111, 19, '@').put(112, 19, 'g');
+  L.hint(92, 21, 'Speed blocks break when you\nRUN into them at full speed.');
+  // A one-way lid over a shaft down, with ledges below it.
+  L.plat(97, 22, 3).carve(97, 23, 3, 3).plat(97, 25, 3).plat(95, 28, 5);
+  L.on(120, 'h');
+  L.put(124, 21, 'C');
+  L.stomp(132, 22, 2, 1).carve(132, 23, 2, 3);
+  L.hint(129, 21, 'Cracked floor: JUMP, then DOWN to butt-stomp.');
+  L.on(140, 'n');
+  L.on(148, 'J');
+  over(L, 136, 0, 'hump', 'o', 2);
+  L.put(144, 16, 'f');
+
+  // ---- Sky islands, poles between them.
+  L.mass(40, 11, 7, 2);
+  shape(L, 41, 9, 'line5', '*');
+  L.mass(50, 12, 5, 2);
+  shape(L, 50, 9, 'hump', 'o');
+  L.put(59, 10, 'H');
+  L.mass(65, 12, 5, 2);
+  shape(L, 65, 10, 'line5', '$');
+  L.put(68, 6, 'd');
+  L.plat(73, 10, 4);
+  shape(L, 73, 8, 'hump', 'g');
+  L.put(80, 9, 'H');
+  L.mass(87, 11, 7, 2);
+  shape(L, 88, 8, 'diamond', 'o');
+  L.plat(98, 12, 4).put(99, 11, '@');
+  L.put(107, 8, 'H');
+  L.mass(114, 10, 10, 3);
+  shape(L, 115, 8, 'line3', 'b');
+  L.put(120, 9, 'X').put(122, 9, '1');
+  L.put(92, 10, 'J');
+
+  // ---- Middle band.
+  L.put(5, 45, 'T');      // green spring from the bottom past the band's west end
+  // A stomp-block lid over a secret pocket inside the band's west part.
+  L.carve(14, 35, 8, 2).stomp(17, 34, 2, 1);
+  shape(L, 15, 36, 'line5', 'g');
+  L.put(19, 35, 'X');
+  over(L, 40, 28, 'arc', 'o', 2);
+  L.on(44, 'w', 30);
+  L.put(52, 27, 'f');
+  shape(L, 64, 26, 'ring', 'g');
+  L.on(70, 'h', 28);
+  L.on(77, '+', 28);
+  L.on(90, 'k', 30);
+  over(L, 100, 28, 'arc', 'o', 2);
+  L.on(112, 'w', 30);
+  L.on(118, 'J', 30);
+  over(L, 130, 28, 'line5', 'o', 2);
+  L.on(138, 'n', 30);
+  L.warp(150, 31, 'coin1', 'bonus1', { cost: 20, label: 'COIN WARP!' });
+  L.hint(146, 31, 'Coin Warp: bring 20 coins.');
+  L.on(160, 'Q', 30);
+
+  // ---- Bottom.
+  shape(L, 12, 43, 'line5', '$');
+  over(L, 22, 40, 'arc', 'o', 2);
+  L.on(30, 'h', 40);
+  over(L, 40, 40, 'hump', 'o', 2);
+  L.put(60, 41, 'Y');
+  L.hint(63, 41, 'Shoot the ! crate to flip\nthe switch blocks.');
+  L.on(68, 'w', 40);
+  // Ghost-block stair (solid once the switch flips) to a high coin ledge.
+  L.fill(74, 40, 2, 1, 'i').fill(78, 38, 2, 1, 'i').fill(82, 36, 2, 1, 'i');
+  shape(L, 82, 34, 'line3', '$');
+  L.on(100, 'G', 40);
+  // Switch-block vault.
+  L.fill(107, 38, 7, 1, 'u').fill(107, 39, 1, 3, 'u').fill(113, 39, 1, 3, 'u');
+  shape(L, 108, 41, 'line5', 'g');
+  L.put(110, 40, '1');
+  L.put(118, 37, 'H');
+  over(L, 124, 40, 'arc', 'o', 2);
+  L.on(130, 'n', 40);
+  L.countdown(150, 37, 1, 3, 3);
+  L.carve(151, 37, 4, 3).put(152, 39, '@').put(153, 39, '%');
+  over(L, 158, 36, 'line5', 'o', 2);
+  L.on(164, 'w', 36);
+  over(L, 60, 40, 'arc', 'o', 2);
+  over(L, 140, 40, 'arc', 'o', 2);
+  L.put(172, 39, 'C');
+  L.warp(174, 39, 'back1');
+  L.put(181, 39, 'U');
+  L.hint(176, 39, 'A blue spring! It throws you\nhigher than anything else.');
+  L.put(181, 33, 'g').put(181, 28, 'g').put(181, 24, 'b');
+  over(L, 190, 0, 'line5', 'o', 2);
+  L.put(196, 23, 'E');
+
+  // ---- Bonus room inside the plateau, only reachable through the Coin Warp.
+  L.carve(187, 29, 12, 5);
+  L.warp(188, 33, 'bonus1');
+  L.warp(197, 33, 'out1', 'back1');
+  shape(L, 190, 30, 'ring', '*');
+  shape(L, 194, 30, 'ring', 'g');
+  L.floorRow(189, 197, 33, 'o', 2);
+  L.put(192, 33, '1');
+
+  for (const c of [8, 60, 128]) L.onGround(c, '+');
+  scenery(L, ['tree', 'rock'], 1, 150, 11, 6);
+  return L.build({ name: 'Sunny Spires', theme: 'meadow', music: 'beach', horizon: 22 });
+}
+sunnySpires.title = 'Sunny Spires';
+sunnySpires.tip = 'Explore! Three layers of ground, sky islands and a Coin Warp.';

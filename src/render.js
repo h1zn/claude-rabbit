@@ -62,6 +62,8 @@ export class Renderer {
     this.pickups(game);
     this.enemies(game, alpha);
     this.shots(game, alpha);
+    this.enemyShots(game, alpha);
+    if (game.party) this.rival(game, alpha);
     this.player(game, alpha);
     this.effects(game);
     this.particles(game);
@@ -72,6 +74,7 @@ export class Renderer {
 
     if (!indoors) game.weather.draw(ctx, true, game.time);
     if (game.level.meta.dark) this.lighting(game, cam, alpha);
+    this.vignette();
     if (game.player.rush > 0) this.rushTint(game);
     if (game.flashTime > 0) {
       ctx.globalAlpha = game.flashTime / 12;
@@ -81,22 +84,27 @@ export class Renderer {
     }
   }
 
-  // Dark caves, lit around Kip and glowing things. The reference game keeps a
-  // light grid for this; here it is a darkness layer with soft holes cut out.
+  // Dark levels: a darkness layer with soft holes cut around light sources,
+  // then the lights' own colours added on top. `meta.dark` may set the
+  // darkness colour and strength ({ color: 'r,g,b', amount }).
   lighting(game, cam, alpha) {
     if (!this.dark) {
       this.dark = document.createElement('canvas');
       this.dark.width = VIEW_W; this.dark.height = VIEW_H;
     }
     const d = this.dark.getContext('2d');
+    const ctx = this.ctx;
     const p = game.player;
+    const def = typeof game.level.meta.dark === 'object' ? game.level.meta.dark : {};
+    const amount = (def.amount ?? 0.8) * (p.rush > 0 ? 0.5 : 1);
     d.globalCompositeOperation = 'source-over';
     d.clearRect(0, 0, VIEW_W, VIEW_H);
-    d.fillStyle = `rgba(4,1,14,${p.rush > 0 ? 0.4 : 0.8})`;
+    d.fillStyle = `rgba(${def.color || '4,1,14'},${amount})`;
     d.fillRect(0, 0, VIEW_W, VIEW_H);
     d.globalCompositeOperation = 'destination-out';
     const flicker = 1 + Math.sin(game.time / 7) * 0.03;
-    const light = (x, y, r, strength = 1) => {
+    const glows = [];
+    const light = (x, y, r, strength = 1, color = null) => {
       x -= cam.x; y -= cam.y;
       if (x < -r || y < -r || x > VIEW_W + r || y > VIEW_H + r) return;
       const g = d.createRadialGradient(x, y, 0, x, y, r);
@@ -105,27 +113,92 @@ export class Renderer {
       g.addColorStop(1, 'rgba(0,0,0,0)');
       d.fillStyle = g;
       d.fillRect(x - r, y - r, r * 2, r * 2);
+      if (color) glows.push([x, y, r * 0.8, color, strength]);
     };
     light(lerp(p.prevX, p.x, alpha) + p.w / 2, lerp(p.prevY, p.y, alpha) + p.h / 2, 150 * flicker);
-    for (const s of game.shots) light(s.x + s.w / 2, s.y + s.h / 2, 48, 0.8);
-    for (const k of game.pickups) if (k.kind === 'gem') light(k.x + k.w / 2, k.y + k.h / 2, 30, 0.5);
+    for (const s of game.shots) light(s.x + s.w / 2, s.y + s.h / 2, 56, 0.8, '255,220,120');
+    for (const b of game.enemyShots) light(b.x + 8, b.y + 8, 40, 0.6, '255,140,60');
+    const GEM = { red: '255,60,110', green: '60,255,140', blue: '80,150,255', purple: '200,90,255' };
+    for (const k of game.pickups) if (k.kind === 'gem') light(k.x + k.w / 2, k.y + k.h / 2, 34, 0.5, GEM[k.color]);
     for (const prop of game.props) {
-      if (prop.kind === 'sign' || prop.kind === 'warp' || (prop.kind === 'checkpoint' && prop.active)) light(prop.x + prop.w / 2, prop.y + 20, 90, 0.8);
+      if (prop.kind === 'sign' || prop.kind === 'warp' || (prop.kind === 'checkpoint' && prop.active)) light(prop.x + prop.w / 2, prop.y + 20, 90, 0.8, '255,230,150');
     }
-    for (const fx of game.effects) light(fx.x, fx.y, 60, 0.7);
-    for (const dec of game.level.decor) if (dec.kind === 'crystals') light(dec.x * TILE + TILE / 2, dec.y * TILE - 10, 70 * flicker, 0.55);
+    for (const fx of game.effects) light(fx.x, fx.y, 70, 0.8, fx.anim === 'explosion' ? '255,120,40' : '200,230,255');
+    const DECOR = { crystals: '120,230,255', mushroom: '200,120,255', glowshroom: '120,255,200', torch: '255,160,60' };
+    for (const dec of game.level.decor) {
+      const c = DECOR[dec.kind];
+      if (c) light(dec.x * TILE + TILE / 2, dec.y * TILE - 12, 80 * flicker, 0.6, c);
+    }
+    // Lava glows from every other visible lava cell.
+    const level = game.level;
+    const tx0 = Math.max(0, Math.floor(cam.x / TILE) - 2); const tx1 = Math.min(level.w - 1, Math.floor((cam.x + VIEW_W) / TILE) + 2);
+    const ty0 = Math.max(0, Math.floor(cam.y / TILE) - 2); const ty1 = Math.min(level.h - 1, Math.floor((cam.y + VIEW_H) / TILE) + 2);
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx += 2) {
+        if (level.tiles[ty][tx] === '~' && level.tiles[ty - 1]?.[tx] !== '~') light(tx * TILE + 16, ty * TILE + 4, 110 * flicker, 0.75, '255,110,30');
+      }
+    }
     for (const q of game.particles) if (q.glow) light(q.x, q.y, 16, 0.5);
-    this.ctx.drawImage(this.dark, 0, 0);
+    ctx.drawImage(this.dark, 0, 0);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [x, y, r, color, strength] of glows) {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${color},${0.28 * strength})`);
+      g.addColorStop(1, `rgba(${color},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    ctx.restore();
+  }
+
+  // Soft darkening toward the screen edges.
+  vignette() {
+    if (!this.vig) {
+      this.vig = document.createElement('canvas');
+      this.vig.width = VIEW_W; this.vig.height = VIEW_H;
+      const v = this.vig.getContext('2d');
+      const g = v.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.45, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.62);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(0,0,0,0.38)');
+      v.fillStyle = g;
+      v.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
+    this.ctx.drawImage(this.vig, 0, 0);
+  }
+
+  // Lava: a glowing, rippling surface over a hot body.
+  lava(game, tx, ty) {
+    const ctx = this.ctx;
+    const x = tx * TILE; const y = ty * TILE;
+    const top = game.level.tiles[ty - 1]?.[tx] !== '~';
+    ctx.fillStyle = '#b8200a';
+    ctx.fillRect(x, y + (top ? 6 : 0), TILE, TILE - (top ? 6 : 0));
+    for (let k = 0; k < 4; k++) {
+      const bx = x + ((k * 9 + game.time * 0.4 + tx * 13) % TILE);
+      const by = y + 10 + ((k * 7 + game.time * 0.25) % 20);
+      ctx.fillStyle = k % 2 ? '#ff6a1a' : '#ff9a2a';
+      ctx.fillRect(Math.floor(bx), Math.floor(by), 3, 2);
+    }
+    if (!top) return;
+    for (let i = 0; i < TILE; i += 2) {
+      const h = 3 + Math.sin((tx * TILE + i) * 0.25 + game.time * 0.12) * 2.5;
+      ctx.fillStyle = '#ffd04a';
+      ctx.fillRect(x + i, y + 6 - h, 2, h + 1);
+      ctx.fillStyle = '#ff7a1a';
+      ctx.fillRect(x + i, y + 7, 2, 2);
+    }
   }
 
   decor(game, cam, front) {
     const ctx = this.ctx;
-    // Tileset levels use tileset pieces for scenery and skip everything else.
+    // Tileset levels draw scenery from tileset pieces, falling back to the
+    // procedural decorations (glow mushrooms, torches) for kinds they lack.
     const tsName = THEME_TILESET[game.level.meta.theme];
     const tsProps = tsName ? this.art.tilesets[tsName].props : null;
     for (const d of game.level.decor) {
       if (!!d.front !== front) continue;
-      const imgs = tsProps ? tsProps[d.kind] : this.art.decor[d.kind];
+      const imgs = (tsProps && tsProps[d.kind]) || this.art.decor[d.kind];
       if (!imgs) continue;
       const img = Array.isArray(imgs) ? imgs[(d.v || 0) % imgs.length] : imgs;
       const x = Math.round(d.x * TILE + TILE / 2 - img.width / 2);
@@ -143,6 +216,7 @@ export class Renderer {
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
         const ch = level.tiles[ty][tx];
+        if (ch === '~') { this.lava(game, tx, ty); continue; }
         if (!BLOCKS.has(ch)) continue;
         // Countdown blocks show the hits they have left (1-4).
         const k = ch === 'c' ? Math.min(4, Math.max(1, level.hits.get(`${tx},${ty}`) || 1)) : BLOCK_SPRITE[ch];
@@ -238,6 +312,7 @@ export class Renderer {
 
   pickups(game) {
     for (const k of game.pickups) {
+      if (k.pending) continue;
       const f = k.sprite(this.art);
       if (k.needsHit) { this.sprite(f, k.x + k.w / 2, k.y + k.h); continue; }
       const bob = Math.round(Math.sin(k.t / 12) * 2);
@@ -246,9 +321,22 @@ export class Renderer {
   }
 
 
+  // A soft contact shadow under something standing on the ground.
+  footShadow(x, y, w) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(Math.round(x), Math.round(y) - 1, w / 2, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   enemies(game, alpha) {
     for (const e of game.enemies) {
       if (e.flash > 0 && e.flash % 2) continue;
+      if (e.onGround) this.footShadow(lerp(e.prevX, e.x, alpha) + e.w / 2, e.y + e.h, e.w * 0.9);
       const f = e.sprite(this.art);
       const x = lerp(e.prevX, e.x, alpha) + e.w / 2;
       const y = lerp(e.prevY, e.y, alpha) + e.h + 2;
@@ -256,6 +344,21 @@ export class Renderer {
       if (e.type === 'bat' && !e.awake) this.sprite(f, x, lerp(e.prevY, e.y, alpha) + f.ay - 4, e.facing > 0);
       else if (e.type === 'bat' || e.type === 'dragonfly') this.centred(f, x, y - e.h / 2, e.facing > 0);
       else this.sprite(f, x, y, e.facing > 0);
+    }
+  }
+
+  enemyShots(game, alpha) {
+    for (const b of game.enemyShots) {
+      const f = b.sprite(this.art);
+      const x = lerp(b.prevX, b.x, alpha) + 8; const y = lerp(b.prevY, b.y, alpha) + 8;
+      if (b.kind === 'banana') {
+        const ctx = this.ctx;
+        ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(b.t * 0.35);
+        ctx.drawImage(f.right, -f.w / 2, -f.h / 2); ctx.restore();
+      } else {
+        if (b.life < 30 && b.t % 6 < 3) this.glow(x, y, 16, 'rgba(255,80,40,0.6)');
+        this.centred(f, x, y);
+      }
     }
   }
 
@@ -316,6 +419,7 @@ export class Renderer {
     const right = p.facing > 0;
     const x = Math.round(lerp(p.prevX, p.x, alpha) + PLAYER.w / 2 - (right ? f.ax : f.w - f.ax));
     const y = Math.round(lerp(p.prevY, p.y, alpha) + PLAYER.h - f.ay + 2);
+    if (p.onGround && !p.pole) this.footShadow(lerp(p.prevX, p.x, alpha) + p.w / 2, p.y + p.h, 22);
     if (p.rush > 0) this.glow(x + f.w / 2, y + f.h / 2, 34, `hsla(${(game.time * 12) % 360},100%,60%,0.45)`);
     if (p.special > 0 && p.special >= PHYS.uppercutWindup) this.glow(x + f.w / 2, y + 12, 22, 'rgba(255,214,90,0.5)');
     if (p.stomping) this.glow(x + f.w / 2, y + f.h, 20, 'rgba(255,255,255,0.4)');
@@ -341,6 +445,59 @@ export class Renderer {
       ctx.fillStyle = ['#fff2a0', '#ffb02e', '#ff5a2a'][i % 3];
       ctx.fillRect(Math.round(cx + Math.cos(a) * 22) - 2, Math.round(cy + Math.sin(a) * 26) - 2, 4, 4);
     }
+  }
+
+  // The party-mode rival: the hero in red, drawn where it was last reported.
+  rival(game, alpha) {
+    const r = game.party.rival;
+    if (!r.seen) return;
+    for (const s of game.party.shots) {
+      const a = this.art.fx.anims[s.spread ? 'blasterPower' : 'blaster'];
+      const x = lerp(s.prevX, s.x, alpha) + 7; const y = lerp(s.prevY, s.y, alpha) + 4;
+      this.glow(x, y, 12, 'rgba(255,80,60,0.6)');
+      this.centred(frameAt(a, s.life, a.speed), x, y, s.vx > 0);
+    }
+    if (r.dead) return;
+    const speed = Math.abs(r.vx);
+    const name = { run: speed > 4.2 ? 'run' : 'walk', jump: speed > 2 ? 'jumpFwd' : 'jump', fall: speed > 2 ? 'fallFwd' : 'fall', pole: 'spring' }[r.anim] || (this.art.heroRed.anims[r.anim] ? r.anim : 'idle');
+    const anim = this.art.heroRed.anims[name];
+    const f = frameAt(anim, game.time, anim.speed);
+    const right = r.facing > 0;
+    const x = Math.round(lerp(r.prevX, r.x, alpha) + PLAYER.w / 2 - (right ? f.ax : f.w - f.ax));
+    const y = Math.round(lerp(r.prevY, r.y, alpha) + PLAYER.h - f.ay + 2);
+    this.glow(x + f.w / 2, y + f.h / 2, 30, 'rgba(255,60,60,0.25)');
+    this.ctx.drawImage(right ? f.right : f.left, x, y);
+    arcadeText(this.ctx, `${r.gems}`, x + f.w / 2, y - 14, { size: 10, align: 'center', shadow: false, top: '#ffffff', bottom: '#ff8a8a' });
+  }
+
+  // Party HUD: both gem counts against the goal, and the knock-out timer.
+  partyHud(game) {
+    const ctx = this.ctx;
+    const party = game.party;
+    const bar = (x, label, gems, color) => {
+      ctx.fillStyle = '#1a0b1e'; ctx.fillRect(x - 2, 10, 124, 12);
+      ctx.fillStyle = color; ctx.fillRect(x, 12, Math.round(Math.min(1, gems / 100) * 120), 8);
+      arcadeText(ctx, `${label} ${gems}`, x + 60, 24, { size: 11, align: 'center', top: '#ffffff', bottom: color });
+    };
+    bar(VIEW_W / 2 - 132, 'YOU', game.gems, '#5ae08a');
+    bar(VIEW_W / 2 + 12, 'RIVAL', party.rival.gems, '#ff5a5a');
+    arcadeText(ctx, '100 GEMS + EXIT', VIEW_W / 2, 40, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' });
+    if (party.respawn > 0) {
+      this.dim(0.45);
+      arcadeText(ctx, 'KNOCKED OUT!', VIEW_W / 2, 130, { size: 26, align: 'center', top: '#ffd0d8', bottom: '#e8244a' });
+      arcadeText(ctx, `Back in ${Math.ceil(party.respawn / 70)}`, VIEW_W / 2, 170, { size: 16, align: 'center' });
+    }
+    if (party.result) {
+      this.dim(0.6);
+      const text = { win: 'YOU WIN!', lose: 'RIVAL WINS!', left: 'RIVAL LEFT' }[party.result];
+      arcadeText(ctx, text, VIEW_W / 2, 120, { size: 36, align: 'center', top: party.result === 'win' ? '#fff6c0' : '#ffd0d8', bottom: party.result === 'win' ? '#ffb02e' : '#e8244a' });
+      arcadeText(ctx, 'Press ENTER for the menu', VIEW_W / 2, 190, { size: 13, align: 'center', alpha: Math.floor(game.time / 25) % 2 ? 1 : 0.4 });
+    }
+  }
+
+  dim(alpha) {
+    this.ctx.fillStyle = `rgba(8,4,18,${alpha})`;
+    this.ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   }
 
   particles(game) {
@@ -411,9 +568,9 @@ export class Renderer {
     const ctx = this.ctx;
     const p = game.player;
     // Score, top-left.
-    arcadeText(ctx, String(game.score).padStart(8, '0'), 8, 6, { size: 18, top: '#ffffff', bottom: '#ffc04a' });
+    if (!game.party) arcadeText(ctx, String(game.score).padStart(8, '0'), 8, 6, { size: 18, top: '#ffffff', bottom: '#ffc04a' });
     // Hearts, top-right.
-    for (let i = 0; i < PLAYER.maxHealth; i++) this.heart(VIEW_W - 26 - (PLAYER.maxHealth - 1 - i) * 20, 8, i < p.health);
+    if (!game.party) for (let i = 0; i < PLAYER.maxHealth; i++) this.heart(VIEW_W - 26 - (PLAYER.maxHealth - 1 - i) * 20, 8, i < p.health);
     // Gems and coins under the score.
     const items = this.art.items.anims;
     this.centred(items.gemRed.frames[0], 18, 40);
@@ -425,7 +582,7 @@ export class Renderer {
       arcadeText(ctx, `${Math.ceil(p.shield / 70)}`, 162, 32, { size: 12, top: '#ffffff', bottom: '#ff9a3a' });
     }
     // Food meter toward a sugar rush.
-    if (game.food > 0 || p.rush > 0) {
+    if (!game.party && (game.food > 0 || p.rush > 0)) {
       const w = 90;
       const fill = p.rush > 0 ? p.rush / PHYS.rushTicks : game.food / PHYS.foodForRush;
       ctx.fillStyle = '#1a0b1e'; ctx.fillRect(VIEW_W / 2 - w / 2 - 2, 8, w + 4, 10);
@@ -443,7 +600,7 @@ export class Renderer {
     // Lives, bottom-left.
     const face = this.art.kip.icon[0].right;
     ctx.drawImage(face, 6, VIEW_H - face.height - 6);
-    arcadeText(ctx, `x${Math.max(0, game.lives)}`, 44, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: '#ffb04a' });
+    if (!game.party) arcadeText(ctx, `x${Math.max(0, game.lives)}`, 44, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: '#ffb04a' });
     // Weapon and ammo, bottom-right.
     const spread = p.spreadAmmo > 0;
     this.centred(this.art.fx.anims[spread ? 'blasterPower' : 'blaster'].frames[0], VIEW_W - 84, VIEW_H - 20);
@@ -453,6 +610,13 @@ export class Renderer {
       for (let i = 0; i < Math.min(n, 10); i++) ctx.drawImage(this.art.items.anims.fastfire.frames[0].right, VIEW_W - 100 - i * 9, VIEW_H - 50, 12, 12);
     }
     arcadeText(ctx, spread ? `x${p.spreadAmmo}` : 'x∞', VIEW_W - 70, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: spread ? '#ffd54a' : '#7ae8ff' });
+    // Combo meter while a combo is running.
+    if (game.comboMult > 1 && game.comboTimer > 0) {
+      const a = Math.min(1, game.comboTimer / 30);
+      arcadeText(ctx, `COMBO x${game.comboMult}`, VIEW_W - 8, 32, { size: 14, align: 'right', alpha: a, top: '#ffffff', bottom: '#ff5ad8' });
+      ctx.fillStyle = `rgba(255,90,216,${a})`;
+      ctx.fillRect(VIEW_W - 8 - Math.round(game.comboTimer * 0.7), 50, Math.round(game.comboTimer * 0.7), 3);
+    }
     // Hint sign text, in a box near the bottom.
     if (game.hintText && game.state === 'play') {
       ctx.font = '12px "Arial Black", Impact, sans-serif';
@@ -465,6 +629,7 @@ export class Renderer {
       ctx.strokeRect(VIEW_W / 2 - w / 2 + 0.5, VIEW_H - 54 - h + 0.5, w - 1, h - 1);
       lines.forEach((l, i) => arcadeText(ctx, l, VIEW_W / 2, VIEW_H - 48 - h + i * 16, { size: 12, align: 'center', shadow: false, top: '#ffffff', bottom: '#cfe6ff' }));
     }
+    if (game.party) this.partyHud(game);
     // Level banner.
     if (game.bannerTime > 0 && game.state === 'play') {
       const a = Math.min(1, game.bannerTime / 30);

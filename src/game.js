@@ -1,17 +1,18 @@
 // Game world: level setup, entity updates, interactions, objectives, camera.
 
-import { Backdrop, BACKDROPS } from './backdrop.js';
+import { Backdrop, BACKDROP_SKY, BACKDROPS } from './backdrop.js';
 import { THEME_TILESET } from './tilesets.js';
 import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import {
   Checkpoint, Effect, Hint, makeEnemy, overlap, Particle, Pickup, Pole, SecretZone, Shot, Sign, Spring, SPRING_CHARS, Warp,
 } from './entities.js';
 import { LEVELS } from './levels.js';
+import { PARTY_GOAL, PARTY_RESPAWN } from './party.js';
 import { Player } from './player.js';
 import { Sky, Weather } from './sky.js';
 import { TerrainRenderer } from './terrain.js';
 
-const WEATHER = { meadow: 'leaves', winter: 'snow', crystal: 'motes' };
+const WEATHER = { meadow: 'leaves', winter: 'snow', crystal: 'motes', grove: 'fireflies', candy: 'sparkles', forge: 'embers' };
 
 export class Game {
   constructor(audio, art) {
@@ -26,6 +27,14 @@ export class Game {
     this.player = null;
     this.time = 0;
     this.unlocked = 1;
+    this.party = null;      // a Party while a two-player hunt is running
+  }
+
+  // Start a two-player hunt on a level (both sides call this).
+  newParty(index, party) {
+    this.party = party;
+    this.score = 0; this.gems = 0; this.coins = 0; this.lives = 99; this.food = 0;
+    this.loadLevel(index, true);
   }
 
   newGame(startLevel = 0) {
@@ -43,11 +52,12 @@ export class Game {
     const theme = this.level.meta.theme;
     this.terrain = new TerrainRenderer(this.level, theme, this.art);
     const tsName = THEME_TILESET[theme];
-    this.sky = tsName && BACKDROPS[tsName] ? new Backdrop(this.art.tilesets[tsName].pixels, tsName, this.level) : new Sky(theme);
+    this.sky = tsName && BACKDROPS[tsName] ? new Backdrop(this.art.tilesets[tsName].pixels, tsName, this.level, BACKDROP_SKY[tsName] && new Sky(BACKDROP_SKY[tsName])) : new Sky(theme);
     this.weather = new Weather(WEATHER[theme]);
     Object.assign(this, {
-      enemies: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
+      enemies: [], enemyShots: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
       levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null,
+      combo: 0, comboTimer: 0, comboMult: 1,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,
     });
     let start = { x: 64, y: 64 };
@@ -90,8 +100,9 @@ export class Game {
     this.prevCam = { ...this.cam };
     this.terrain.warm(this.player.cx, this.player.cy);
     this.state = 'play';
-    this.banner(this.level.meta.name.toUpperCase(), 160);
-    this.audio.startMusic(this.level.meta.music);
+    if (this.party) this.party.begin(this);
+    this.banner(this.party ? `FIRST TO ${PARTY_GOAL} GEMS + EXIT WINS!` : this.level.meta.name.toUpperCase(), 160);
+    this.audio.startMusic(this.level.meta.music, { restart: true });
   }
 
   // ---------------------------------------------------------------- effects and helpers
@@ -99,6 +110,17 @@ export class Game {
   addScore(points, x, y) {
     this.score += points;
     this.popups.push({ x, y, text: String(points), life: 50 });
+  }
+
+  // Combo: kills and gems in quick succession build a score multiplier
+  // (x2 after 4, up to x4), shown on the HUD. Call before addScore.
+  bump() {
+    this.combo = (this.comboTimer > 0 ? this.combo : 0) + 1;
+    this.comboTimer = 110;
+    const mult = Math.min(4, 1 + Math.floor(this.combo / 4));
+    if (mult > (this.comboMult || 1)) { this.banner(`COMBO x${mult}!`, 50); this.audio.play('rank'); }
+    this.comboMult = mult;
+    return mult;
   }
 
   banner(text, ticks) { this.bannerText = text; this.bannerTime = ticks; }
@@ -171,14 +193,11 @@ export class Game {
     const x = dir > 0 ? player.x + player.w + 8 : player.x - 22;
     const y = player.y + 20;
     // Measured: blaster speed plus the player's own speed in the firing direction.
-    const speed = PLAYER.shotSpeed + Math.max(0, player.vx * dir);
-    if (spread) {
-      for (const vy of [-1.6, 0, 1.6]) this.shots.push(new Shot(x, y, dir * speed, vy, true));
-      this.audio.play('spread');
-    } else {
-      this.shots.push(new Shot(x, y, dir * speed, 0, false));
-      this.audio.play('shoot');
-    }
+    const speed = PLAYER.shotSpeed + Math.max(0, Math.min(PHYS.moveCap, player.vx * dir));
+    const made = spread ? [-1.6, 0, 1.6].map((vy) => new Shot(x, y, dir * speed, vy, true)) : [new Shot(x, y, dir * speed, 0, false)];
+    this.shots.push(...made);
+    this.audio.play(spread ? 'spread' : 'shoot');
+    if (this.party) for (const s of made) this.party.fire(s);
     this.particles.push(new Particle(x + (dir > 0 ? 4 : 10), y + 4, 0, 0, spread ? '#fff2a0' : '#d8fbff', 4, 8, 0, true));
   }
 
@@ -233,6 +252,7 @@ export class Game {
   hitTile(tx, ty, opts = {}) {
     const r = this.level.breakTile(tx, ty, opts);
     if (!r) return false;
+    if (this.party && !opts.remote) this.party.tile(tx, ty);
     if (r === 'dent') {
       this.audio.play('hit');
       this.effect('hitSpark', tx * TILE + TILE / 2, ty * TILE + TILE / 2);
@@ -262,6 +282,13 @@ export class Game {
   killPlayer() {
     const p = this.player;
     if (p.dead) return;
+    if (this.party) {
+      // Party: knocked out (falling off the world), back in 10 s.
+      p.dead = true; p.vy = -8; p.vx = 0; p.pole = null;
+      this.party.respawn = PARTY_RESPAWN;
+      this.audio.play('death');
+      return;
+    }
     p.dead = true;
     p.pole = null;
     p.health = 0;
@@ -319,13 +346,15 @@ export class Game {
     }
 
     this.levelTime++;
+    if (this.comboTimer > 0 && --this.comboTimer === 0) { this.combo = 0; this.comboMult = 1; }
     if (this.bannerTime > 0) this.bannerTime--;
     if (this.shakeTime > 0) this.shakeTime--;
     if (this.flashTime > 0) this.flashTime--;
     const p = this.player;
     p.update(this, input);
+    if (this.party) this.party.tick(this);
 
-    if (p.dead && p.deadTimer > 100) {
+    if (!this.party && p.dead && p.deadTimer > 100) {
       this.lives--;
       if (this.lives < 0) {
         this.state = 'gameover';
@@ -341,7 +370,8 @@ export class Game {
 
     for (const e of this.enemies) e.update(this);
     for (const s of this.shots) s.update(this);
-    for (const k of this.pickups) k.update();
+    for (const s of this.enemyShots) s.update(this);
+    for (const k of this.pickups) k.update(this);
     this.hintText = null;
     for (const prop of this.props) prop.update(this);
     for (const part of this.particles) part.update();
@@ -352,6 +382,7 @@ export class Game {
 
     this.enemies = this.enemies.filter((e) => !e.dead && e.y < this.level.pixelH + 200);
     this.shots = this.shots.filter((s) => !s.dead);
+    this.enemyShots = this.enemyShots.filter((s) => !s.dead);
     this.pickups = this.pickups.filter((k) => !k.taken);
     this.particles = this.particles.filter((q) => q.life > 0);
     this.effects = this.effects.filter((fx) => !fx.dead);
@@ -378,7 +409,17 @@ export class Game {
         if (!s.dead && !k.taken && k.needsHit && overlap(s, k)) { s.dead = true; k.collect(this); }
       }
     }
+    for (const s of this.shots) {
+      for (const b of this.enemyShots) {
+        if (!s.dead && !b.dead && overlap(s, b)) { s.dead = true; b.kind === 'bomb' ? b.explode(this) : b.pop(this); this.addScore(50, b.x, b.y); }
+      }
+    }
     if (p.dead || p.pole) return;
+    for (const b of this.enemyShots) {
+      if (b.dead || !overlap(p, b)) continue;
+      if (b.kind === 'bomb') b.explode(this);
+      else { b.pop(this); p.hurt(this, b.x + 8); }
+    }
     for (const e of this.enemies) {
       if (e.dead || !overlap(p, e)) continue;
       const fromAbove = p.vy > 0 && p.prevY + p.h <= e.prevY + 10;
@@ -399,10 +440,11 @@ export class Game {
       }
     }
     for (const k of this.pickups) {
-      if (k.taken || !overlap(p, k)) continue;
-      if (!k.needsHit) { k.collect(this); continue; }
+      if (k.taken || k.pending || !overlap(p, k)) continue;
+      const take = () => (this.party ? this.party.touch(this, k) : k.collect(this));
+      if (!k.needsHit) { take(); continue; }
       if (!p.attacking) continue;
-      k.collect(this);
+      take();
       // Measured crate bounce: vy = -4 - vy / 2.
       if (p.stomping) { p.bounce(false); p.y = k.y - p.h; }
     }
@@ -431,8 +473,13 @@ export class Game {
   updateCamera() {
     this.prevCam = { ...this.cam };
     const p = this.player;
-    const look = Math.max(-CAMERA.maxLookAhead, Math.min(CAMERA.maxLookAhead, p.vx * CAMERA.lookAhead));
-    const lookUp = p.anim === 'look' ? -70 : p.anim === 'crouch' ? 60 : 0;
+    // Original lead: 28 px ahead while walking, 120 px while dashing,
+    // moving toward its target a couple of pixels per tick.
+    const target = Math.abs(p.vx) < 0.5 ? 0 : Math.sign(p.vx) * (p.dash > 0 && Math.abs(p.vx) > PHYS.walkMax ? CAMERA.dashLead : CAMERA.walkLead);
+    this.lead = this.lead || 0;
+    this.lead += Math.max(-CAMERA.leadStep, Math.min(CAMERA.leadStep, target - this.lead));
+    const look = this.lead;
+    const lookUp = p.anim === 'look' ? -70 : p.anim === 'crouch' ? 60 : p.stomping ? 60 : 0;
     const tx = p.cx + look - VIEW_W / 2;
     // Look down a shaft while falling fast.
     const lookFall = p.vy > 4 ? Math.min(90, (p.vy - 4) * 14) : 0;
