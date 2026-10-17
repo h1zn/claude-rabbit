@@ -32,7 +32,7 @@ const CHAR = {
   120: 'n', 115: 'n', 126: 'n', 103: 'n',
   108: 'f', 190: 'f', 109: 'f', 152: 'f', 127: 'f', 106: 'f', 197: 'f',
   123: 'd', 105: 'd', 107: 'd', 225: 'd', 237: 'd',
-  124: 'J', 184: 'J', 183: 'G', 250: 'G',
+  124: 'J', 184: 'J', 183: 'd', 250: 'd',   // copter lizards hover and dive
 };
 for (let id = 141; id <= 147; id++) CHAR[id] = 'o';
 for (let id = 154; id <= 182; id++) CHAR[id] = 'o';
@@ -269,6 +269,20 @@ export class JJ2Level extends Level {
     }
     // Levels open at the start light (64 = full daylight).
     this.ambient = Math.min(1, file.startLight / 64);
+    // Original rule: instant water events under and beside the start set the
+    // opening water level (and full light).
+    const [sx, sy] = start[0];
+    const heights = [[sx - 1, sy + 1], [sx, sy + 1], [sx + 1, sy + 1]].map(([x, y]) => {
+      if (x < 0 || x >= w || y >= h) return null;
+      const i = y * w + x;
+      if (this.areas[i] !== EV.SET_WATER) return null;
+      const [height, instant] = eventFields(this.areaParams[i], [8, 1]);
+      return instant ? height : null;
+    });
+    if (heights.every((v) => v !== null && v === heights[0])) {
+      this.water = this.waterTarget = heights[0] * TILE;
+      this.ambient = 1;
+    }
     this.lightTarget = this.ambient;
   }
 
