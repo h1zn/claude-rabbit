@@ -80,12 +80,21 @@ export async function parseTileset(buffer) {
 export function tilePixels(ts, id, out = new Uint8ClampedArray(4096)) {
   out.fill(0);
   if (id <= 0 || id >= ts.count) return out;
+  const pal = ts.palette;
+  const drawn = ts.edited && ts.edited.pixels.get(id);
+  if (drawn) {
+    for (let j = 0; j < 1024; j++) {
+      const c = drawn[j] * 4;
+      if (!drawn[j]) continue;                         // index 0 is see-through
+      out[j * 4] = pal[c]; out[j * 4 + 1] = pal[c + 1]; out[j * 4 + 2] = pal[c + 2]; out[j * 4 + 3] = 255;
+    }
+    return out;
+  }
   const [src, sid, remap] = source(ts, id);
   if (!src || sid <= 0 || sid >= src.count) return out;
   const img = src.imageAt[sid];
   const a = src.alphaAt[sid];
   if (img & 0x80000000) return out;                    // 32-bit tiles (JJ2+): unsupported
-  const pal = ts.palette;
   for (let j = 0; j < 1024; j++) {
     if (!((src.alpha[a + (j >> 3)] >> (j & 7)) & 1)) continue;
     let ci = src.image[img + j];
@@ -100,6 +109,8 @@ export function tilePixels(ts, id, out = new Uint8ClampedArray(4096)) {
 export function tileMask(ts, id) {
   const out = new Uint8Array(1024);
   if (id <= 0 || id >= ts.count) return out;
+  const edited = ts.edited && ts.edited.masks.get(id);
+  if (edited) { for (let j = 0; j < 1024; j++) out[j] = edited[j] ? 1 : 0; return out; }
   const [src, sid] = source(ts, id);
   if (!src || sid <= 0 || sid >= src.count) return out;
   const m = src.maskAt[sid];
@@ -219,7 +230,8 @@ async function parseMlle(bytes, at) {
   const packed = h.i32();
   const data = await inflate(bytes.subarray(at + 16, at + 16 + packed));
   const r = new Reader(data);
-  const out = { version, palette: null, tilesets: [], layers: null };
+  const out = { version, palette: null, tilesets: [], layers: null, edited: null };
+  if (version > 0x107) return out;                     // newer than anything known
   try {
     r.skip(4 + 2 + 4 + 4 + 4 + 1 + 4 + 1 + 4 + 4 + 4);   // weather, warps, echo, darkness, water
     if (r.u8()) {
@@ -240,6 +252,7 @@ async function parseMlle(bytes, at) {
     }
     if (version >= 0x102) {
       const count = r.i32();
+      if (count < 8 || count > 1024) return out;
       out.layers = [];
       for (let i = 0; i < count; i++) {
         let id = r.u8(); if (id > 127) id -= 256;
@@ -248,6 +261,18 @@ async function parseMlle(bytes, at) {
         r.skip(2 + 8);                                   // sprite mode/param, rotation
         if (version >= 0x106) { r.skip(2 + 26); let tex = r.u8(); if (tex > 127) tex -= 256; if (tex < 0) r.skip(65536); }
         out.layers.push({ id, hidden });
+      }
+      // Tiles the level author redrew (palette indices) or re-masked
+      // (1 = solid), 32x32 bytes each.
+      if (version >= 0x103) {
+        out.edited = { pixels: new Map(), masks: new Map() };
+        for (const map of [out.edited.pixels, out.edited.masks]) {
+          let n = r.u16(); if (n > 32767) n = 0;
+          for (; n > 0 && r.p + 1026 <= data.length; n--) {
+            const id = r.u16();
+            map.set(id, data.slice(r.p, r.p + 1024)); r.skip(1024);
+          }
+        }
       }
     }
   } catch (e) { /* a newer or odd MLLE stream: keep what was read */ }
@@ -276,7 +301,8 @@ export function applyMlleLayers(level, dataFiles) {
 
 // A tile set made of a base set plus MLLE's extra sets: tile ids past the
 // base continue into each extra set's chosen range.
-export function composeTileset(base, extras, palette) {
+// `edited`: MLLE's redrawn tiles and masks ({ pixels, masks } maps by id).
+export function composeTileset(base, extras, palette, edited = null) {
   const parts = [];
   let count = base.count;
   for (const x of extras) {
@@ -284,7 +310,7 @@ export function composeTileset(base, extras, palette) {
     count += x.count;
   }
   const pal = palette ? expandPalette(palette) : base.palette;
-  return { ...base, count, palette: pal, parts, base };
+  return { ...base, count, palette: pal, parts, base, edited };
 }
 
 function expandPalette(rgb) {

@@ -7,6 +7,7 @@ import {
   Checkpoint, Effect, Hint, makeEnemy, overlap, Particle, Pickup, Pole, SecretZone, Shot, Sign, Spring, SPRING_CHARS, Warp,
 } from './entities.js';
 import { jj2Tick } from './jj2/play.js';
+import { Platform } from './jj2/platforms.js';
 import { JJ2View } from './jj2/view.js';
 import { LEVELS, levelDef } from './levels.js';
 import { PARTY_GOAL, PARTY_RESPAWN } from './party.js';
@@ -68,6 +69,7 @@ export class Game {
     const playerH = this.level.meta.playerH || PLAYER.h;
     Object.assign(this, {
       enemies: [], enemyShots: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
+      platforms: (this.level.platforms || []).map((o) => new Platform(o)),
       levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null,
       combo: 0, comboTimer: 0, comboMult: 1,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,
@@ -102,6 +104,12 @@ export class Game {
       if (o.type === 'hint') this.props.push(new Hint(o));
       if (o.type === 'exit') this.props.push(new Sign(o.tx, o.ty, true));
       if (o.type === 'pole') this.props.push(new Pole(o.tx, o.ty, o.vertical, true));
+    }
+    // JJ2 trigger crates: shoot one to switch its trigger.
+    for (const c of this.level.triggerCrates || []) {
+      const k = Pickup.fromChar('A', c.tx, c.ty);
+      k.trigger = c;
+      this.pickups.push(k);
     }
     // Pickups placed off the grid (JJ2 gem rings and barrels).
     for (const e of this.level.extraPickups || []) {
@@ -374,7 +382,9 @@ export class Game {
     if (this.shakeTime > 0) this.shakeTime--;
     if (this.flashTime > 0) this.flashTime--;
     const p = this.player;
+    for (const pl of this.platforms) pl.update(this);
     p.update(this, input);
+    for (const pl of this.platforms) pl.catchRider(this);
     if (this.party) this.party.tick(this);
 
     if (!this.party && p.dead && p.deadTimer > 100) {

@@ -79,8 +79,10 @@ export class JJ2View {
 
   buildAtlas() {
     for (const e of this.entries) e.slots = this.frameSlots(e.anim, e.flip);
-    // Broken destructible tiles may show frames that appear nowhere else.
+    // Broken destructible tiles and switched trigger scenery may show frames
+    // that appear nowhere else.
     for (const word of this.level.broken.values()) this.code(word);
+    for (const list of this.level.triggers.values()) for (const t of list) { this.code(t.on); this.code(t.off); }
     for (const e of this.entries) if (!e.slots) e.slots = this.frameSlots(e.anim, e.flip);
     const n = Math.max(1, this.keys.length);
     const canvas = document.createElement('canvas');
@@ -106,15 +108,20 @@ export class JJ2View {
     this.atlas = canvas;
   }
 
-  // A destructible tile broke: show what replaces it.
+  // A sprite-layer tile changed (broken, or switched by a trigger): show the
+  // new one, redrawing the atlas if it needed a tile not drawn yet.
   rebake(tx, ty) {
     const i = ty * this.level.w + tx;
     const c = this.cells[3];
+    const before = this.keys.length;
+    const entries = this.entries.length;
     if (c) c[i] = this.code(this.level.layer[i]);
-    if (this.keys.length > this.atlasCount()) this.buildAtlas();
+    if (this.keys.length !== before || this.entries.length !== entries) {
+      for (const e of this.entries) if (!e.slots) e.slots = this.frameSlots(e.anim, e.flip);
+      this.buildAtlas();
+      this.frame = new Int32Array(this.entries.length);
+    }
   }
-
-  atlasCount() { return (this.atlas.height / 32) * COLS; }
 
   // Layer 8 as a 256x256 texture for the warp-horizon background.
   buildTexture(layer) {

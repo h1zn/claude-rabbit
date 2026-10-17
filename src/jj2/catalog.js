@@ -104,6 +104,7 @@ export function jj2Def(key) {
   def.loaded = () => (state.level ? { file: state.level, ts: state.ts } : null);
   def.prepare = async () => {
     if (state.level) return def;
+    await discovered();       // the folder listing gives the files' real names
     const level = await fetchParsed(url(pack, entry.file), parseLevel);
     const j2t = (n) => (/\.j2t$/i.test(n) ? n : `${n}.j2t`);
     let ts = await fetchParsed(url(pack, packFile(pack, j2t(level.tileset))), parseTileset);
@@ -114,7 +115,7 @@ export function jj2Def(key) {
         ...x, ts: await fetchParsed(url(pack, packFile(pack, j2t(x.name))), parseTileset).catch(() => null),
       })));
       def.missing = extras.filter((x) => !x.ts).map((x) => x.name);
-      if (extras.length || level.mlle.palette) ts = composeTileset(ts, extras, level.mlle.palette);
+      if (extras.length || level.mlle.palette || level.mlle.edited) ts = composeTileset(ts, extras, level.mlle.palette, level.mlle.edited);
       const files = Math.ceil(Math.max(0, (level.mlle.layers ? level.mlle.layers.length : 8) - 8) / 8);
       const base = entry.file.replace(/\.j2l$/i, '');
       const data = await Promise.all(Array.from({ length: files }, (_, i) => fetchParsed(url(pack, packFile(pack, `${base}-MLLE-Data-${i + 1}.j2l`)), parseLevel).catch(() => null)));
@@ -144,8 +145,15 @@ function musicKey(pack, name, fallback) {
 }
 
 // Packs dropped into Levels/ that aren't listed above (serve.py lists the
-// folder at /levels.json; other servers just show the known packs).
-export async function discoverPacks() {
+// folder at /levels.json; other servers just show the known packs). Runs once.
+let discovery = null;
+function discovered() {
+  if (!discovery) discovery = scanPacks();
+  return discovery;
+}
+export function discoverPacks() { return discovered(); }
+
+async function scanPacks() {
   let found;
   try {
     const r = await fetch('levels.json');

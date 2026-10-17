@@ -17,6 +17,7 @@ export const EV = {
   EOL_SIGN: 81, SAVE_POINT: 83, BRIDGE: 153, LIGHT_STEADY: 148, LIGHT_PULSE: 149, LIGHT_FLICKER: 150,
   DESTRUCT: 185, DESTRUCT_BOMB: 186, COLLAPSE: 187, BUTTSTOMP: 188, GEMSTOMP: 189,
   TUBE: 206, TEXT: 207, SET_WATER: 208, GENERATOR: 216, WARP_ORIGIN: 230, WARP_TARGET: 240, GEM_RING: 192,
+  LAVA: 122, TRIGGER_CRATE: 95, WATER_BLOCK: 233, TRIGGER_AREA: 234, TRIGGER_ZONE: 246,
 };
 
 // Events that become an entity character of this game.
@@ -58,6 +59,10 @@ export class JJ2Level extends Level {
     this.areaParams = new Uint32Array(w * h);
     this.broken = new Map();                 // cell -> tile word shown after breaking
     this.collapse = new Map();               // collapsing cells -> ticks stood on
+    this.triggers = new Map();               // trigger id -> [{ i, off, on }] tile words
+    this.triggerState = new Set();           // trigger ids switched on
+    this.triggerCrates = [];
+    this.platforms = [];                     // moving platforms (src/jj2/platforms.js)
     this.lights = [];
     this.bridges = [];
     this.water = Infinity;                   // water surface (px), Infinity = none
@@ -233,6 +238,38 @@ export class JJ2Level extends Level {
             this.bridges.push({ tx, ty, len: Math.max(1, len) });
             break;
           }
+          case EV.TRIGGER_AREA: {
+            // Trigger scenery: solid while its trigger is off; switched on, a
+            // plain tile vanishes and an animated one shows its second frame.
+            const [tid] = eventFields(ev.params, [5]);
+            let off = word; let on = 0;
+            if (tile.anim >= 0) {
+              const a = file.anims[tile.anim];
+              const keep = word & (file.maxTiles | 0x2000);
+              off = (a.frames[0] & 0x0fff) | keep;
+              on = a.frames.length > 1 ? (a.frames[1] & 0x0fff) | keep : 0;
+              this.layer[i] = off;
+            }
+            if (!this.triggers.has(tid)) this.triggers.set(tid, []);
+            this.triggers.get(tid).push({ i, off, on });
+            break;
+          }
+          case EV.TRIGGER_CRATE: {
+            const [tid, setOff, toggle] = eventFields(ev.params, [5, 1, 1]);
+            this.triggerCrates.push({ tx, ty, id: tid, on: !setOff, toggle: !!toggle });
+            break;
+          }
+          case 209: case 210: case 211: case 212: case 213: case 214: {
+            const [sync, speed, length, swing] = eventFields(ev.params, [2, -6, 4, 1]);
+            this.platforms.push({ x: tx * TILE + 16, y: ty * TILE + 16, type: id - 208, sync, speed, length, swing: !!swing });
+            break;
+          }
+          case EV.LAVA:
+            this.areas[i] = EV.HURT;
+            break;
+          case EV.TRIGGER_ZONE: case EV.WATER_BLOCK:
+            this.areas[i] = id; this.areaParams[i] = ev.params;
+            break;
           case EV.LIGHT_STEADY: case EV.LIGHT_PULSE: case EV.LIGHT_FLICKER:
             this.lights.push({ x: tx * TILE + 16, y: ty * TILE + 16, kind: id });
             break;
@@ -284,6 +321,23 @@ export class JJ2Level extends Level {
       this.ambient = 1;
     }
     this.lightTarget = this.ambient;
+  }
+
+  // Switch a trigger: its scenery tiles swap between their off and on words
+  // (collision follows the tile shown).
+  setTrigger(id, on) {
+    if (this.triggerState.has(id) === on) return false;
+    if (on) this.triggerState.add(id); else this.triggerState.delete(id);
+    for (const t of this.triggers.get(id) || []) {
+      const word = on ? t.on : t.off;
+      this.layer[t.i] = word;
+      const mask = word ? this.maskOf(word) : null;
+      this.masks[t.i] = mask && mask.m;
+      const tx = t.i % this.w; const ty = Math.floor(t.i / this.w);
+      if (this.kind[t.i] !== ONE_WAY && this.tiles[ty][tx] !== '^') this.tiles[ty][tx] = mask ? (mask.n >= 512 ? '#' : 's') : '.';
+      if (this.onBreak) this.onBreak(tx, ty);
+    }
+    return true;
   }
 
   solidCell(tx, ty) {

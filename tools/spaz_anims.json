@@ -179,8 +179,8 @@
   },
   "hurt": {
    "frames": [
-    489,
-    494
+    485,
+    490
    ],
    "speed": 4,
    "loop": false
@@ -196,7 +196,7 @@
   "victory": {
    "frames": [
     425,
-    432
+    430
    ],
    "speed": 5,
    "loop": false

@@ -567,6 +567,13 @@ export class Pickup {
       game.audio.play('rush');
       game.banner('FIRE SHIELD!', 80);
       game.explode(cx, cy, '#ff9a3a');
+    } else if (this.kind === 'crate' && this.trigger) {
+      const t = this.trigger;
+      game.level.setTrigger(t.id, t.toggle ? !game.level.triggerState.has(t.id) : t.on);
+      game.addScore(300, cx, this.y);
+      game.audio.play('checkpoint');
+      game.banner('SWITCH!', 60);
+      game.explode(cx, cy, '#c08a4e');
     } else if (this.kind === 'crate') {
       p.spreadAmmo += 30;
       game.addScore(300, cx, this.y);

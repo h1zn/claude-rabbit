@@ -28,7 +28,7 @@ export class Player {
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
-      hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false,
+      hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0,
     });
   }
@@ -275,7 +275,7 @@ export class Player {
   // Tubes and vines (original JJ2 levels). Returns true when it moved Kip.
   jj2Move(game, input) {
     const level = game.level;
-    this.swimming = level.water !== Infinity && this.cy > level.water;
+    this.swimming = (level.water !== Infinity && this.cy > level.water) || level.areaAt(this.cx, this.cy) === EV.WATER_BLOCK;
     this.floatUp = level.areaAt(this.cx, this.cy) === EV.FLOAT_UP || level.areaAt(this.cx, this.y + this.h - 2) === EV.FLOAT_UP;
     // A tube carries Kip at its own speed, straight through its walls.
     if (level.areaAt(this.cx, this.cy) === EV.TUBE) {
@@ -449,7 +449,7 @@ export class Player {
       if (!smash) this.vy = Math.max(this.vy, 0.5);
     }
     this.onGround = hit.bottom;
-    if (!this.onGround && grounded && this.vy >= 0 && this.dropThrough === 0) this.onGround = level.snapDown(this, this.vx);
+    if (!this.onGround && grounded && this.vy >= 0 && this.dropThrough === 0 && !this.platform) this.onGround = level.snapDown(this, this.vx);
     this.onSlope = hit.slope;
     if (this.onGround) {
       if (this.stomping) {

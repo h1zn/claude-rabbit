@@ -63,6 +63,7 @@ export class Renderer {
     ctx.save();
     ctx.translate(-cam.x, -cam.y);
     if (view) view.drawBridges(ctx, game.time);
+    for (const pl of game.platforms || []) pl.draw(ctx);
     this.decor(game, cam, false);
     this.blocks(game, cam);
     this.props(game);

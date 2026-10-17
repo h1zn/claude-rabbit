@@ -11,8 +11,14 @@ export function preview(file, ts) {
   const w = L4.w; const h = L4.h;
   const avg = new Map();
   const px = new Uint8ClampedArray(4096);
+  const first = file.maxTiles - file.anims.length;
   const colour = (word) => {
-    const id = word & (file.maxTiles - 1);
+    let id = word & (file.maxTiles - 1);
+    // Animated tiles: their first frame.
+    for (let k = 0; id >= first && k < 4; k++) {
+      const a = file.anims[id - first];
+      id = a && a.frames.length ? a.frames[0] & (file.maxTiles - 1) : 0;
+    }
     if (!id || id >= ts.count) return null;
     if (!avg.has(id)) {
       tilePixels(ts, id, px);
