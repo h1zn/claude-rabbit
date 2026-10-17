@@ -1,0 +1,22 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #0b0716;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#game {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #000;
+  /* Keep 16:9 and fit the window, scaling the 640x360 canvas up crisply. */
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  outline: none;
+}

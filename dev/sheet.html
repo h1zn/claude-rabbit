@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sprite sheet</title>
+  <style>
+    body { margin: 0; background: #2a2440; color: #e6e0ff; font: 12px sans-serif; }
+    canvas { image-rendering: pixelated; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="sheet" width="1280" height="1500"></canvas>
+  <script type="module">
+    import { buildSprites } from '../src/sprites.js';
+    const s = buildSprites();
+    const cv = document.getElementById('sheet');
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#5a6a8a'; ctx.fillRect(0, 0, cv.width, cv.height);
+    let x = 8; let y = 8; let rowH = 0;
+    const put = (img, label, scale = 3) => {
+      const w = img.width * scale; const h = img.height * scale;
+      if (x + w > cv.width - 8) { x = 8; y += rowH + 22; rowH = 0; }
+      ctx.drawImage(img, x, y + 14, w, h);
+      ctx.fillStyle = '#fff'; ctx.fillText(label, x, y + 10);
+      x += w + 10; rowH = Math.max(rowH, h);
+    };
+    if (location.search.includes('decor')) {
+      for (const [k, v] of Object.entries(s.decor)) (Array.isArray(v) ? v : [v]).forEach((img, i) => put(img, `${k}${i}`, 2));
+      window.sheetDone = true;
+      throw new Error('decor only');
+    }
+    for (const [name, frames] of Object.entries(s.kip)) frames.forEach((f, i) => put(f.right, `${name}${i}`));
+    for (const k of ['bugbot', 'blobble', 'buzzwing', 'frostmite']) s[k].forEach((f, i) => put(f.right, `${k}${i}`));
+    for (const [c, frames] of Object.entries(s.gems)) put(frames[0], c);
+    put(s.coin[0], 'coin'); put(s.coin[2], 'coin2');
+    for (const [k, img] of Object.entries(s.food)) put(img, k);
+    put(s.berry, 'berry'); put(s.crate, 'crate'); put(s.spring[0], 'spring'); put(s.spring[1], 'spring2');
+    for (const [k, img] of Object.entries(s.spikes)) put(img, 'spikes ' + k);
+    put(s.lantern[0], 'lantern'); put(s.lantern[1], 'lantern on'); put(s.sign[0], 'sign'); put(s.sign[3], 'sign3');
+    put(s.shot, 'shot'); put(s.spreadShot, 'spread');
+    for (const [k, v] of Object.entries(s.decor)) (Array.isArray(v) ? v : [v]).forEach((img, i) => put(img, `${k}${i}`, 2));
+    window.sheetDone = true;
+  </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soundboard</title>
+<style>
+  :root { --bg: #14101e; --card: #221a33; --text: #eee8ff; --muted: #a89cc8; --accent: #ffc04a; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { color: var(--muted); margin: 0 0 16px; max-width: 70ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .card { background: var(--card); border-radius: 8px; padding: 10px; }
+  button { background: var(--accent); color: #1a1022; border: 0; border-radius: 6px; padding: 6px 12px; font-weight: 700; cursor: pointer; }
+  .uses { color: var(--muted); font-size: 12px; margin-top: 6px; min-height: 1.4em; }
+  code { color: var(--accent); }
+</style>
+</head>
+<body>
+<h1>Soundboard</h1>
+<p>Click to hear each file. "Used for" shows which game events currently play it (from <code>src/sfxmap.js</code>).
+Tell me which number should go with which event and I'll update the map.</p>
+<div class="grid" id="grid"></div>
+<script type="module">
+  import { SFX_COUNT, SFX_MAP } from '../src/sfxmap.js';
+  const grid = document.getElementById('grid');
+  for (let i = 0; i < SFX_COUNT; i++) {
+    const uses = Object.entries(SFX_MAP).filter(([, n]) => n === i).map(([k]) => k);
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<button>Play sound ${i}</button><div class="uses">Used for: ${uses.join(', ') || '(nothing)'}</div>`;
+    const audio = new Audio(`../assets/sfx/sound${i}.wav`);
+    card.querySelector('button').onclick = () => { audio.currentTime = 0; audio.play(); };
+    grid.appendChild(card);
+  }
+</script>
+</body>
+</html>

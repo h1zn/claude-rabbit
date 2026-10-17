@@ -1,0 +1,11 @@
+{
+  "sheet": "../../sprites/new/enemies.png",
+  "minBand": 10,
+  "anims": {
+    "bat":      { "region": [12, 388, 510, 432], "speed": 4, "loop": true },
+    "demonRun": { "region": [30, 848, 530, 897], "speed": 4, "loop": true },
+    "frog":     { "region": [912, 452, 1090, 532], "speed": 5, "loop": true },
+    "lizard":   { "region": [12, 8, 1075, 72], "speed": 5, "loop": true },
+    "dragonfly":{ "region": [920, 425, 1090, 452], "speed": 3, "loop": true }
+  }
+}

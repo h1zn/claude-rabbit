@@ -1,0 +1,10 @@
+{
+  "sheet": "../../sprites/new/Miscellaneous - SFX.png",
+  "minBand": 3,
+  "anims": {
+    "blaster":   { "region": [40, 24, 140, 37], "speed": 3, "loop": true },
+    "poof":      { "region": [35, 243, 290, 268], "speed": 3, "loop": false },
+    "explosion": { "region": [15, 318, 545, 372], "speed": 3, "loop": false },
+    "sparkle":   { "region": [290, 243, 480, 268], "speed": 3, "loop": false }
+  }
+}

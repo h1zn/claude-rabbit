@@ -1,0 +1,31 @@
+{
+  "sheet": "../../sprites/PC _ Computer - Jazz Jackrabbit 2 _ The Secret Files - Playable Characters - Jazz Jackrabbit.png",
+  "anims": {
+    "idle":       { "frames": [0, 26],   "speed": 6, "loop": true },
+    "bored":      { "frames": [27, 72],  "speed": 6, "loop": false },
+    "walk":       { "frames": [159, 166], "speed": 5, "loop": true },
+    "run":        { "frames": [167, 174], "speed": 4, "loop": true },
+    "skid":       { "frames": [196, 198], "speed": 4, "loop": true },
+    "jump":       { "frames": [219, 221], "speed": 5, "loop": false },
+    "jumpFwd":    { "frames": [228, 235], "speed": 4, "loop": false },
+    "fall":       { "frames": [225, 227], "speed": 5, "loop": true },
+    "fallFwd":    { "frames": [236, 239], "speed": 5, "loop": true },
+    "spring":     { "frames": [244, 251], "speed": 4, "loop": true },
+    "hover":      { "frames": [267, 274], "speed": 3, "loop": true },
+    "hoverShoot": { "frames": [275, 276], "speed": 4, "loop": false },
+    "shoot":      { "frames": [126, 127], "speed": 4, "loop": false },
+    "shootAir":   { "frames": [240, 241], "speed": 4, "loop": false },
+    "crouch":     { "frames": [140, 142], "speed": 3, "loop": false },
+    "crouchShoot":{ "frames": [143, 144], "speed": 4, "loop": false },
+    "look":       { "frames": [136, 137], "speed": 4, "loop": false },
+    "stomp":      { "frames": [252, 259], "speed": 2, "loop": false },
+    "stompLand":  { "frames": [260, 266], "speed": 3, "loop": false },
+    "uppercutWindup": { "frames": [147, 153], "speed": 2, "loop": false },
+    "uppercut":   { "frames": [154, 156], "speed": 3, "loop": true },
+    "land":       { "frames": [279, 283], "speed": 3, "loop": false },
+    "hurt":       { "frames": [499, 504], "speed": 4, "loop": false },
+    "dead":       { "frames": [508, 517], "speed": 5, "loop": false },
+    "victory":    { "frames": [440, 447], "speed": 5, "loop": false },
+    "icon":       { "frames": [528, 528], "speed": 1, "loop": false }
+  }
+}
