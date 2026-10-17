@@ -48,7 +48,9 @@ export class Platform {
     if (p.platform === this && !p.dead) {
       const dx = this.x - this.prevX;
       game.level.move(p, dx, 0, { climb: true });
-      p.y = this.y - p.h;
+      // Rising into a ceiling knocks the rider off rather than through it.
+      const want = this.y - p.h;
+      if (want < p.y) { if (game.level.move(p, 0, want - p.y).top) p.platform = null; } else p.y = want;
     }
   }
 
@@ -59,7 +61,7 @@ export class Platform {
     const over = p.x + p.w > this.x + 2 && p.x < this.x + this.w - 2;
     const feet = p.y + p.h;
     const prevFeet = p.prevY + p.h;
-    if (over && p.vy >= 0 && prevFeet <= this.prevY + 6 && feet >= this.y - 1 && feet <= this.y + Math.max(10, p.vy + 6)) {
+    if (over && p.vy >= 0 && prevFeet <= this.prevY + 6 && feet >= this.y - 1 && feet <= this.y + Math.max(10, p.vy + 6) && this.room(game, p)) {
       p.y = this.y - p.h;
       p.vy = 0;
       if (!p.onGround) { p.jumping = false; p.hovering = false; p.stomping = false; p.doubleJumped = false; p.coyote = 6; }
@@ -70,6 +72,13 @@ export class Platform {
     }
     // Spike platforms hurt from below and the sides.
     if (this.type === 6 && p.platform !== this && over && p.y < this.y + this.h && feet > this.y + 3) p.hurt(game, this.cx);
+  }
+
+  // Space above the platform for the rider to be lifted onto it.
+  room(game, p) {
+    const want = this.y - p.h;
+    if (want >= p.y) return true;
+    return !game.level.move({ x: p.x, y: p.y, w: p.w, h: p.h }, 0, want - p.y).top;
   }
 
   draw(ctx) {

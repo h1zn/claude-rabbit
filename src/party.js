@@ -214,6 +214,12 @@ export class Party {
 
   receive(game, m) {
     const find = (id) => game.pickups.find((k) => k.id === id && !k.taken);
+    // The rival got it: a trigger crate still flips its trigger here.
+    const gone = (k) => {
+      k.taken = true;
+      const t = k.trigger;
+      if (t) game.level.setTrigger(t.id, t.toggle ? !game.level.triggerState.has(t.id) : t.on);
+    };
     switch (m.t) {
       case 's': {
         const r = this.rival;
@@ -225,13 +231,13 @@ export class Party {
       case 'drop': this.addDrops(game, m.drops, m.by); break;
       case 'take': {               // host: the guest asks for a pickup
         const k = find(m.id);
-        if (k && !k.pending) { k.taken = true; this.net.send({ t: 'grant', id: m.id }); } else this.net.send({ t: 'deny', id: m.id });
+        if (k && !k.pending) { gone(k); this.net.send({ t: 'grant', id: m.id }); } else this.net.send({ t: 'deny', id: m.id });
         break;
       }
       case 'grant': { const k = game.pickups.find((q) => q.id === m.id); if (k && !k.taken) k.collect(game); break; }
-      case 'deny': { const k = game.pickups.find((q) => q.id === m.id); if (k) k.taken = true; break; }
-      case 'gone': { const k = find(m.id) || game.pickups.find((q) => q.id === m.id && q.pending); if (k) k.taken = true; break; }
-      case 'tile': game.hitTile(m.x, m.y, { stomp: true, speed: true, remote: true }); break;
+      case 'deny': { const k = game.pickups.find((q) => q.id === m.id); if (k && !k.taken) gone(k); break; }
+      case 'gone': { const k = find(m.id) || game.pickups.find((q) => q.id === m.id && q.pending); if (k) gone(k); break; }
+      case 'tile': game.hitTile(m.x, m.y, { stomp: true, speed: true, collapse: true, remote: true }); break;
       case 'win': this.result = 'lose'; game.audio.play('gameover'); break;
       case 'left': this.result = this.result || 'left'; break;
       default: break;

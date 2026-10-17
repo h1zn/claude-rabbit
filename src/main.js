@@ -152,15 +152,16 @@ function startParty(index, role) {
 }
 
 // The host loads the level first, then tells the guest to start.
+// Levels with nothing to load start at once, inside the same tick.
 async function hostStart(index) {
   if (!net || partyLoading === net) return;
-  if (!(await preparePartyLevel(index))) return;
+  if (levelDef(index).prepare && !(await preparePartyLevel(index))) return;
   net.send({ t: 'start', level: index });
   startParty(index, 'host');
 }
 
 async function guestStart(index) {
-  if (await preparePartyLevel(index)) startParty(index, 'guest');
+  if (!levelDef(index).prepare || await preparePartyLevel(index)) startParty(index, 'guest');
 }
 
 function lobbyTick() {

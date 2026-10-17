@@ -445,7 +445,9 @@ export class Game {
       }
       // Measured: crates only break when attacked (a shot, stomp or special).
       for (const k of this.pickups) {
-        if (!s.dead && !k.taken && k.needsHit && overlap(s, k)) { s.dead = true; k.collect(this); }
+        if (s.dead || k.taken || k.pending || !k.needsHit || !overlap(s, k)) continue;
+        s.dead = true;
+        if (this.party) this.party.touch(this, k); else k.collect(this);
       }
     }
     for (const s of this.shots) {

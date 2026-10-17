@@ -205,8 +205,12 @@ export class Player {
       if (vdir) { const k = this.dash > 0 ? 2 : 1; accel += 0.125 * k * vdir; cap *= k; }
       cap += Math.abs(accel);
       this.vy = Math.max(-cap, Math.min(cap, this.vy + accel));
-      this.stomping = false; this.hovering = false;
-      if (input.pressed('jump') && this.cy - level.water < 20) {
+      this.stomping = false; this.hovering = false; this.jumping = false;
+      // Near the surface: of the water line, or the top of a water block.
+      const surf = level.areaAt(this.cx, this.cy) === EV.WATER_BLOCK
+        ? level.areaAt(this.cx, this.cy - 20) !== EV.WATER_BLOCK
+        : this.cy - level.water < 20;
+      if (input.pressed('jump') && surf) {
         this.vy = PHYS.jumpBase;
         this.jumping = true; this.jumpCut = false;
         this.swimming = false;
@@ -456,6 +460,8 @@ export class Player {
     }
     this.onGround = hit.bottom;
     if (!this.onGround && grounded && this.vy >= 0 && this.dropThrough === 0 && !this.platform) this.onGround = level.snapDown(this, this.vx);
+    // Riding a moving platform: gravity's pull below its top doesn't unground.
+    if (!this.onGround && this.platform && this.vy >= 0) { this.y = this.platform.y - this.h; this.vy = 0; this.onGround = true; }
     this.onSlope = hit.slope;
     if (this.onGround) {
       if (this.stomping) {

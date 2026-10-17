@@ -10,7 +10,7 @@ export function jj2Tick(game) {
   const p = game.player;
   if (!p.dead) {
     const id = level.areaAt(p.cx, p.cy);
-    if (id !== EV.TRIGGER_ZONE) level.zoneCell = -1;
+    if (id !== EV.TRIGGER_ZONE) level.zoneKey = -1;
     const params = level.areaParam(p.cx, p.cy);
     if (id === EV.LIGHT_SET) {
       const [intensity] = eventFields(params, [7]);
@@ -18,13 +18,13 @@ export function jj2Tick(game) {
     } else if (id === EV.LIGHT_RESET) {
       level.lightTarget = Math.min(1, level.file.startLight / 64);
     } else if (id === EV.TRIGGER_ZONE) {
-      // A trigger zone sets (or, as a switch, flips) a trigger once per visit.
-      const cell = Math.floor(p.cy / TILE) * level.w + Math.floor(p.cx / TILE);
-      if (level.zoneCell !== cell) {
+      // A trigger zone sets (or, as a switch, flips) a trigger once per visit:
+      // walking on through more cells of the same zone doesn't count again.
+      if (level.zoneKey !== params) {
         const [tid, setOn, toggle] = eventFields(params, [5, 1, 1]);
         if (level.setTrigger(tid, toggle ? !level.triggerState.has(tid) : !!setOn)) game.audio.play('checkpoint');
       }
-      level.zoneCell = cell;
+      level.zoneKey = params;
     } else if (id === EV.SET_WATER) {
       const [height, instant] = eventFields(params, [8, 1]);
       level.waterTarget = height * TILE;

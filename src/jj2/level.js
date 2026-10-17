@@ -435,6 +435,11 @@ export class JJ2Level extends Level {
     const result = { left: false, right: false, top: false, bottom: false, slope: false };
     const stepH = climb ? 10 : 3;
     const enemy = !!body.type && climb;   // stop-enemy areas turn walkers only
+    // Feet already inside a one-way tile (dropping through it, or after
+    // jumping up into it) don't land on it until they are out. Checked before
+    // the horizontal step, which can lift grounded feet onto a slope.
+    const row0 = Math.floor(body.y + body.h - 0.001);
+    const inside = dy > 0 && !this.feetClear(body, row0, true) && this.feetClear(body, row0, false);
     let left = Math.abs(dx);
     const dir = Math.sign(dx);
     while (left > 0) {
@@ -456,12 +461,7 @@ export class JJ2Level extends Level {
       left -= step;
     }
 
-    const prevBottom = body.y + body.h;
     if (dy > 0) {
-      // Feet already inside a one-way tile (dropping through it, or after
-      // jumping up into it) don't land on it until they are out.
-      const startRow = Math.floor(prevBottom - 0.001);
-      const inside = !this.feetClear(body, startRow, true) && this.feetClear(body, startRow, false);
       let rest = dy;
       while (rest > 0) {
         const step = Math.min(1, rest);
