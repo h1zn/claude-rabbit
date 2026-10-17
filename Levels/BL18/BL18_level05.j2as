@@ -1,0 +1,643 @@
+#include "MLLE-Include-1.4.asc"
+const bool MLLESetupSuccessful = MLLE::Setup();
+#pragma require "ld ice.j2t"
+#pragma require "carrot1.j2t"
+#pragma require "gloweeb-fix.j2t"
+#pragma require "castlebn.j2t"
+#pragma require "medevilmadness.j2t"
+#pragma require "keen 4 ice 2.j2t"
+#pragma require "blue world.j2t"
+#pragma require "temple.j2t"
+#pragma require "coolday.j2t"
+#pragma require "BL18_level05-MLLE-Data-1.j2l"
+#pragma require "BL18_level05.j2l"
+
+#pragma require "HPTheme.s3m"
+#pragma require "BL18_Forlorn.bmp"
+
+#include "BL18.asc"
+
+const uint TimeTarget = 900;
+
+const array<uint16> RandomizeSwitchesX = {
+	71, 77, 83, 89
+};
+const array<uint16> RandomizeSwitchesY = {
+	110,134
+};
+
+array<jjLAYER@> TrueColorLayers;
+bool ShowTrueColorLayers = true;
+
+//#include
+//"DumpFontToPgm.asc"
+void onLevelLoad() {
+//df2p::dumpFontToPgm("Arial.fnt", jjAnimSets[ANIM::CUSTOM[0]]);
+//return;
+	for (uint y = 0; y < RandomizeSwitchesY.length; ++y) {
+		uint rand = 0;
+		do {
+			rand = jjRandom();
+		} while (rand & 15 == 0);
+		for (uint x = 0; x < RandomizeSwitchesX.length; ++x)
+			jjParameterSet(RandomizeSwitchesX[x], RandomizeSwitchesY[y], 6, 1, (rand >> x) & 1);
+	}
+	
+	{
+		jjPALCOLOR white(255, 255, 255);
+		jjPalette.fill(white, 0, 15); //start
+		jjPalette.fill(white, 56, 3); //yellow gap
+		jjPalette.fill(white, 96, 159); //remainder + finish
+		jjPalette.apply();
+		TrueColor::ProcessPalette();
+		
+		//array<jjLAYER@> layerOrder = jjLayerOrderGet();
+		
+		const auto firstTextureAnimFrame = jjAnimations[jjAnimSets[TrueColor::FindCustomAnim()].allocate(array<uint>={TrueColor::NumberOfFramesPerImage})];
+		TrueColor::Bitmap("BL18_Forlorn.bmp").saveToAnimFrames(firstTextureAnimFrame); //https://www.filterforge.com/filters/10947.html
+		const array<uint16> firstTileIDPerChannel = {10, 950, 1900};
+		for (uint channel = 0; channel < 3; ++channel) {
+			const jjPIXELMAP sourceImage(jjAnimFrames[firstTextureAnimFrame + channel]);
+			array<array<jjPIXELMAP@>> targetTiles(16, array<jjPIXELMAP@>(16, null));
+			for (uint x = 0; x < 16; ++x)
+				for (uint y = 0; y < 16; ++y)
+					@targetTiles[x][y] = jjPIXELMAP();
+			for (uint x = 0; x < 512; ++x)
+				for (uint y = 0; y < 512; ++y) {
+						const uint8 sourceColor = sourceImage[x,y];
+						targetTiles[x >> 5][y >> 5][x & 31, y & 31] = sourceColor >= 15 ? sourceColor : 15;
+					}
+			for (uint x = 0; x < 16; ++x)
+				for (uint y = 0; y < 16; ++y)
+					targetTiles[x][y].save(firstTileIDPerChannel[channel] + 7 - (x & 7) + y*10 + (x >> 3) * 160 + TILE::HFLIPPED);
+					
+			TrueColorLayers.insertLast(MLLE::GetLayer("TrueColor " + channel));
+			/*
+			const jjLAYER@ old = MLLE::GetLayer("TrueColor " + channel);
+			jjDebug("" + (old is null));
+			jjLAYER copy(old);
+			copy.spriteMode = SPRITE::NEONGLOW;
+			copy.spriteParam = channel;
+			layerOrder.insertAt(6, copy);
+			*/
+		}
+		
+		//jjLayerOrderSet(layerOrder);
+	}
+	
+	LastPalette.reset();
+	LastPalette.apply();
+	TrueColor::ProcessPalette();
+	TrueColor::EnableCaching(); //note: the 512x512 background doesn't need to get cached, since it uses only the sprite colors
+	BL18::Setup();
+	@BL18::myLevelReload = myReload;
+	
+	if (jjIsTSF)
+		jjCharacters[CHAR::LORI].morphBoxCycle = false;
+		
+	jjObjectPresets[OBJECT::WARP].behavior = UselessCoinWarp;
+	
+	jjObjectPresets[OBJECT::STRAWBERRY].behavior = FadeOutPotion();
+	jjObjectPresets[OBJECT::STRAWBERRY].playerHandling = HANDLING::PICKUP;
+	jjObjectPresets[OBJECT::STRAWBERRY].scriptedCollisions = true;
+	jjObjectPresets[OBJECT::STRAWBERRY].curAnim = jjObjectPresets[OBJECT::ORANGE].curAnim;
+}
+
+void freeCamera() { @CurrentRectangle = null; BL18::Player.cameraUnfreeze(); }
+void myReload() { freeCamera(); LastPalette.apply(); TrueColor::ProcessPalette(); }
+
+const array<string> TilesetFilenames = {
+	"Townsville2.j2t", "CoolDay.j2t", "Temple.j2t", "LD Ice.j2t", "Blue World.j2t", "Keen 4 Ice 2.j2t", "MedevilMadness.j2t", "CastleBN.j2t", "Carrot1.j2t"
+};
+const array<jjPIXELMAP@> TilesetBackgrounds = {
+	jjPIXELMAP(0,0,256,256,5),
+	jjPIXELMAP(0,256,256,256,5),
+	jjPIXELMAP(256,256,256,256,5),
+	null,
+	jjPIXELMAP(256,0,256,256,5),
+	jjPIXELMAP(TEXTURE::NORMAL),
+	null,
+	jjPIXELMAP(TEXTURE::BLADE),
+	jjPIXELMAP(TEXTURE::NORMAL)
+};
+const array<CameraRectangle> TilesetRectangles = {
+	CameraRectangle(219, 37, 275, 79),
+	CameraRectangle(143, 112, 236, 156),
+	CameraRectangle(0, 17, 58, 89),
+	CameraRectangle(50, 196, 84, 238),
+	CameraRectangle(46, 152, 82, 183),
+	CameraRectangle(172, 169, 221, 213),
+	CameraRectangle(114, 226, 187, 282),
+	CameraRectangle(48, 105, 123, 139),
+	CameraRectangle(81, 0, 166, 24)
+};
+class CameraRectangle {
+	float left, top, right, bottom;
+	CameraRectangle(){}
+	CameraRectangle(uint l, uint t, uint r, uint b) {
+		left = l * 32;
+		top = t * 32;
+		right = (r+1) * 32;
+		bottom = (b+1) * 32;
+	}
+	bool constrain(jjPLAYER@ play) const {
+		bool fullyConstrained = true;
+		if (play.xPos >= left && play.xPos < right) {
+			const auto sw = jjSubscreenWidth;
+			float x = play.xPos - sw/2;
+			if (x < left) x = left; else if (x > right - sw) x = right - sw;
+			play.cameraFreeze(x, false, false, true);
+		} else {
+			play.cameraFreeze(true, false, false,true);
+			fullyConstrained = false;
+		}
+		if (play.yPos >= top && play.yPos < bottom) {
+			const auto sh = jjSubscreenHeight;
+			float y = play.yPos - sh/2;
+			if (y < top) y = top; else if (y > bottom - sh) y = bottom - sh;
+			play.cameraFreeze(false, y, false, true);
+		} else {
+			play.cameraFreeze(false, true, false,true);
+			fullyConstrained = false;
+		}
+		return fullyConstrained;
+	}
+}
+const CameraRectangle@ CurrentRectangle = null;
+
+const array<uint> MapWarpIDsToTriggerIDs = {
+	8,6,7,1,3,4,2,5
+};
+class FadeOutPotion : BL18::WarpPotion {
+	bool onObjectHit(jjOBJ@ obj, jjOBJ@ bullet, jjPLAYER@ player, int force) override {
+		@BL18::CurrentPopup = WarpToPlanet(obj.var[0]);
+		jjSample(obj.xPos, obj.yPos, BL18::HPWarp);
+		obj.delete();
+		BL18::SetPogoStick(false);
+		return true;
+	}
+	void onBehave(jjOBJ@ obj) override {
+		if (obj.state == STATE::DEACTIVATE) {
+			obj.deactivate();
+			return;
+		}
+		if (obj.state == STATE::START) {
+			obj.state = STATE::WAIT;
+			obj.var[0] = jjParameterGet(uint(obj.xOrg) >> 5, uint(obj.yOrg) >> 5, 0, 8);
+			obj.var[1] = MapWarpIDsToTriggerIDs[obj.var[0] % 40];
+		}
+		if (obj.var[0] >= 8 || !jjTriggers[obj.var[1]])
+			BL18::WarpPotion::onBehave(obj);
+	}
+}
+
+uint TrueColorChannelSwitch = 0;
+jjPAL LastPalette;
+class WarpToPlanet : BL18::Popup {
+	uint8 counter = 255;
+	uint8 warpID;
+	WarpToPlanet(uint8 index) {
+		warpID = index;
+	}
+	bool Do() override {
+		counter -= 2;
+		if (counter == 127) {
+			++TrueColorChannelSwitch;
+			for (uint i = 0; i < TrueColorLayers.length; ++i)
+				TrueColorLayers[i].spriteParam = (i + TrueColorChannelSwitch) % 3;
+			if (warpID < TilesetFilenames.length) {
+				LastPalette.load(TilesetFilenames[warpID]);
+				if (BL18::IsMurderer)
+					LastPalette.fill(jjPALCOLOR(), 0.15);
+				LastPalette.color[71] = MLLE::Palette.color[71];
+				LastPalette.apply();
+				TrueColor::ProcessPalette();
+				if (jjTexturedBGUsed = (TilesetBackgrounds[warpID] !is null)) {
+					TilesetBackgrounds[warpID].makeTexture();
+					jjSetFadeColors();
+				}
+				@CurrentRectangle = @TilesetRectangles[warpID];
+				if (warpID == TilesetFilenames.length - 1) //Carrotus
+					BL18::CoinWarpFound = true;
+			} else {
+				freeCamera();
+			}
+			BL18::Player.warpToID(warpID, true);
+			if (warpID == 2 && !ShownDevresIntroAlready) {
+				ShownDevresIntroAlready = true;
+				@BL18::CurrentPopup = DevresIntro();
+			}
+		}
+		return counter != 1;
+	}
+	void Draw(jjCANVAS@ canvas) const override {
+		canvas.drawRectangle(0,0, jjResolutionWidth, jjResolutionHeight, BL18::KeyColors[warpID & 7]+3, SPRITE::BLEND_DISSOLVE, 255 - uint8(abs(int(128)-int(counter))) * 2);
+		BL18::HUD(canvas);
+	}
+	bool DrawHUD() const override { return true; }
+}
+
+const string DevresText = """More than twenty years ago, a young magician named Hocus Pocus defeated the Evil Wizard Trolodon, joined the Council of Wizards ruling over the Lands of Lattice, and married his beloved Popopa.
+
+This is the story of a rabbit living in the era after the Fall of the Council, as well as of another rabbit who lived in an earlier era but is not currently living because he is a ghost and therefore dead.
+
+The members of the Council of Wizards found Hocus Pocus to be a very promising addition to their ranks after he defeated many of their sworn enemies using nothing more than an Infinite Pocket Sized Lightning spell and some sage advice from the Head Wizard, Terexin. By scouring the castles of various areas within the Lands of Lattice, Hocus Pocus was able to travel the Magic Paths holding the Lands together, steal the magic of the Council's foes, and kill them to death.
+
+With Hocus Pocus as their newest member, the Council of Wizards became reenergized in their discussion of what to do about the other forces vying for control over the Lands of Lattice and the Magic Paths. True, they no longer had to worry about Trolodon, nor the Mad Monks of Mellenwah or the Tree Demons nor the Harsh Gray Dragons of Higgendom, but other threats still lurked just beyound the Council's doors. Of particular concern was the Ninja Clan, a vast army of mysterious figures who struck from the darkness and ruled by fear. Even the magic of the Council of Wizards was no might against the "hacking" and "laser shield" powers the Ninja Clan was said to possess.
+
+While the Ninja Clan waited in the shadows, the Council began to take action against their lesser foes, including the Gem Merchants of Gambarnine, a tribe of shapeshifting businessmen who sought to buy up the Magic Crystals from across the Lands of Lattice. The Council beat them at their own game and accumulated the single largest group of Magic Crystals in the history of the Lands of Lattice, increasing their collective mystic power a hundredfold. The Wizards were in a frenzy to destroy every last potential threat to their dominion, even ceasing their previously-regular visits to the Beautiful Amazon Tribes Before the Time of Clothes era.
+
+One Wizard alone was uneasy with these developments: Terexin's twin cousin, Fooruman. Fooruman believed above all else in the unpredictability of life and the variety of human experience, and feared that the end result of the Council's efforts would be a bland homogeneity imposed across all the Lands of Lattice in all different eras, with all the various peoples either living in total servitude to the Council of Wizards or else wiped out entirely. He took his concerns to the head of the Ninja Clan, the mysterious super hacker himself: the Black Ninja.
+
+Fooruman and the Black Ninja quickly became friends, having regular tea parties in little-frequented chambers of the Council of Wizard's castle while they plotted the downfall of the Conucil's plans. One day, however, Hocus Pocus's wife Popopa happened upon them during one of their tea parties. Afraid she would alert the Council to their presence, the Black Ninja instantly hacked the world's memory to give himself a laser shield, and blasted a laser beam directly through Popopa's heart. She fell down dead and landed inside an open refrigerator. Fooruman and the Black Ninja fled the scene, but Hocus Pocus sensed his wife's death through their magical connection of true love, and when he found her dead body he flew into a rage.
+
+Hocus Pocus was sure that another member of the Council of Wizards must have killed Popopa, and he gathered all the power of the Magic Crystals and dissolved the Council, banishing every other Wizard to whichever area of the Lands of Lattice he had come from. The Head Wizard, Terexin, tried to stop him, but Hocus Pocus turned the full force of his Infinite Pocket Sized Lightning spell on him, and Terexin fell to the floor in a heap of robes. His body was never found.
+
+After having usurped all the power of the Council of Wizards, Hocus Pocus took to studying the Magic Crystals in earnest. He knew that the Lands of Lattice's Magic Paths connected not only places but also eras, and he sought for a way to reverse the flow of time and prevent Popopa's death. Late nights he stayed in the Council's libraries, reading ancient books of magical theory and trying an ever-growing assortment of spells on the massive stock of crystals. Fooruman, who had been exiled to the land of foo, sent Hocus Pocus a letter by AOL Instant Messenger warning him that what he was doing was too dangerous, and magic on that scale and with that many Magic Crystals was what had led to the Time of the Really Big Shaking when the Lands of Lattice had originally splintered apart into disparate times and dimensions, but Hocus Pocus ignored Fooruman's letter.
+
+At last Hocus Pocus was ready to cast his spell. He collected every last Magic Crystal within his castle in one place atop an enormous clock and fired his most powerful lightning bolt at them. The resulting outpouring of magical energy not only vaporized Hocus Pocus and the castle instantly, but also tore the Lands of Lattice apart even worse than the original Really Big Shaking had. The Magic Paths trembled, flickered, and then disappeared entirely, leaving every land and era totally cut off from all the others. Magic itself, which had hitherto been a constant presence in all the Lands, became rather mysterious, unpredictable, and above all rare. Nobody knew where all the magic power from Hocus Pocus's spell had gone to, for indeed the Wizards could no more communicate with each other between Lands than anyone else could.
+
+Fooruman mournfully took up leadership of the shaken land of foo, living near the popular and highly saturated village of Foomania. There Fooruman built a number of castles, seeking to restore the old order of the Lands of Lattice, although in place of Magic Crystals he was forced to stock the castles with mere coins instead. He trained bats to hang from midair in place of the old familar red demons, gave turtles cups of tea to encourage them to behave like the alligator dragons he remembered, and so on. In time his castles became populated by figures from other lands and eras of the Lands of Lattice who had managed to find their way to the land of foo under mysterious circumstances, including the Black Ninja and also many of the Mad Monks of Mellenwah who had been thought dead. Perhaps Hocus Pocus's spell had managed to reverse some deaths after all.
+
+Emboldened by this show of support for his dreams, Fooruman decided to found his own for-profit religion, based again on his firm belief in the power of variety (or, as his critics would call it, nonsense). Many would attempt to join his religion in hopes of "becoming a foo," but only those who were particularly dedicated to the ideals of Fooishness and who passed all the courses at Foo School would ever succeed. To these lucky inductees, Fooruman harnessed some of the remaining magical energy in the land of foo in order to equip them with Arcane Weapons. These foos became not only Fooruman's most devout followers but also his personal guard.
+
+Into this semblance of a new world order came a green rabbit with a gun named Jazz Jokerabbit. Jazz was the seventh son of a seventh son of a seventh son, but as has been noted, this did not make him an uber-powerful sorcerer. Indeed, Jazz Jokerabbit had no particular mystical aptitude at all, though he was able to use existing magical artifacts such as blue warp potions or plasma shields; instead he relied on his gun to get him through life, like any true American hero.
+
+Jazz's best friend was a rabbit named Spotty the Friendly Ghost. Now, how Spotty came to die is a fascinating story many paragraphs in the telling. It began on Foomania Orbital Base, one of a surprising number of orbital bases present in the land of foo. Spotty had belonged to a resistance army that was utterly decimated in gruesome detail immediately after what had appeared to be a happy ending. Spotty himself survived, however, and set out in search of the man who had killed his comrades: the leader of the Mad Monks of Mellenwah, "Greenkiller." First, Spotty visited a remote planet named Deserto.
+""";
+
+/*const string Lipsum = """Nam eu sodales enim, vitae laoreet tortor. Donec fermentum enim vel eros consectetur finibus et non eros. Aliquam sollicitudin egestas dui, at finibus lectus malesuada et. Nunc dolor massa, vulputate et dictum in, hendrerit a leo. Phasellus eu erat accumsan, iaculis risus vel, consectetur velit. Morbi vel porttitor lorem. Praesent ac justo ultrices, sollicitudin ante commodo, rutrum ipsum. Suspendisse potenti. Donec lacinia facilisis tortor non rhoncus. Duis pellentesque pretium consequat. Vestibulum mattis diam arcu, quis dignissim ante eleifend et. Praesent faucibus urna a dolor ultrices pulvinar. Quisque mattis porttitor ipsum ac dapibus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.
+
+Sed vitae velit sit amet neque vulputate feugiat. Nunc ut hendrerit augue, vel scelerisque tortor. Etiam condimentum imperdiet lorem sed congue. Proin lacinia eu dolor vitae tincidunt. Donec fermentum lacus id augue egestas, quis lacinia est venenatis. Donec venenatis vehicula rhoncus. Duis laoreet feugiat quam a commodo. Donec fermentum vel nisl et egestas. Phasellus feugiat neque nisl, at luctus augue dictum sit amet. Sed fermentum ex vel risus vestibulum, eget hendrerit massa egestas. Curabitur iaculis a nunc sit amet accumsan. Duis in metus ligula. Nulla facilisi. Integer auctor nulla leo, sed tempor diam rhoncus quis. Donec magna dui, blandit eu ante iaculis, tincidunt fermentum nulla. Phasellus non dolor placerat tellus vulputate aliquet non sed lorem.
+
+Nulla viverra odio non neque consequat, in faucibus arcu facilisis. Nam finibus vestibulum ipsum, a elementum magna mollis sit amet. Phasellus viverra neque magna, sed mollis purus semper dictum. Quisque id odio a felis rhoncus aliquet id eleifend velit. Nunc auctor, tellus volutpat cursus semper, urna purus dignissim dolor, quis eleifend elit libero non diam. Quisque consectetur tincidunt lorem, quis volutpat metus facilisis placerat. Sed vel efficitur augue, at volutpat eros. Nulla felis est, vulputate eget elit sed, dictum ornare justo.
+
+In pellentesque ultrices est, vel pulvinar metus dapibus sed. Aenean non quam porttitor, luctus sapien vitae, tempor nulla. Cras lobortis a diam nec dignissim. Donec dictum dui sed odio pellentesque molestie. Nunc sagittis, nulla sed mattis vestibulum, lectus mauris pulvinar ligula, eu sollicitudin libero libero sit amet lorem. In faucibus at ante quis pretium. Nulla ac condimentum sapien. Mauris at lorem odio. Nullam laoreet, eros eget cursus ullamcorper, nisi nisl fermentum lorem, varius varius nunc orci in ipsum. Fusce convallis, nunc vel mollis molestie, velit massa convallis metus, sit amet hendrerit mi nisl id massa. Fusce et lectus tincidunt, tempor urna eu, dignissim nulla. Sed tristique dolor eget arcu tempus dapibus.
+
+Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Maecenas id sem sit amet turpis volutpat varius. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum auctor ex tortor, vel scelerisque justo fermentum eget. Ut placerat diam vel justo dapibus, sed tristique neque tempus. Nulla faucibus dapibus mauris. Duis egestas, nunc sit amet semper scelerisque, odio ipsum bibendum dolor, nec elementum neque libero quis mi. Ut quis nibh aliquet, blandit lorem eget, aliquam erat. Donec ornare gravida turpis, in placerat nisi maximus in. Suspendisse luctus rhoncus erat id aliquam. Donec malesuada ac arcu a egestas. Etiam eu hendrerit velit. Aenean in hendrerit nisi, vel blandit nisi. Suspendisse hendrerit odio luctus efficitur consequat. Sed gravida tortor in molestie scelerisque.
+
+Etiam vulputate elit sit amet nibh fermentum pharetra. Donec maximus pellentesque mauris, vel fermentum ligula feugiat nec. Phasellus congue mi id arcu aliquam lobortis. Maecenas bibendum tempor accumsan. Vestibulum feugiat, risus id auctor convallis, augue orci finibus lectus, quis mattis magna dui eget neque. Pellentesque venenatis turpis in magna laoreet, interdum sollicitudin erat suscipit. Cras id odio molestie, malesuada dolor ut, fermentum velit. Nulla imperdiet scelerisque laoreet. Nullam vitae metus sit amet urna porttitor commodo vitae a erat.
+
+Nunc sed ante malesuada, feugiat dolor nec, ullamcorper ante. Vivamus sagittis tempor turpis ut tempor. Ut eu diam molestie, mattis nulla et, pulvinar eros. Aenean sit amet nisi quis turpis porttitor vehicula in eget sapien. Vestibulum suscipit tempus urna a commodo. Ut laoreet finibus lobortis. Praesent sollicitudin neque sit amet dapibus sollicitudin. Fusce nec aliquet lectus, sollicitudin feugiat lectus. Suspendisse vel nibh purus. Etiam urna mauris, molestie in elementum commodo, suscipit eget dolor. Aliquam sit amet enim ac ex lacinia aliquam nec vitae nisl. Donec in eleifend nisl. Vestibulum maximus id sapien viverra tempor.
+
+Nulla eu porttitor leo. Donec eu dui et lorem lacinia placerat quis ac diam. In aliquet nibh eu massa rutrum, quis venenatis erat cursus. Fusce lorem dui, malesuada a felis quis, ullamcorper scelerisque nisi. Fusce rutrum est non quam venenatis molestie. Praesent eu interdum tellus. Vivamus commodo eros ac risus facilisis, sit amet lacinia velit viverra. In hac habitasse platea dictumst. Maecenas volutpat nec augue at porta.
+
+Fusce id ligula gravida, iaculis dolor a, viverra ante. Proin vel lacus est. Integer nec finibus eros. Phasellus finibus orci id lectus accumsan convallis. Mauris accumsan eleifend tincidunt. Fusce sed blandit tortor, non pulvinar nulla. Sed et ex rutrum, ultricies massa at, pretium ante. Curabitur eu sem pharetra, ornare arcu in, sollicitudin turpis. Duis nec nibh vel nisl rhoncus efficitur. Vivamus ut lacus sed augue iaculis feugiat ac id libero. Mauris a sapien felis. Etiam ut turpis nec nisl efficitur dictum. Aliquam venenatis ipsum efficitur odio auctor tincidunt. Nunc tincidunt erat vitae vestibulum tristique. Vestibulum libero eros, fermentum id rhoncus a, imperdiet ut lorem. Morbi nulla ex, porttitor sit amet felis in, sollicitudin auctor lectus.
+
+Praesent hendrerit sit amet diam eget ultricies. Sed scelerisque metus id imperdiet varius. Phasellus ultrices magna vitae egestas pulvinar. Interdum et malesuada fames ac ante ipsum primis in faucibus. Ut ultrices laoreet lacinia. Duis id hendrerit dolor. Vestibulum cursus eros id consequat porttitor. Quisque tincidunt nisl ligula, eget varius augue sollicitudin nec. Donec interdum non felis sed lobortis. Curabitur euismod tortor augue, quis malesuada mi molestie eu. Vivamus mollis dolor at purus blandit euismod non vitae ligula. Donec posuere rhoncus enim at condimentum. Donec fringilla mauris non orci vulputate luctus. Phasellus eget leo gravida, fringilla massa quis, venenatis felis. Nulla facilisi.
+
+Sed a fermentum lorem, quis luctus risus. In hac habitasse platea dictumst. Quisque sodales mollis turpis, vitae pellentesque velit varius placerat. Mauris cursus, diam efficitur gravida congue, est eros finibus ligula, in rutrum urna ligula at mauris. Praesent efficitur lorem lacus, vitae ornare dui dictum non. Maecenas at vestibulum enim, sed lobortis mi. Nullam rhoncus tempus ligula. Duis pretium sapien felis, eu feugiat felis rutrum eu. Aenean quis sollicitudin metus. Vestibulum in est in mi suscipit ornare eget eu sem. In sed ultrices nunc. Nulla elementum elementum orci suscipit varius. Nulla in odio vel purus malesuada bibendum.
+
+Phasellus lacus turpis, tempus vel lectus a, porta ultrices eros. Nam vitae nunc at tortor ultricies facilisis. Fusce neque dui, sollicitudin et sem et, commodo ornare felis. Donec varius lorem lorem, porta cursus enim mollis quis. Ut consequat diam ligula, id convallis nisi imperdiet eu. Sed id odio enim. Mauris sapien neque, tincidunt ut cursus sed, placerat ac leo. Praesent non nisi et enim pulvinar pretium eget vitae libero.
+
+Ut eget posuere nisl, eu accumsan velit. Ut a finibus erat. Maecenas odio velit, aliquet ut mollis ac, consectetur venenatis nisl. Mauris eu rutrum mi. Nam viverra scelerisque nibh. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Ut sit amet dapibus ante, quis porttitor purus. Nulla eleifend vitae nisi eu vulputate. Nulla id risus tempus, aliquet orci nec, porta arcu. Integer justo nibh, condimentum non nisl ut, porta gravida ligula. Sed vestibulum, dui sit amet faucibus consectetur, urna libero mattis nulla, id malesuada justo tortor id felis. Nulla facilisi. Nulla et ligula ultricies, vulputate lacus at, malesuada ipsum. Donec ac dui leo.
+
+Donec in consectetur dolor. Quisque vulputate varius venenatis. Sed at tempor augue. Morbi leo neque, bibendum in hendrerit vitae, pellentesque non diam. Quisque vehicula commodo sapien, vitae vulputate felis blandit mattis. Praesent lacinia nunc turpis, et commodo sapien tempus in. Vestibulum pharetra porttitor turpis, id cursus orci dictum nec. Interdum et malesuada fames ac ante ipsum primis in faucibus. Etiam id elit urna. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nunc interdum, metus sed interdum pulvinar, nibh nibh blandit metus, a posuere nunc purus sit amet dolor. Suspendisse neque magna, semper at magna sollicitudin, rhoncus consectetur dolor. Sed vulputate nunc sit amet arcu fermentum elementum. In at vehicula tellus. Pellentesque lacinia scelerisque massa, sed condimentum augue laoreet in. Maecenas sit amet dui egestas, faucibus tellus mollis, euismod leo.
+
+Sed vehicula facilisis posuere. Suspendisse accumsan, risus vitae accumsan lacinia, nisl ante facilisis metus, in dignissim nulla nisl sit amet sem. In feugiat blandit eleifend. Duis euismod lacus vel nunc bibendum, ut bibendum ipsum faucibus. Curabitur sapien turpis, condimentum at laoreet et, viverra id nulla. Etiam vulputate rhoncus facilisis. Etiam elementum nulla sed dui sodales, sed ultrices nunc tempor. Ut ut ornare eros. Proin eget mi ultricies, tristique sem at, bibendum lectus. Donec est diam, tristique eget laoreet pharetra, pellentesque ac elit. Nam rutrum accumsan nisi, eu pellentesque metus iaculis in.""";*/
+
+bool ShownDevresIntroAlready = false;
+class DevresIntro : BL18::Popup {
+	jjANIMATION@ fontAnim;
+	array<string> Lines = {"","","","","","","","","","","","","","","","$","","","","","","","","","","","","","","","","","","","","","","",""};
+	float yOffset = 0;
+	float yOffsetRateOfIncrease = 0.5;
+	uint tickCounter = 0;
+	DevresIntro() {
+		@fontAnim = jjAnimations[jjAnimSets[TrueColor::FindCustomAnim()].load(BL18::AnimSets::Font, "BL18.j2a")];
+		jjMusicLoad("HPTheme.s3m");
+		for (int i = 0; i < 5; ++i)
+		AddStringToLinesArray(DevresText);
+		//AddStringToLinesArray(Lipsum);
+		//AddStringToLinesArray(Lipsum);
+		//AddStringToLinesArray(Lipsum);
+	}
+	void AddStringToLinesArray(const string &in source) { //not justified but it'll have to do
+		const auto lines = jjRegexReplace(source, "\r", "").split("\n");
+		for (uint i = 0; i < lines.length; ++i) {
+			const auto words = lines[i].split(" "); //punctuation counts as part of the previous word
+			string line = "";
+			for (uint j = 0; j < words.length; ++j) {
+				string nextWord = words[j] + " ";
+				if (jjGetStringWidth(line + nextWord, fontAnim, STRING::NORMAL) >= 500) { //too wide
+					Lines.insertLast(line);
+					line = nextWord;
+				} else {
+					line += nextWord;
+				}
+			}
+			Lines.insertLast(line); //reached the end
+			Lines.insertLast(""); //blank line between sections
+		}
+	}
+	bool Do() override {
+		if ((++tickCounter % 35) == 0 && tickCounter > 1200) {
+			yOffsetRateOfIncrease += 0.375;
+			if (tickCounter % 210 == 0) {
+				const auto oldSpeed = jjGetModSpeed();
+				if (oldSpeed > 3)
+					jjSetModSpeed(oldSpeed - 1);
+			}
+		}
+		if (tickCounter > 140)
+			yOffset += yOffsetRateOfIncrease;
+		if (uint(yOffset) / 16 < Lines.length - 40)
+			return true;
+		jjMusicLoad(BL18::musicFilename);
+		return false;
+	}
+	void Draw(jjCANVAS@ canvas) const override {
+		canvas.drawRectangle(0,0, jjResolutionWidth, jjResolutionHeight, 0);
+			const int divisor = int(yOffsetRateOfIncrease);
+		const uint lineHeight = 16;
+		int yPos = -(int(yOffset) % lineHeight);
+		int xPos = (jjSubscreenWidth - 500) / 2;
+		if (divisor > 3)
+			xPos += (int(jjRandom()) % (divisor + 2)) - divisor/2;
+		int lineNumber = int(yOffset) / lineHeight;
+		for (uint numberOfLinesToDraw = jjSubscreenHeight / lineHeight + 2; numberOfLinesToDraw > 0; --numberOfLinesToDraw, ++lineNumber) {
+			canvas.drawString(xPos, yPos += lineHeight, Lines[lineNumber], fontAnim, STRING::NORMAL,0, SPRITE::ALPHAMAP,15);
+		}
+		canvas.drawResizedSpriteFromCurFrame(0,0, fontAnim, jjSubscreenWidth/2,1, SPRITE::ALPHAMAP,0); //fade gradient
+		canvas.drawResizedSpriteFromCurFrame(0,jjSubscreenHeight-1, fontAnim, jjSubscreenWidth/2,-1, SPRITE::ALPHAMAP,0);
+		canvas.drawRectangle(0,0, jjResolutionWidth, jjResolutionHeight, 76, SPRITE::BLEND_DISSOLVE, divisor << 2);
+		if (jjKey[8]) //backspace
+			canvas.drawString(10, jjResolutionHeight - 20, "|||||Can't skip, bro!", STRING::SMALL);
+	}
+}
+
+void onFunction12() {
+	uint x = 208;
+	const uint y = 148;
+	const string name = BL18::Player.name.substr(0, 24);
+	jjGenerateSettableTileArea(4, x, y, name.length, 1);
+	for (uint i = 0; i < name.length; ++i) {
+		uint16 tileID;
+		uint8 c = name[i];
+		if (c >= 'a'[0] && c <= 'z'[0])
+			c -= ('a'[0] - 'A'[0]);
+		if (c >= 'A'[0] && c <= 'F'[0])
+			tileID = 1030 + c - 'A'[0];
+		else if (c >= 'G'[0] && c <= 'M'[0])
+			tileID = 1039 + c - 'G'[0];
+		else if (c >= 'N'[0] && c <= 'T'[0])
+			tileID = 1049 + c - 'N'[0];
+		else if (c >= 'U'[0] && c <= 'Z'[0])
+			tileID = 1059 + c - 'U'[0];
+		else if (c >= '1'[0] && c <= '3'[0])
+			tileID = 999 + c - '1'[0];
+		else if (c >= '4'[0] && c <= '7'[0])
+			tileID = 1009 + c - '4'[0];
+		else if (c >= '8'[0] && c <= '9'[0])
+			tileID = 1019 + c - '8'[0];
+		else if (c == ' '[0])
+			tileID = 1029;
+		else if (c == '0'[0])
+			tileID = 1021;
+		else if (c == '@'[0])
+			tileID = 1070;
+		else if (c == '_'[0])
+			tileID = 1071;
+		else if (c == '-'[0])
+			tileID = 1072;
+		else if (c == '+'[0])
+			tileID = 1073;
+		else if (c == '.'[0])
+			tileID = 1074;
+		else if (c == '?'[0])
+			tileID = 1075;
+		else if (c == "'"[0])
+			tileID = 1076;
+		else
+			continue; //not advancing x?
+		jjAddParticleTileExplosion(x, y, jjTileGet(4,x,y), false);
+		jjTileSet(4, x++, y, tileID);
+	}
+}
+
+void onPlayerInput(jjPLAYER@ play) {
+	if (play.warpID != 0)
+		for (uint i = jjObjectCount; --i > 0;) {
+			jjOBJ@ obj = jjObjects[i];
+			if (obj.behavior == BL18::Elevator && obj.yOrg > 90*32) { //don't reset the hub world's elevator
+				obj.xPos = obj.xOrg + 17;
+				obj.yPos = obj.yOrg - 15;
+			}
+		}
+		
+	const bool trueColorVisible = (CurrentRectangle is null || !CurrentRectangle.constrain(play)) && !jjLowDetail;
+	if (ShowTrueColorLayers != trueColorVisible) {
+		ShowTrueColorLayers = trueColorVisible;
+		play.lighting = trueColorVisible ? 35 : 100;
+		for (uint i = 0; i < TrueColorLayers.length; ++i)
+			TrueColorLayers[i].hasTiles = ShowTrueColorLayers;
+	}
+	if (trueColorVisible) {
+		for (uint i = 0; i < TrueColorLayers.length; ++i) {
+			const auto angle = (jjGameTicks << 2) + (i << 8);
+			TrueColorLayers[i].xOffset = jjSin(angle) * 16;
+			TrueColorLayers[i].yOffset = jjCos(angle) * 16;
+		}
+	}
+}
+
+void UselessCoinWarp(jjOBJ@ obj) {
+	const auto realYPos = BL18::Player.yPos;
+	BL18::Player.yPos = 20;
+	obj.behave(BEHAVIOR::WARP); //visuals ONLY
+	BL18::Player.yPos = realYPos;
+}
+
+array<array<string>> Conversations = {
+	{ //spaz
+		"S9Good job escaping from@the evil dark drug demon@bloody hacker chasm mine!",
+		"S4But it looks like that@last balloon flew you@into someplace weird.",
+		"S3It feels like there are@some ghost worlds hanging@in this dreamy miasma...",
+		"S2Not to mention,@there's no coins...",
+		"S5Maybe you can find@a local who could@tell you some more?",
+		"J5...",
+		"J8Spotty... are you@feeling okay?",
+		"S6Never better!",
+		"S3This place is scary, Jazz,@but have faith in Christ,@and he will see us through."
+	},{ //jazz
+		"S0Hi.",
+		"J2Hi.",
+		"J8So are you...@also a ghost?@Like Spotty?",
+		"S5You could say that,@but the better word is@probably MEMORY.",
+		"S1There are a lot of@us memories around here.",
+		"S2Of course, you're bound to@deal with memories if@you're doing Foo stuff.",
+		"J1\"Foo\" stuff? Like@Fooruman? Or the@Foomania castles?",
+		"S4All those permutations.@Fooruman, Unfooruman,@races, hotels, movies, products...",
+		"S7It's all just so old@by now. Does anyone@still care?",
+		"J4You don't sound like you@like foo products very much.",
+		"S0I'm not bashing it,@it was just never@really my thing.",
+		"S1I was a scientist.@Always looking for new@things and rabbits to test.",
+		"S3I was the kind of friend@who'd make you excited to@wake up each morning.",
+		"S4You'd wonder what new things@it was time to discover.",
+		"S5Tubes, crates, warps...@those were your tools,@the keys to do anything.",
+		"S7Not that I had a@monopoly on such tools,@of course, but...",
+		"S1You'd work together on so@many projects, even when@they went backwards.",
+		"S0You'd discover science,@solve mysteries, and learn@about teamwork too.",
+		"S4...",
+		"J5...",
+		"J7So...@why are you@only a memory?",
+		"S2When you have a@friend like me...",
+		"S1And one of you@moves on...",
+		"S5Sometimes you find that@you have nothing left@to talk about.",
+		"S7That all you ever talked@about was that interest @you shared together.",
+		"S8If that's gone, your best@friend, who challenged@you, and everything...",
+		"S4@Sometimes he's gone too.",
+		"S6...",
+		"S1Sorry. Us memories can@get kind of wistful.@Bittersweet.",
+		"S2If you want to get out@of here, you'll need to@collect EIGHT ORBS.",
+		"S0That should make you@an ultra rabbit!",
+		"S5But when I say \"orbs\"@I really just mean keys.",
+		"S4@Good luck!"
+	},{ //spaz
+		"J8And who are you?",
+		"S6Me? Why, I'm your@president, of course!",
+		"S2Your president,@or your bear,@or your jellybean...",
+		"S7I'm a reminder that even@the most frivolous games@can produce beauty.",
+		"S8That no matter where, two@people can find each other@and care about each other.",
+		"S4And even if those two@people make some@big mistakes...",
+		"S5It can still be a@treasured memory, all@these years later.",
+		"S2Even if you can't be@everything to someone else,@you can always be something.",
+		"S7And that something can@be very important, no@matter where it came from."
+	},{ //jazz
+		"S0Imagine you're at art school,@and you and all your classmates@are given a box of markers.",
+		"S3Red, blue, green, purple,@turquoise, yellow, orange,@black, brown, everything.",
+		"S5You're each given a@blank canvas and told to@draw something new.",
+		"S9You draw a messy landscape@using every color@in the box.",
+		"S8So do a lot of others.@Some people stick to@just a few colors.",
+		"S1Your friend draws a picture@entirely out of green.",
+		"S5The next day, you're all@given the same test again.",
+		"S0Again your friend@chooses only to use green.",
+		"S1As the days pass, your@classmates' works start to@influence each other's.",
+		"S2The people who prefer to@draw in red and blue all@produce similar works.",
+		"S7Some people avoid the@color green, thinking maybe@it belongs to your friend.",
+		"S3Others experiment with@green, blending in their@lessons from other colors.",
+		"S4Over time your friend's work@is eclipsed. Each color has@lessons to bring the others.",
+		"S0But no work in green ever@truly avoids his influence,@because he defined it all.",
+		"S2Green with blue, or@green with black...@they're all just variations.",
+		"S3And when you finally become@uncomfortable with the@full box of colors...",
+		"S4When you want to@narrow your options a bit,@and learn to focus...",
+		"S5Your friend's memory will@remind you it's okay@to pick only one."
+	},{ //spaz
+		"S1You know, it's a big world.",
+		"S2The real world, I mean.@I don't know much about this@one... I never got to see it.",
+		"S4People like me, we@have a lot of big@thoughts and plans.",
+		"S0And sometimes those plans@only come to fruition once@we've already moved on.",
+		"S5But the point I was trying@to make is that in such a big@world, there are lots of people.",
+		"S8Rabbits, extraterrestials...",
+		"S4No matter how good you are at@something, eventually you'll@meet a friend who is better.",
+		"S2A problem you'd struggle@with indefinitely, they@can solve immediately.",
+		"S3They finish projects or run@groups bigger than your@most daring pipe dreams.",
+		"S6If you're really lucky, your@friend will be kind and@generous, not conceited.",
+		"S0(I mean, not TOO kind.@A certain orneriness is@only to be expected.)",
+		"S7But they'll share their work@with everyone, and they'll@even look at YOUR work too.",
+		"S8They'll find things to@praise, and inspire you to@keep moving forwards.",
+		"S9They'll even ENJOY working@with you, despite being@several steps ahead.",
+		"S5Maybe they're a moving@target, or maybe one day@they'll disappear completely.",
+		"S6(Only some years later to@reappear, doing something@even bigger than ever!)",
+		"S1But here's what's@really important.",
+		"S5Someday you'll look around you@and realize YOU'VE become@that friend you remember.",
+		"S6YOU'RE the one doing@all the big things, having@all the big ideas.",
+		"S4That's when it's important@to remember the lessons@your friend taught you.",
+		"S7The kindness, the interest,@all the supportive comments@to people not as far along.",
+		"S8It's a big world, and@it's full of inventors.",
+		"S9But the great ones are@the ones who give back."
+	},{ //spaz
+		"S0Sometimes it's easy to@get very focused on@the things you can do.",
+		"S1To define yourself (and@everyone else) by the@skills you do or don't have.",
+		"S2But then you start to think@people are only as important@as they are skilled.",
+		"S0You ignore the people@you think are below you.",
+		"S4You talk with other people@only about your skills,@caring about nothing else.",
+		"S5It's exciting, but@it's superficial.",
+		"S9So it's vital to find a friend@who likes spending time@with you because you're you.",
+		"S4They don't have to be@the best at anything@in particular.",
+		"S6You don't need to have@a lot of hobbies or@interests in common.",
+		"S5It doesn't even matter if@nobody but you remembers@them when they're gone.",
+		"S9What's important is the@way you two make@each other feel.",
+		"S3Welcome. Appreciated.@Seen. Cared for.@Belonging.",
+		"S4It's fine to dream big,@but friends should care about@more than just your dreams."
+	},{ //spaz
+		"J7Why is your fur all@black and shadowy?",
+		"J9I'm not sure I'd even@have noticed you if@not for that tweety bird.",
+		"S0Some of us memories are@so old we don't show up@in any screenshots.",
+		"S2So there's no way to@know anymore what we@used to look like.",
+		"S4Though in my case you could@say my fur colors are@just another secret?",
+		"S5I used to be very@good at secrets.",
+		"S8Secrets, and@emergence.",
+		"S3From a simple game based@around rabbits shooting@each other over and over...",
+		"S6...can emerge a community@that lasts for more@than two decades.",
+		"S5From that community can@emerge a little board@in a long-forgotten corner.",
+		"S1A board with no theme,@no purpose at all, just@circular talking every day.",
+		"S2What do you suppose@would emerge from a@board such as that one?",
+		"S3What emerges from rote,@predictable actions taken@over a period of time?",
+		"S7Well... so long as those@predictable actions are always@done with the same people...",
+		"S6That sounds like a@perfectly good definition@of friendship to me."
+	},{ //spaz
+		"S7We in this planet call@ourselves memories, but it@can be more complicated.",
+		"S2I think the term \"memory\"@implies some finality.@This friend is gone.",
+		"S3But sometimes a friend keeps@talking about coming back;@keeps checking in to say hi.",
+		"S4So where do you draw@the line? Are they still@only another memory?",
+		"S6But there's a difference@between SAYING you want@to come back and DOING so.",
+		"S9After all, people develop@other priorities. Sometimes@they even have children!",
+		"S7Kids with kids...",
+		"S5Anyway, it's important not@to feel cynical when@your friends do this.",
+		"S2Don't focus on the fact@life can never go@back to how it used to be.",
+		"S4Focus on the fact that@they miss it too; that@you're not alone.",
+		"S9Focus on the fact you@both treasure those@times you had together.",
+		"S6Focus on the fact that@they're not the only one@who gets to be a memory."
+	},{ //jazz
+		"S0Some people are blessed@with great clarity of@vision and purpose.",
+		"S4They know beyond doubt@what they want to do@with their lives.",
+		"S3This certainty lets them@put all their effort into@furthering that goal.",
+		"S1They build up their skills,@make the right connections,@and are ready in no time.",
+		"S7Knowing this, it can be easy@to make light of people@who do more wandering.",
+		"S8People who start a dozen little@projects, from artworks to@stories and even to games.",
+		"S9Especially because few or@none of those projects@may even get finished.",
+		"S5But in every one of those@little starts, even in the@failures, there is learning.",
+		"S3Each thing we try gives us@new insights we can then@apply to our next idea.",
+		"S2And our next,@and our next,@and so on.",
+		"S8Each time we grow a@little more confident@and a little more skilled.",
+		"S3We become able to combine@skills from older ideas to@better pursue newer ones.",
+		"S0We create sprawling epics,@multimedia experiences,@genre-defying set pieces.",
+		"S1We use ideas we would never@have had if we'd walked on@a single path the whole time.",
+		"S4In other words, all@our little ideas, our@numerous failed starts...",
+		"S6No matter how much the@people around us praised@them at the time...",
+		"S0They become just a prequel@to our ultimate success."
+	},{ //jazz
+		"J9Black Ninja?!",
+		"S2Hey, what's up?",
+		"J9But... but I JUST@got through killing you!",
+		"J4I've killed you nine@times by now!",
+		"S1Oh! Oh heh, you must be@talking about some of@my various clones.",
+		"S2I run a clone machine,@did you know that?@Back in my castle.",
+		"S5It was supposed to make@a whole bunch of Fooruman@clones someday soon...",
+		"S7I dunno, though, that sounds@like a big project and I've@got other stuff going on.",
+		"S5Or the real me does, anyhow.@I'm just a memory.",
+		"J9Oh, I thought maybe@you were a ghost,@like Spotty.",
+		"S7Eh... memory, ghost,@what's the difference?",
+		"S1The point is, between my@memory and my clones@and whatever else...",
+		"S2It's entirely possible@you've never met the real@Black Ninja at all.",
+		"S1The REAL Black Ninja is@busy with all sorts of@important duties, you know!",
+		"S0Like raising a daughter,@or porting JCS to Macs.",
+		"S5But the memory version of@me is free to live on here,@forever unchanging.",
+		"S4Forever a minion of Fooruman,@warring against Spotty and@all that good stuff.",
+		"S7I am immortalized in race@and movie and story@and so much more.",
+		"S8To people like you, that's@all that \"Black Ninja\"@really means.",
+		"S6The more time passes, the@more distinct I become@from the real person.",
+		"S5Kind of weird when@you think about it.",
+		"S0But don't you go on any@sort of weird quest to@reunite our two spirits.",
+		"S3I'm young and this is all@I know. I wouldn't trade@my life for his.",
+		"S1But, you know...@I don't think he'd trade@his life for mine either."
+	},{
+		"S2@I'm the nearest@\"spot place.\""
+	},{
+		"S7Bring back Annoy Mike!"
+	},{
+		"S0Congratulations!@Now you're an@ultra rabbit.",
+		"S1From now on, TREASURES@will remain collected@even when you die."
+	}
+};
