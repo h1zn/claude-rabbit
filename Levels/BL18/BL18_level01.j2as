@@ -1,0 +1,280 @@
+#include "MLLE-Include-1.4.asc"
+const bool MLLESetupSuccessful = MLLE::Setup();
+#pragma require "wtfacrid.j2t"
+#pragma require "colon1.j2t"
+#pragma require "valentinesday.j2t"
+#pragma require "swampsd.j2t"
+#pragma require "egypt.j2t"
+#pragma require "sirius1.j2t"
+#pragma require "BL18_level01-MLLE-Data-1.j2l"
+#pragma require "BL18_level01.j2l"
+#pragma require "spelunky_ignite.wav"
+#include "BL18.asc"
+
+const uint TimeTarget = 550;
+
+void onLevelLoad() {
+	jjLAYER@ skyscrapers = jjLayers[7];
+	const array<uint8> tints = {97, 102, 104, 107, 140, 149, 151, 155, 161};
+	array<jjLAYER@> layerOrder = jjLayerOrderGet();
+	for (uint i = 0; i < tints.length; ++i) {
+		skyscrapers.spriteMode = SPRITE::SINGLECOLOR;
+		skyscrapers.spriteParam = tints[i];
+		skyscrapers.xSpeed -= 0.018;
+		skyscrapers.ySpeed -= 0.017;
+		layerOrder.insertAt(layerOrder.length - 1, @skyscrapers);
+		@skyscrapers = jjLAYER(skyscrapers);
+		skyscrapers.yOffset += 44;
+		skyscrapers.xOffset = int(jjRandom() & 511);
+	}
+	jjLayerOrderSet(layerOrder);
+	
+	jjUseLayer8Speeds = true;
+	
+	jjSampleLoad(SOUND::P2_OPEN, "spelunky_ignite.wav");
+	
+	@BL18::myCoinWarpFunction = OpenTrigger5;
+	BL18::Setup();
+	
+	const auto statueSet = TrueColor::FindCustomAnim();
+	jjAnimSets[statueSet].allocate(array<uint>={3});
+	const auto statueFrameID = jjAnimations[jjAnimSets[statueSet]];
+	jjANIMFRAME@ statueFrame = jjAnimFrames[statueFrameID];
+	jjPIXELMAP(0,0, 4*32, 6*32, 5).save(statueFrame);
+	statueFrame.hotSpotX = -2*32;
+	statueFrame.hotSpotY = -6*32 + 8;
+	@statueFrame = jjAnimFrames[statueFrameID + 1];
+	jjPIXELMAP(0,16, 2*32 + 18, 6*32 - 19, 5).save(statueFrame);
+	statueFrame.hotSpotX = -2*32;
+	statueFrame.hotSpotY = -6*32 + 8 + 16;
+	@statueFrame = jjAnimFrames[statueFrameID + 2];
+	jjPIXELMAP(0,0, 4*32, 32, 4).save(statueFrame);
+	statueFrame.hotSpotX = -2*32;
+	statueFrame.hotSpotY = 0*32;
+	jjOBJ@ statue = jjObjectPresets[OBJECT::FASTFEET];
+	statue.curFrame = statueFrameID;
+	statue.playerHandling = HANDLING::SPECIAL;
+	statue.bulletHandling = HANDLING::DESTROYBULLET;
+	statue.behavior = Olmec;
+	statue.isTarget = false;
+	statue.isFreezable = false;
+	statue.triggersTNT = true; //sure
+	
+	jjObjectPresets[OBJECT::GREENSPRING].behavior = DontFallSpring;
+}
+
+void OpenTrigger5() {
+	jjTriggers[5] = true;
+}
+
+uint8 Layer1OpacityTarget = 255;
+void onFunction10(bool on) {
+	if (on && Layer1OpacityTarget == 255)
+		jjSamplePriority(SOUND::P2_OPEN);
+	Layer1OpacityTarget = on ? 63 : 255;
+}
+void onMain() {
+	jjLAYER@ layer1 = jjLayers[1];
+	if (layer1.spriteParam > Layer1OpacityTarget)
+		layer1.spriteParam -= 8;
+	else if (layer1.spriteParam < Layer1OpacityTarget)
+		layer1.spriteParam += 8;
+}
+
+void onFunction11(bool top) {
+	MLLE::GetLayer("Fixfix").yOffset = top ? -640 : -1280;
+}
+
+void onFunction12() {
+	jjWaterInteraction = WATERINTERACTION::LOWGRAVITY;
+	jjSetWaterGradient(jjPALCOLOR(255,192,0), jjPALCOLOR(192,0,0));
+}
+
+void onFunction13(jjPLAYER@ play) {
+	play.noFire = true;
+}
+
+void Olmec(jjOBJ@ obj) {
+	jjPLAYER@ play = BL18::Player;
+	switch (obj.state) {
+		case STATE::START:
+			obj.direction = -1;
+			while (!jjMaskedPixel(int(obj.xPos), int(obj.yPos)))
+				obj.yPos += 1;
+			obj.state = STATE::DELAYEDSTART;
+		case STATE::DELAYEDSTART:
+			if (play.bossActivated)
+				obj.state = STATE::WAIT;
+			return;
+		case STATE::DEACTIVATE:
+			obj.clearPlatform();
+			obj.deactivate();
+			if (!jjDeactivatingBecauseOfDeath && play.yPos < jjWaterLevel && play.health != 0) {
+				onFunction1(null, 0);
+			}
+			return;
+		case STATE::WAIT:
+			if (++obj.counter > 120) {
+				obj.counter = 0;
+				obj.ySpeed = -8;
+				obj.xSpeed = (play.xPos - obj.xPos) / 96.f;
+				obj.direction = (obj.xSpeed >= 0) ? 1 : -1;
+				obj.state = STATE::JUMP;
+			} else if (jjDifficulty > 0 && obj.counter <= 72 && obj.counter & 7 == 5) {
+				jjOBJ@ furryball = jjObjects[jjAddObject(OBJECT::STRAWBERRY, obj.xPos + obj.direction * 42, obj.yPos - 113, obj.objectID)];
+				int angle = (((obj.counter >> 3) - 2) << 7) * -obj.direction;
+				furryball.xPos += (furryball.xSpeed = jjSin(angle) * 4) * 3;
+				furryball.yPos += (furryball.ySpeed = jjCos(angle) * 4) * 3;
+				furryball.direction = int(furryball.xSpeed);
+			}
+				break;
+		case STATE::JUMP:
+		case STATE::FALL:
+		case STATE::LAND:
+			if (obj.counter > 0)
+				obj.counter -= 1;
+			else {
+				if (obj.xSpeed != 0) {
+					if (!jjMaskedVLine(int(obj.xPos + 41*obj.direction + obj.xSpeed), int(obj.yPos - 6*32), 6*32-10))
+						obj.xPos += obj.xSpeed;
+				}
+				if (obj.state == STATE::JUMP && play.yPos > obj.yPos && abs(play.xPos - obj.xPos) < 30) {
+					obj.state = STATE::FALL;
+					obj.counter = 50;
+					obj.xSpeed = 0;
+					obj.ySpeed = 3;
+				}
+				else if (obj.state == STATE::FALL) {
+					obj.curFrame += 2; //solid rectangle
+					for (uint i = jjObjectCount; --i > 0;) {
+						jjOBJ@ obj2 = jjObjects[i];
+						if (obj2.behavior == BEHAVIOR::DESTRUCTSCENERY && obj2.state != STATE::DONE && obj.doesCollide(obj2)) {
+							obj2.state = STATE::KILL;
+							obj2.behave(BEHAVIOR::DEFAULT, false);
+							obj.state = STATE::LAND;
+						}
+					}
+					obj.curFrame -= 2;
+				}
+				if (jjMaskedHLine(int(obj.xPos - 30), 61, int(obj.yPos += obj.ySpeed += (obj.state == STATE::JUMP ? 0.2 : 0.5)))) {
+					obj.xSpeed = 0;
+					obj.ySpeed = 0;
+					obj.state = STATE::WAIT;
+					obj.yPos -= 20;
+					while (!jjMaskedHLine(int(obj.xPos - 30), 61, int(obj.yPos)))
+						obj.yPos += 1;
+				}
+				if (obj.ySpeed >= 0 && abs(play.xPos - obj.xPos) < 41 && abs(play.yPos - (obj.yPos + 4)) < 10)
+					play.hurt(jjDifficulty > 1 ? 2 : 1);
+			}
+			break;
+	}
+	
+	obj.xPos -= 24.f*obj.direction; //hotspots issue
+	obj.curFrame += 1; //solid rectangle
+	obj.beSolid();
+	obj.curFrame -= 1;
+	obj.xPos += 24.f*obj.direction;
+	if (play.platform == obj.objectID) {
+		play.xPos += obj.xSpeed;
+		play.yPos += obj.ySpeed;
+	}
+	if (obj.state != STATE::FALL || obj.counter == 0) {
+		jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, obj.direction);
+	} else
+		jjDrawSpriteFromCurFrame(obj.xPos + (jjRandom() & 7) - 3.5, obj.yPos + (jjRandom() & 7) - 3.5, obj.curFrame, obj.direction);
+}
+
+void DontFallSpring(jjOBJ@ obj) {
+	obj.behave(BEHAVIOR::SPRING);
+	if (int(obj.yOrg / 32) == 62) {
+		obj.yPos = obj.yOrg + 8;
+		obj.var[4] = int(obj.yPos * 65536);
+	}
+	obj.behavior = BEHAVIOR::SPRING;
+}
+
+array<array<string>> Conversations = {
+	{
+		"S9hii jAzz welcomm bak! Off to@the races again eh??",
+		"J0That's right! I'm back with@a PURPOSE!",
+		"J4I'm going to write a@VALENTINE'S DAY CARD@to FOORUMAN!!!",
+		"S3wait,, to Forumman?",
+		"J4Yeah!!!",
+		"S5uhhhhhhhhhhhhhjj",
+		"S5...",
+		"S3ok that could be fun i gess"
+	},{
+		"S6Jazz thereis one thing you@must kno ef you wanna rite@a valetines daycare",
+		"J3All right! Lay it on me!",
+		"S3if thers one thing that is teh@opposiet of LOVE, it is.......@MURDOR",
+		"S9so to RELLY win Farmeranns@heart, i suggest a@PACFEST RUN!",
+		"J7Awwww man, for real?! But@pacifist runs are BORING.",
+		"S0no no no no@you dont understamp",
+		"S7instead of KILLING foos,@u just gotta make@them fall in #LOVE",
+		"S9using ur #LOVE BULETS",
+		"J8Okay, so this is a@pacifist run... where@I shoot everything?",
+		"S8Exactely!",
+		"S4jus be sure not to@kill anyfoo with@ur SPECKLED MOVES",
+		"J2The special moves you@wouldn't let me use at all@on our first adventure?",
+		"S6right rigt those moves : P",
+		"S6iff you use them on a foo then@you will have commited.....@....,.........",
+		"S0@#GENOXIDE",
+		"S9so ya pleaes enjoy this very@original and taught-provocin@gmorality mechanic : P"
+	},{
+		"S6Goof job ,Jazz!",
+		"J1You think so?",
+		"J0So, uh... I had a@little question.",
+		"S0yeah hit me",
+		"J5Supposing I DID happen@to, uh, genocide some@of those enemies.",
+		"J7@@A little.",
+		"J6@@As a joke.",
+		"J8What would that do?",
+		"S2well obvsiouly enemies@are alwas kinda@dangerous and stuf",
+		"S3but if you comet GENOXIDE,@then they will be mad@and will attack harder",
+		"S4and besides them bein tougher,@also ther will be fewre@carrots for you to eat",
+		"J2Oh. Well, uh, that all@sounds pretty bad.",
+		"J1Is there any way to STOP@being a genocider? And get@my love bullets back?",
+		"J5Like, could I step into@a hot spring or@something, or...",
+		"S8oh yayaya theres a totally@easy way to go bak@to normal!:",
+		"S5@#||||~Die"
+	},{
+		"S7oh!! good thing ur here,@i wanted to talk with@you about TREASURES",
+		"J0You mean the jewels, crowns,@and goblets? Aren't they just@for giving me points?",
+		"S9not this time!!!",
+		"S2in the top ldft corner of the@screen you can see what@percantge of treasur you have",
+		"S6an when you finish a castle,@you will see som text@telling you how well you did",
+		"S7if you beat teh castel below@the PAR TIME, you get a@BUNCHOF ETXRA POINTS",
+		"S9and if you got 100% of@treasures, then you get@#A BONUS EXTRA HEART",
+		"S4so in all futur castles,@youll be able to@tak emore damage!!",
+		"S7sooo trey to be fasst,@but ALSLO try to explor@and pick up everthing!!!"
+	},{
+		"S6its easyer for a cAmel@to pass a needuel than for@a rich man to get int o heaven",
+		"J5Are you talking about coins?",
+		"S9yeah!!!",
+		"S7if u get a CONE, anD DIE,@the cone will sTAY GOTTIN",
+		"J8Really? I don't need to redo@all my progress every time@I die?",
+		"J0That's amazing! How do you@know so much about dying?",
+		"S3I meen uhhhhh",
+		"S4i AMa goast : P"
+	},{
+		"J7How do I get out of this area?",
+		"S9hehehehhehehh@@how irotic",
+		"J6...ironic?",
+		"S5yEah! hoq ironic that@ur descant would be in the@proxamity of sum horses",
+		"J8I don't think I follow.",
+		"S8Jus think it oer",
+		"S9tHINK. IT, OVER..."
+	},{
+		"S5He who believes im JEsus,@as teh Scripter said...",
+		'S7"from his inermost bieg will@flow ravers ofliving WATEr."',
+		"S2so if u cant get down throgh@some bubbles, try makking@the water be LLOWER!"
+	},{
+		"S1buildin is upsaid-dawn imo : P"
+	},{
+		"J0You sure are@showing up a lot today!",
+		"S2yeah im kind of quaddicted",
+		"S6anyway jazz watch out for@those super spiky jewels",
+		"S4or els youll get a paper cut!"
+	}
+};
