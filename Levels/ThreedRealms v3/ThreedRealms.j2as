@@ -1,0 +1,2862 @@
+const bool MLLESetupSuccessful = MLLE::Setup(array<MLLEWeaponApply@> = {SzmolWeaponPack::MeleeSword::Weapon(), null, null, SzmolWeaponPack::LockOnMissile::Weapon(), WeaponVMega::Voranj::Weapon(), null, null, null, null}); ///@MLLE-Generated
+#include "MLLE-Include-1.6w.asc" ///@MLLE-Generated
+#pragma require "ThreedRealms-MLLE-Data-1.j2l" ///@MLLE-Generated
+#pragma require "Jungle1.j2t" ///@MLLE-Generated
+#pragma require "Mez03a.j2t" ///@MLLE-Generated
+#pragma require "Diam1.j2t" ///@MLLE-Generated
+#pragma require "Town1.j2t" ///@MLLE-Generated
+#pragma require "ThreedRealms.j2l" ///@MLLE-Generated
+#include "WeaponVMega8.asc" ///@MLLE-Generated
+#pragma require "WeaponVMega8.asc" ///@MLLE-Generated
+#include "lockOnMissile.asc" ///@MLLE-Generated
+#pragma require "lockOnMissile.asc" ///@MLLE-Generated
+#include "meleeSword.asc" ///@MLLE-Generated
+#pragma require "meleeSword.asc" ///@MLLE-Generated
+#include "LaserBlaster.asc"
+#pragma require "LaserBlaster.asc"
+#pragma require "SkullGem.j2a"
+#pragma require "BoogeyTent.j2a"
+#pragma offer "BurgerBooth.png"
+#pragma offer "sfx_lumking_picked.wav"
+#include "Threed.asc"
+#pragma offer "EB_Battling_Organs_OC_ReMix.mp3"
+#pragma offer "EB_Valley_Gremlins_OC_ReMix.mp3"
+#pragma offer "ThreedMap.png"
+#include "ArtificialArrow.asc"
+
+//hide normal JJ2 enemies from "Enemies > Bad guys" tree in MLLE
+//some may still appear in the skyrunner section but they're placed as tiles, not as events
+///@Event 100=
+///@Event 102=
+///@Event 103=
+///@Event 104=
+///@Event 105=
+///@Event 106=
+///@Event 107=
+///@Event 108=
+///@Event 109=
+///@Event 113=
+///@Event 115=
+///@Event 116=
+///@Event 117=
+///@Event 118=
+///@Event 120=
+///@Event 123=
+///@Event 124=
+///@Event 125=
+///@Event 126=
+///@Event 127=
+///@Event 152=
+///@Event 183=
+///@Event 184=
+///@Event 190=
+///@Event 191=
+///@Event 196=
+///@Event 197=
+///@Event 225=
+///@Event 236=
+///@Event 237=
+///@Event 248=
+///@Event 249=
+///@Event 250=
+///@Event 251=
+///@Event 252=
+///@Event 253=
+
+uint NumberOfGems = 0, NumberOfCoins = 0;
+uint CollectedGems = 0, CollectedCoins = 0;
+uint CollectedRed = 0, CollectedGreen = 0, CollectedBlue = 0;
+array<uint32> GemLocations;
+
+array<jjLAYER@> LayersNormal, LayersCircus;
+jjLAYER@ MapLayer = null, MapHolder = null;
+
+void onLevelLoad() {
+	//jjEventSet(110, 245, AREA::JAZZSTART);
+	jjAnimations[jjObjectPresets[OBJECT::RECTREDGEM].curAnim = jjObjectPresets[OBJECT::REDGEM].curAnim] = jjAnimations[jjAnimSets[ANIM::CUSTOM[0]].load(0, "SkullGem.j2a")];
+	
+	LaserBlaster::NonBouncing().Apply(WEAPON::ICE, MLLE::WeaponHook);
+	
+	jjPalette.color[15 - 8] = jjPALCOLOR(255,255,255);
+	
+	jjObjectPresets[3].animSpeed = 5;
+	jjObjectPresets[4].animSpeed = 2;
+	jjObjectPresets[5].animSpeed = 4;
+	
+	jjObjectPresets[OBJECT::GRASSPLATFORM].behavior = RecursivePlatform;
+	
+	///@Event 141=Clown|-|Enemy|Clown
+	Threed::Apply(141, Threed::Objects::Clown); //apple
+	
+	///@Event 51=Ghost Barrel|-|Enemy|Ghost|Barrel
+	if (jjGameConnection == GAME::LOCAL)
+		Threed::Apply(OBJECT::ONEUPBARREL, Threed::Objects::GarbageCan);
+	else
+		jjObjectPresets[OBJECT::ONEUPBARREL].behavior = BEHAVIOR::INACTIVE; //not going to bother trying to make this work in 5.10 coop
+	Threed::Apply(OBJECT::GEMBARREL, Threed::Objects::GarbageCan, alternateBehavior:true);
+	Threed::Apply(OBJECT::CARROTBARREL, Threed::Objects::GarbageCan);
+	Threed::Apply(OBJECT::GUNBARREL, Threed::Objects::GarbageCan);
+	@Threed::GarbageCanCallback = function(obj) {
+		const uint xTile = uint(obj.xOrg) >> 5, yTile = uint(obj.yOrg) >> 5;
+		jjEventSet(xTile,yTile, 0);
+		GemLocations.removeAt(GemLocations.find(xTile | (yTile << 16)));
+	};
+	
+	///@Event 80=Smelly Ghost|-|Enemy|Smelly|Ghost
+	Threed::Apply(OBJECT::EXTRALIVE, Threed::Objects::SmellyGhost);
+	
+	///@Event 143=Putrid Moldyman|-|Enemy|Putrid|Moldy
+	Threed::Apply(143, Threed::Objects::PutridMoldyman); //cherry
+	
+	///@Event 169=White Ghost|-|Enemy|White|Ghost
+	Threed::Apply(169, Threed::Objects::ZombiePossessor); //cupcake
+	
+	///@Event 170=Zombie Dog|-|Enemy|Zombie|Dog
+	Threed::Apply(170, Threed::Objects::ZombieDog); //chips
+	
+	///@Event 181=Urban Zombie|-|Enemy|Zombie||Hidden:c1
+	Threed::Apply(181, Threed::Objects::UrbanZombie); //ham
+	
+	///@Event 182=Trick or Trick Kid|-|Enemy|Trick|Kid|Direction:{Left,Right}1|Bomb:c1
+	Threed::Apply(182, Threed::Objects::TrickOrTrickKid); //cheese
+	
+	///@Event 156=Puppet|-|Enemy|Puppet||Color:{Gold,Purple}1|Group:8
+	Threed::Apply(156, Threed::Objects::Puppet); //"thing"
+	
+	///@Event 158=Ring of Fire|+|Object|Ring|Fire|Angle:{E,NE,N,NW,W,SW,S,SE}3|Movement:{Static,45Flip,Spin,PointAtPlayer}3
+	Threed::Apply(158, Threed::Objects::RingOfFire); //peach
+	
+	///@Event 166=Boogey Tent|-|Boss|Boogey|Tent
+	jjOBJ@ boogeyTent = jjObjectPresets[166]; //pie
+	const auto tentSetID = Threed::GetAnimSet();
+	jjAnimSets[tentSetID].load(0, "BoogeyTent.j2a");
+	boogeyTent.determineCurAnim(tentSetID, 0);
+	boogeyTent.determineCurFrame();
+	boogeyTent.behavior = function(o) { o.behavior = BoogeyTent(); o.behave(); };
+	boogeyTent.energy = 60;
+	boogeyTent.points = 5000;
+	boogeyTent.playerHandling = HANDLING::PARTICLE;
+	
+	///@Event 154=Flyhive|-|Enemy|Fly|Hive
+	jjOBJ@ flyhive = jjObjectPresets[154];
+	Threed::MakeEnemy(flyhive);
+	flyhive.behavior = Flyhive;
+	flyhive.points = 500;
+	flyhive.isFreezable = false;
+	flyhive.energy = 1;
+	flyhive.curAnim = jjObjectPresets[80].curAnim;
+	
+	const int pixelmapSourceLayerID = 7;
+	///@Event 146=Ghost Bumper|+|Pinball|Ghost|Bumper|Strong:c1
+	{
+		jjOBJ@ preset = jjObjectPresets[146];
+		preset.behavior = GhostBumper;
+		preset.eventID = OBJECT::FIVEHUNDREDBUMP;
+		preset.playerHandling = HANDLING::SPECIAL;
+		preset.points = 200;
+		preset.age = 1;
+		preset.light = 3;
+		preset.lightType = LIGHT::FLICKER;
+		
+		preset.curAnim = jjAnimSets[Threed::GetAnimSet()].allocate(array<uint>={1,1}).firstAnim;
+		preset.determineCurFrame();
+		
+		for (uint i = 0; i < 2; ++i) {
+			jjANIMFRAME@ frame = jjAnimFrames[jjAnimations[preset.curAnim] + i];
+			jjPIXELMAP(i * 64, 0, 64, 64, pixelmapSourceLayerID).save(frame);
+			frame.hotSpotX = frame.hotSpotY = -32;
+			frame.transparent = true;
+		}
+	}
+	
+	jjObjectPresets[OBJECT::BIGBOX].behavior =
+	jjObjectPresets[OBJECT::BIGROCK].behavior = MyBigRock;
+	
+	///@Event 168=Growable Tree|+|Scenery|Grow|Tree|TriggerID:5|xTile:-4|yTile:3|Count:4
+	{
+		jjOBJ@ preset = jjObjectPresets[168];
+		preset.behavior = GrowableTree;
+		preset.playerHandling = HANDLING::PARTICLE;
+		
+		preset.curAnim = jjAnimSets[Threed::GetAnimSet()].allocate(array<uint>={2}).firstAnim;
+		preset.determineCurFrame();
+		
+		jjANIMFRAME@ frame = jjAnimFrames[jjAnimations[preset.curAnim]];
+		jjPIXELMAP(4*32, 0, 64,64, pixelmapSourceLayerID).save(frame);
+		frame.hotSpotX = frame.hotSpotY = -32;
+		@frame = jjAnimFrames[jjAnimations[preset.curAnim]+1];
+		jjPIXELMAP(6*32, 0, 96,32, pixelmapSourceLayerID).save(frame);
+		frame.hotSpotX = -48;
+		frame.hotSpotY = -2;
+	}
+	
+	///@Event 180=Frenzy Pole|+|Scenery|Frenzy|Pole|Length:4
+	{
+		jjOBJ@ preset = jjObjectPresets[180];
+		preset.behavior = FrenzyPole();
+		preset.bulletHandling = HANDLING::IGNOREBULLET;
+		preset.playerHandling = HANDLING::SPECIAL;
+		preset.scriptedCollisions = true;
+		
+		preset.curAnim = jjAnimSets[Threed::GetAnimSet()].allocate(array<uint>={16}).firstAnim;
+		preset.determineCurFrame();
+		
+		for (uint i = 0; i < 16; ++i) {
+			jjANIMFRAME@ frame = jjAnimFrames[jjAnimations[preset.curAnim] + i];
+			jjPIXELMAP image(2, (i+1) * 32);
+			for (uint y = 0; y < image.height; ++y)
+				image[0,y] = 16; //non-zero
+			image.save(frame);
+			frame.hotSpotY = -24;
+		}
+	}
+	
+	{
+		jjOBJ@ preset = jjObjectPresets[OBJECT::SWINGINGVINE];
+		preset.playerHandling = HANDLING::PARTICLE;
+		preset.behavior = Trapeze;
+		preset.curFrame = jjAnimations[jjAnimSets[Threed::GetAnimSet()].allocate(array<uint>={2})] - 1;
+		
+		jjPIXELMAP chain(1669);
+		jjPIXELMAP rotatedChain(8, 11);
+		for (uint x = 0; x < rotatedChain.width; ++x)
+			for (uint y = 0; y < rotatedChain.height; ++y) {
+				const uint8 color = chain[y + 1,x];
+				rotatedChain[x,y] = color == 0 ? 128 : color;
+			}
+		jjANIMFRAME@ frame = jjAnimFrames[preset.curFrame + 1];
+		rotatedChain.save(frame);
+		frame.hotSpotX = -4;
+		
+		jjPIXELMAP hpole(1673);
+		jjPIXELMAP flippedHPole(64, 3);
+		for (uint x = 0; x < 32; ++x)
+			for (uint y = 0; y < 3; ++y)
+				flippedHPole[x,y] = flippedHPole[63-x,y] = hpole[x,y+14];
+		@frame = jjAnimFrames[preset.curFrame + 2];
+		flippedHPole.save(frame);
+	}
+	
+	///@Event 79=Cars|+|Scenery|Cars
+	{
+		jjOBJ@ preset = jjObjectPresets[OBJECT::FASTFEET];
+		preset.behavior = CarSpawner;
+		preset.playerHandling = HANDLING::PARTICLE;
+	}
+	
+	
+	
+	///@Event 147=Gem Series|+|Gem|Gem|Series|Movement:{RingS,RingM,RingL,RingXL,Bouncy,HTrail,Ladder}5|Color:{Red,Green,Blue,RG,GB,RB,RGB,RGRB}3
+	{
+		jjOBJ@ preset = jjObjectPresets[147]; //strabby!
+		preset.behavior = function(o){ o.behavior = GemSeries(); };
+		preset.playerHandling = HANDLING::PARTICLE;
+		//preset.deactivates = false;
+		jjSampleLoad(SOUND::LABRAT_EYE2, "sfx_lumking_picked.wav");
+	}
+	
+	jjObjectPresets[OBJECT::RECTREDGEM].points = 0;
+	jjObjectPresets[OBJECT::RECTREDGEM].var[0] = 11; //black+1
+	
+	jjObjectPresets[OBJECT::REDGEM].behavior =
+	jjObjectPresets[OBJECT::GREENGEM].behavior =
+	jjObjectPresets[OBJECT::BLUEGEM].behavior =
+	jjObjectPresets[OBJECT::RECTREDGEM].behavior =
+	jjObjectPresets[OBJECT::SILVERCOIN].behavior =
+	jjObjectPresets[OBJECT::GOLDCOIN].behavior =
+	jjObjectPresets[OBJECT::FASTFIRE].behavior =
+		PermaPickup();
+		
+	jjObjectPresets[OBJECT::MOTH].playerHandling = HANDLING::PARTICLE; //sure
+		
+	jjObjectPresets[OBJECT::CARROT].behavior = 
+	jjObjectPresets[OBJECT::ICEPOWERUP].behavior = MyIcePowerup();
+	jjObjectPresets[OBJECT::ICEPOWERUP].playerHandling = HANDLING::PICKUP;
+	jjObjectPresets[OBJECT::ICEPOWERUP].scriptedCollisions = true;
+	jjObjectPresets[OBJECT::ICEPOWERUP].counter = 5 * 70;
+	
+	///@Event 234=Trigger Scenery                 |+|Trigger   |Trig   |Scen   |TriggerID:5|NoPulse:c1
+	{
+		jjObjectPresets[OBJECT::TRIGGERCRATE].behavior = OrangePurpleTriggerCrate;
+		jjObjectPresets[OBJECT::TRIGGERSCENERY].behavior = OrangePurpleTriggerScenery;
+		jjANIMFRAME@ triggerCrateFrame = jjAnimFrames[jjObjectPresets[OBJECT::TRIGGERCRATE].curFrame];
+		array<uint8> recolor(256);
+		for (uint8 i = 64; i <= 71; ++i)
+			recolor[i] = i;
+		recolor[15] = 72;
+		jjPIXELMAP(triggerCrateFrame).recolor(recolor).save(triggerCrateFrame);
+	}
+	
+	if (true) {
+		for (int x = jjLayerWidth[4]; --x >= 0;)
+			for (int y = jjLayerHeight[4]; --y >= 0;) {
+					auto eventID = jjEventGet(x,y);
+					if (eventID == OBJECT::MOTH) {
+							if (jjRandom() & 1 == 1)
+								jjParameterSet(x,y,0,2,3);
+					} else {
+						switch (eventID) {
+							case OBJECT::GEMRING: { //unused
+								int multiplier = 0;
+								switch (jjParameterGet(x,y, 10, 8)) {
+									case 0:
+									case OBJECT::REDGEM:
+									case OBJECT::PURPLEGEM: //?
+										multiplier = 1;
+										break;
+									case OBJECT::GREENGEM:
+										multiplier = 5;
+										break;
+									case OBJECT::BLUEGEM:
+										multiplier = 10;
+										break;
+								}
+								int count = jjParameterGet(x,y, 0, 5);
+								if (count == 0) count = 8;
+								NumberOfGems += count * multiplier;
+								break; }
+							case OBJECT::GEMBARREL:
+								//jjEventSet(x,y, OBJECT::GEMCRATE); //debug
+							case OBJECT::GEMCRATE:
+							if (jjGameConnection == GAME::LOCAL) {
+								NumberOfGems +=
+									jjParameterGet(x,y, 0,4) * 1 +
+									jjParameterGet(x,y, 4,4) * 5 +
+									jjParameterGet(x,y, 8,4) * 10+
+									jjParameterGet(x,y,12,4) * 1
+								;
+								break;
+							} else {
+								jjEventSet(x,y, OBJECT::REDGEM); //let's not try to sync barrels
+								//fall through
+							}
+							case OBJECT::REDGEM:
+							case OBJECT::PURPLEGEM:
+								NumberOfGems += 1;
+								break;
+							case OBJECT::GREENGEM:
+								NumberOfGems += 5;
+								break;
+							case OBJECT::BLUEGEM:
+								NumberOfGems += 10;
+								break;
+							case OBJECT::SILVERCOIN:
+							case OBJECT::GOLDCOIN:
+								NumberOfCoins += (eventID == OBJECT::SILVERCOIN) ? 1 : 5;
+								CoinLocations.insertLast(CoinLocation(x, y, jjParameterGet(x,y,0,4)));
+								break;
+							case OBJECT::STRAWBERRY: {
+								const int numberOfGemsInSeries = GemSeriesPatternGemCount[jjParameterGet(x,y,0,5)];
+								const array<int>@ distribution = GemSeriesCountDistribution[jjParameterGet(x,y,5,3)];
+								for (int i = 0; i < numberOfGemsInSeries; ++i)
+									NumberOfGems += distribution[i % distribution.length];
+								break; }
+							default:
+								continue;
+						}
+						GemLocations.insertLast(uint32(x) | (uint32(y) << 16));
+					}
+				}
+		//jjDebug("Gems: " + NumberOfGems);
+		NumberOfGems -= 10; //cheat a little, give partial credit
+	}
+	
+	CoinLocations.sortAsc();
+	//for (uint i = 0; i < CoinLocations.length; ++i)
+	//	jjPrint(CoinHints[CoinLocations[i].idx]);
+	
+	jjWeapons[WEAPON::BOUNCER].replacedByShield = true;
+	jjWeapons[WEAPON::GUN9].replacedByShield = true;
+	jjObjectPresets[OBJECT::FIRESHIELDBULLET].behavior = function(obj) {
+		switch(jjPlayers[obj.creatorID].currWeapon) {
+			case WEAPON::BOUNCER:
+				obj.yAcc = 0.1;
+				obj.behavior = function(obj) {
+					if (obj.state == STATE::EXPLODE) {
+						if (obj.counterEnd != 0) {
+							obj.state = STATE::FLY;
+							obj.counterEnd = 0;
+						}
+						obj.behave(BEHAVIOR::BULLET);
+					} else {
+						obj.direction = obj.xSpeed >= 0 ? 1 : -1;
+						obj.behave(BEHAVIOR::BOUNCERBULLET);
+					}
+				};
+				break;
+			case WEAPON::GUN9:
+				obj.behavior = function(obj) {
+					if (obj.counterEnd != 0)
+						obj.counter = 0;
+					obj.behave(BEHAVIOR::BULLET, false);
+					obj.frameID = jjGameTicks / 4;
+					obj.determineCurFrame();
+					obj.draw();
+					obj.counterEnd -= 1;
+				};
+				break;
+			default:
+				obj.behavior = BEHAVIOR::BULLET;
+				break;
+		}
+		obj.behave();
+	};
+	
+	jjPIXELMAP(2153).trim().save(jjAnimFrames[jjAnimations[jjAnimSets[ANIM::BRIDGE] + 5]]); //pumpkin bridge
+	
+	uint skyrunnerTypeFrames, skyrunnerTypeAnimations;
+	
+	///@Event 83=Checkpoint                       |+|SignPost  |Save   |Point|SkyrunnerX:-5|SkyrunnerY:-5
+	{
+		jjOBJ@ preset = jjObjectPresets[OBJECT::SAVEPOST];
+		preset.behavior = Skyrunner;
+		preset.deactivates = false;
+	
+		preset.var[1] = skyrunnerTypeFrames = jjAnimations[skyrunnerTypeAnimations = jjAnimSets[Threed::GetAnimSet()].allocate(array<uint>={5, 3}).firstAnim];
+		jjANIMFRAME@ frame = jjAnimFrames[preset.var[1]];
+		jjPIXELMAP(9 * 32, 0, 128, 96, pixelmapSourceLayerID).trim().save(frame);
+		frame.hotSpotX = int16(frame.width) / -2;
+		frame.hotSpotY = int16(frame.height) / -2;
+	}
+	
+	jjIsSnowing = false;
+	const jjPIXELMAP empty(1,1);
+	empty.save(jjAnimFrames[jjAnimations[jjAnimSets[ANIM::PLUS_SCENERY] + 4] + 22]); //meleesword fix t_t
+	empty.save(jjAnimFrames[jjAnimations[jjAnimSets[ANIM::PLUS_SCENERY] + 4] + 23]);
+	
+	jjAnimations[jjAnimSets[ANIM::JAZZ] + RABBIT::TELEPORT].frameCount += 15; //make skyrunner animation longer
+	jjAnimations[jjAnimSets[ANIM::SPAZ] + RABBIT::TELEPORT].frameCount += 15;
+	if (jjIsTSF) {
+		jjAnimations[jjAnimSets[ANIM::LORI] + RABBIT::TELEPORT].frameCount += 15;
+	}
+	
+	{
+		array<uint8> recolor(256);
+		for (uint i = 1; i <= 255; ++i)
+			recolor[i] = i;
+		for (uint8 i = 40; i <= 47; ++i)
+			recolor[i] = i - 8; //orange to blue, to match the other skyrunner bullets
+		recolorAnimation(jjAnimations[jjObjectPresets[OBJECT::RFBULLET].curAnim], recolor);
+		
+		jjOBJ@ preset = jjObjectPresets[OBJECT::BAT];
+		preset.determineCurAnim(ANIM::BAT, 0);
+		preset.behavior = MrBatty;
+		preset.energy = 5;
+		preset.points = 200;
+		for (uint8 i = 88; i <= 95; ++i)
+			recolor[i] = i - 8; //purple to devan green
+		recolorAnimation(jjAnimations[jjObjectPresets[OBJECT::BAT].curAnim], recolor);
+	
+		for (uint8 i = 40; i <= 47; ++i)
+			recolor[i] = i + 40;
+		recolorAnimation(jjAnimations[jjAnimSets[ANIM::PLUS_SCENERY] + 1], recolor);
+	}
+	
+	{
+		jjOBJ@ preset = jjObjectPresets[OBJECT::FLOATSUCKER];
+		preset.behavior = SmilinSphere;
+		preset.energy = 1; //very easy
+		preset.points = 1500;
+		preset.curFrame = ++skyrunnerTypeFrames;
+		jjANIMFRAME@ frame = jjAnimFrames[preset.curFrame];
+		jjPIXELMAP(0, 64, 64, 64, pixelmapSourceLayerID).trim().save(frame);
+		frame.hotSpotX = int16(frame.width) / -2;
+		frame.hotSpotY = int16(frame.height) / -2;
+	}
+	
+	{
+		jjOBJ@ preset = jjObjectPresets[OBJECT::RAVEN];
+		preset.determineCurAnim(ANIM::RAVEN, 1);
+		preset.behavior = SpitefulCrow;
+		preset.energy = 8;
+		preset.points = 500;
+	}
+	
+	{
+		jjOBJ@ preset = jjObjectPresets[OBJECT::SUCKER];
+		preset.behavior = ThunderMite;
+		preset.energy = 11;
+		preset.points = 2500;
+		preset.curFrame = ++skyrunnerTypeFrames;
+		jjANIMFRAME@ frame = jjAnimFrames[preset.curFrame];
+		jjPIXELMAP(0, 128, 64, 64, pixelmapSourceLayerID).trim().save(frame);
+		frame.hotSpotX = int16(frame.width) / -2;
+		frame.hotSpotY = int16(frame.height) / -2;
+		@frame = jjAnimFrames[preset.special = ++skyrunnerTypeFrames];
+		jjPIXELMAP(2106).save(frame);
+		frame.hotSpotX = int16(frame.width) / -2;
+		@frame = jjAnimFrames[++skyrunnerTypeFrames];
+		jjPIXELMAP(2096).save(frame);
+		frame.hotSpotX = int16(frame.width) / -2;
+	}
+	
+	{
+		jjOBJ@ preset = jjObjectPresets[OBJECT::FENCER];
+		preset.curAnim = skyrunnerTypeAnimations + 1;
+		preset.curFrame = jjAnimations[preset.curAnim];
+		preset.behavior = PogoPunk;
+		preset.energy = 5;
+		preset.points = 800;
+		const array<int16> hotSpotsX = {-44, -40, -37};
+		const array<int16> hotSpotsY = {-40, -38, -38};
+		for (uint i = 0; i < 3; ++i) {
+			jjANIMFRAME@ frame = jjAnimFrames[preset.curFrame + i];
+			jjPIXELMAP(64 + i * 64, 64, 64, 64, pixelmapSourceLayerID).save(frame);
+			frame.hotSpotX = hotSpotsX[i];
+			frame.hotSpotY = hotSpotsY[i];
+		}
+	}
+	
+	//jjLAYER@ Mez03 = MLLE::GetLayer("Mez03");
+	/*jjPIXELMAP(0,0, Mez03.width * 32, Mez03.height * 32, Mez03).resize(256,256).makeTexture(Mez03);
+	Mez03.textureStyle = TEXTURE::CYLINDER;
+	Mez03.cylinder.fade = false;
+	Mez03.cylinder.halfSize = false;
+	Mez03.textureSurface = SURFACE::FULLSCREEN;
+	Mez03.spriteMode = SPRITE::NORMAL;*/
+	
+	array<jjLAYER@> allDiamonds;
+	const array<uint8> diamondColors = {113, 112, 114, 135, 92, 170, 133};
+	for (uint i = 0; i < diamondColors.length; ++i) {
+		jjLAYER diamonds(1,1);
+		array<uint8> recolor(256);
+		for (uint j = 0; j < diamondColors.length; ++j)
+			recolor[diamondColors[j]] = diamondColors[j == i ? i : 0];
+		jjPIXELMAP(64,128,256,256, pixelmapSourceLayerID).recolor(recolor).makeTexture(diamonds);
+		diamonds.textureStyle = TEXTURE::WAVE;
+		diamonds.wave.amplitudeX = 0.125;
+		diamonds.wave.amplitudeY = 0.0625;
+		diamonds.wave.wavelengthX = diamonds.wave.wavelengthY = 255;
+		diamonds.wave.waveSpeed = 1;
+		diamonds.textureSurface = SURFACE::FULLSCREEN;
+		diamonds.xSpeedModel = diamonds.ySpeedModel = LAYERSPEEDMODEL::BOTHSPEEDS;
+		diamonds.xSpeed = diamonds.ySpeed = 0.15;// + i / 50.f;
+		diamonds.xAutoSpeed = 0.12 + i / 20.f;
+		//if (i != 6) {
+			diamonds.spriteMode = SPRITE::CHROMAKEY;
+			diamonds.spriteParam = 113;
+		//}
+		allDiamonds.insertLast(@diamonds);
+	}
+	
+	@Fog = jjLAYER(1,1);
+	Fog.xSpeed = 0.6;
+	Fog.ySpeed = 0.5;
+	Fog.spriteMode = SPRITE::BLEND_NORMAL;
+	Fog.spriteParam = 50;
+	Fog.textureSurface = SURFACE::FULLSCREEN;
+	Fog.textureStyle = TEXTURE::WAVE;
+	Fog.texture = TEXTURE::MEDIVO;
+	Fog.wave.amplitudeX = 0.25;
+	Fog.wave.amplitudeY = 0.125;
+	Fog.wave.wavelengthX  = Fog.wave.wavelengthY = 255;
+	Fog.wave.waveSpeed = 2;
+	
+	@Crepuscular = jjLAYER(1, 38);
+	Crepuscular.tileWidth = true;
+	Crepuscular.xSpeedModel = Crepuscular.ySpeedModel = LAYERSPEEDMODEL::SPEEDMULTIPLIERS;
+	Crepuscular.spriteMode = SPRITE::TRANSLUCENT;
+	Crepuscular.textureSurface = SURFACE::INNERLAYER;
+	Crepuscular.xInnerSpeed = 1;
+	Crepuscular.yInnerSpeed = 0;
+	Crepuscular.xInnerAutoSpeed = 0;
+	Crepuscular.yInnerAutoSpeed = 0.3;
+	Crepuscular.textureStyle = TEXTURE::CYLINDER;
+	Crepuscular.texture = TEXTURE::XARGON;
+	Crepuscular.cylinder.fade = true;
+	Crepuscular.cylinder.halfSize = true;
+	
+	jjLAYER diamondus2(MLLE::GetLayer("Diamondus"));
+	jjLAYER diamondus3(diamondus2);
+	diamondus2.xSpeed = 0.3;
+	diamondus2.ySpeed = 1.1;
+	diamondus2.yAutoSpeed = 0.5;
+	diamondus2.spriteMode = SPRITE::TINTED;
+	diamondus2.spriteParam = 202;
+	diamondus3.xSpeed = 0.338;
+	diamondus3.ySpeed = 1.23;
+	diamondus3.yAutoSpeed = 0.57;
+	diamondus3.spriteMode = SPRITE::TINTED;
+	diamondus3.spriteParam = 220;
+	diamondus3.xOffset = 100;
+	/*array<uint8> mapping(256);
+	for (uint i = 144; i <= 239; ++i)
+		mapping[i] = (i & 15) + 216;
+	jjSpriteModeSetMapping(0, mapping);*/
+	
+	@Bushes = MLLE::GetLayer("Bushes");
+	@Clouds2 = jjLAYER(MLLE::GetLayer("Clouds"));
+	Clouds2.yOffset -= 100;
+	Clouds2.xAutoSpeed = 0.8;
+	Clouds2.spriteMode = SPRITE::PALSHIFT;
+	Clouds2.spriteParam = 16;
+	
+	jjLAYER basicPink(4,1);
+	basicPink.tileWidth = basicPink.tileHeight = true; //works even if textures are disabled
+	basicPink.xSpeed = basicPink.ySpeed = 1; //works even if low detail is on
+	basicPink.generateSettableTileArea();
+	for (int x = 0; x < 4; ++x)
+		basicPink.tileSet(x, 0, 2123);
+	
+	jjPIXELMAP mapImage("ThreedMap.png");
+	if (mapImage.width == 256 && mapImage.height == 256) {
+		@MapLayer = jjLAYER(8,8);
+		MapLayer.xSpeedModel = MapLayer.ySpeedModel = LAYERSPEEDMODEL::SPEEDMULTIPLIERS;
+		MapLayer.xSpeed = MapLayer.ySpeed = MapLayer.xAutoSpeed = MapLayer.yAutoSpeed = 0.5;
+		MapLayer.xOffset = MapLayer.yOffset = 128;
+		MapLayer.textureSurface = SURFACE::INNERLAYER;
+		MapLayer.textureStyle = TEXTURE::WAVE;
+		MapLayer.xInnerSpeed = 
+		MapLayer.yInnerSpeed = 
+		MapLayer.xInnerAutoSpeed = 
+		MapLayer.yInnerAutoSpeed = 0;
+		MapLayer.wave.amplitudeX = MapLayer.wave.amplitudeY = 0.025;
+		MapLayer.wave.wavelengthX = MapLayer.wave.wavelengthY = 255;
+		MapLayer.wave.waveSpeed = 1;
+		mapImage.makeTexture(MapLayer);
+		@MapHolder = jjLAYER(4,1);
+		MapHolder.tileWidth = MapHolder.tileHeight = true;
+		MapHolder.generateSettableTileArea();
+		for (int x = 0; x < 4; ++x)
+			MapHolder.tileSet(x, 0, 1600);
+	}
+	
+	LayersNormal = jjLayerOrderGet();
+	
+	if (jjLocalPlayerCount == 1) {
+		MLLE::GetLayer("Hide the Jungle").hasTiles =
+		MLLE::GetLayer("Hide the Circus").hasTiles = true;
+	} else {
+		LayersNormal.removeAt(LayersNormal.findByRef(MLLE::GetLayer("Hide the Circus")));
+	}
+	LayersNormal.removeAt(LayersNormal.findByRef(MLLE::GetLayer("Hide the Jungle")));
+	
+	LayersNormal.insertAt(0, Fog);
+	LayersNormal.insertAt(LayersNormal.findByRef(Bushes) + 1, Crepuscular);
+	LayersNormal.insertAt(LayersNormal.findByRef(Bushes) + 2, diamondus2);
+	LayersNormal.insertAt(LayersNormal.findByRef(Bushes) + 2, diamondus3);
+	LayersNormal.insertAt(LayersNormal.findByRef(MLLE::GetLayer("Clouds")), Clouds2);
+	LayersNormal.removeAt(LayersNormal.findByRef(jjLayers[pixelmapSourceLayerID]));
+	//LayersNormal.removeAt(LayersNormal.findByRef(Mez03));
+	LayersNormal.removeAt(LayersNormal.findByRef(jjLayers[2])); //scaffolding
+	
+	LayersCircus = array<jjLAYER@> = { Fog, MLLE::GetLayer("Hide the Jungle"), jjLayers[3], jjLayers[4], jjLayers[5], jjLayers[6], jjLayers[2] };
+	for (uint i = 0; i < allDiamonds.length; ++i)
+		LayersCircus.insertLast(allDiamonds[i]);
+	LayersCircus.insertLast(basicPink);
+	
+	if (MapLayer !is null) {
+		//MapLayer.hasTiles = false;
+		LayersNormal.insertAt(0, MapHolder);
+		LayersCircus.insertAt(0, MapHolder);
+		LayersNormal.insertAt(0, MapLayer);
+		LayersCircus.insertAt(0, MapLayer);
+	}
+	
+	jjLayerOrderSet(LayersNormal);
+	
+	if (jjAnimSets[ANIM::SKELETON] == 0)
+		jjAnimSets[ANIM::SKELETON].load(); //for the background
+	
+	
+	const jjANIMATION@ booth = jjAnimations[jjAnimSets[ANIM::BONUS].load(
+		jjPIXELMAP("BurgerBooth.png"),
+		43, 58,
+		firstAnimToOverwrite: jjAnimSets[ANIM::BONUS],
+		firstFrameToOverwrite: jjAnimations[jjAnimSets[ANIM::BONUS]]
+	)];
+	for (uint i = 0; i < booth.frameCount; ++i) {
+		jjANIMFRAME@ frame = jjAnimFrames[booth + i];
+		frame.hotSpotX = -23; //original hotspot values, won't hurt even if load() failed
+		frame.hotSpotY = -42;
+	}
+	int coinTarget;
+	if (jjDifficultyOrig <= 0)
+		coinTarget = NumberOfCoins - (5 + 1); //don't require skyrunner
+	else if (jjDifficultyOrig == 1)
+		coinTarget = NumberOfCoins - 2;
+	else if (jjDifficultyOrig == 2)
+		coinTarget = NumberOfCoins - 1;
+	else
+		coinTarget = NumberOfCoins;
+	jjParameterSet(64,238, 8,8, coinTarget);
+	jjObjectPresets[OBJECT::WARP].behavior = BurgerBooth;
+	jjObjectPresets[OBJECT::BURGER].behavior = SlotsBurger;
+	
+	if (jjDifficultyOrig <= 0)
+		jjEventSet(183,275, OBJECT::BLUESPRING);
+	
+	if (jjDifficultyOrig < 3 && jjGameConnection == GAME::LOCAL) //can count on smelly ghosts as buttstomp opportunities
+		jjEventSet(176,165, 0); //get rid of the alternate growable tree route to that one coin
+	
+	//onFunction1(true); //circus layers debug
+	//jjEventSet(125,26, AREA::JAZZSTART); //skyrunner debug
+	/*if (jjLocalPlayerCount != 1) { //coop debug
+		jjEventSet(124,240, AREA::JAZZSTART);
+		jjTriggers[20] = jjTriggers[21] = true;
+	}*/
+	
+	for (int localPlayerID = 0; localPlayerID < jjLocalPlayerCount; ++localPlayerID)
+		jjLocalPlayers[localPlayerID].direction = -1; //look outside of the tunnel
+}
+void recolorAnimation(jjANIMATION@ anim, const array<uint8> &in recolor) {
+	for (uint frameID = 0; frameID < anim.frameCount; ++frameID) {
+		jjANIMFRAME@ frame = jjAnimFrames[anim + frameID];
+		jjPIXELMAP(frame).recolor(recolor).save(frame);
+	}
+	
+}
+void onLevelReload() {
+	MLLE::ReapplyPalette();
+	Threed::ReloadPuppets();
+	LimitCameraSize(false);
+	if (!(jjTriggers[10] = SkyrunnerStage == 2)) {
+		jjObjectPresets[OBJECT::ICEBULLET].var[0] = 0;
+		//SkyrunnerStage = 0;
+	}
+	onFunction1(false);
+	for (uint i = 0; i < 32; ++i)
+		jjTriggers[i] = SavedTriggers[i];
+}
+void onLevelBegin() {
+	jjSugarRushAllowed = true;
+}
+
+void RecursivePlatform(jjOBJ@ obj) {
+	if (obj.state == STATE::START) {
+		if (obj.creatorType == CREATOR::LEVEL) {
+			const uint xTile = uint(obj.xOrg) >> 5, yTile = uint(obj.yOrg) >> 5;
+			int speed = jjParameterGet(xTile, yTile, 2, -6);
+			const int maxSpeed = jjDifficultyOrig * 2 + 2;
+			if (abs(speed) > maxSpeed) {
+				speed = speed < 0 ? -maxSpeed : maxSpeed;
+				jjParameterSet(xTile, yTile, 2, -6, speed);
+			}
+			obj.curAnim = 1;
+			obj.var[6] = jjAddObject(obj.eventID, obj.xOrg, obj.yOrg, obj.objectID, CREATOR::OBJECT);
+			if (obj.xOrg < 200) //eww
+				obj.xOrg += 15; //wow what a hack
+		} else {
+			obj.deactivates = false;
+			obj.behave(BEHAVIOR::PLATFORM, false);
+			obj.var[1] = int(obj.var[1] * -1.5);
+			return;
+		}
+	}
+	if (obj.creatorType == CREATOR::OBJECT) {
+		const jjOBJ@ creator = jjObjects[obj.creatorID];
+		if (!creator.isActive || creator.var[6] != obj.objectID) {
+			obj.delete();
+			return;
+		}
+		obj.xOrg = creator.xPos;
+		obj.yOrg = creator.yPos;
+	}
+	obj.behave(BEHAVIOR::PLATFORM, true);
+	//jjDrawSpriteFromCurFrame(obj.xOrg, obj.yOrg, jjAnimations[obj.killAnim], 1, SPRITE::PALSHIFT, 80);
+}
+
+void GhostBumper(jjOBJ@ obj) {
+	if (obj.state == STATE::DEACTIVATE) {
+		obj.eventID = 146;
+		obj.deactivate();
+		return;
+	} else if (obj.state == STATE::START) {
+		obj.age += jjParameterGet(uint(obj.xOrg) >> 5, uint(obj.yOrg) >> 5, 0,1);
+		obj.var[6] = jjRandom() & 1023;
+	}
+	
+	jjDrawRotatedSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame + 1, obj.var[6]);
+	if (obj.age == 2)
+		jjDrawRotatedSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame + 1, obj.var[6] ^ 512);
+	if (obj.freeze == 0)
+		obj.var[6] = obj.var[6] + 6;
+		
+	if (obj.state == STATE::ACTION) {
+		jjPLAYER@ hitPlayer = jjPlayers[obj.var[0]];
+		hitPlayer.buttstomp = 121;
+		hitPlayer.specialMove = 0;
+		hitPlayer.alreadyDoubleJumped = false;
+	}
+	obj.behave(BEHAVIOR::BUMP);
+	if (obj.state == STATE::BOUNCE) {
+		const int ghostAnim = obj.curAnim + 1;
+		if (obj.age == 2) {
+			obj.age = 1;
+			obj.var[5] = jjGameTicks + 20;
+			obj.points = 200; //again
+			obj.lightType = LIGHT::FLICKER;
+		} else if (jjGameTicks > obj.var[5]) {
+			jjSample(obj.xPos, obj.yPos, SOUND::COMMON_GEMSMSH1);
+			obj.curFrame -= 1;
+			obj.particlePixelExplosion(0);
+			obj.delete();
+		} else {
+			return;
+		}
+		
+		jjOBJ@ ghost = jjObjects[jjAddObject(OBJECT::SHARD, obj.xPos, obj.yPos)];
+		ghost.curAnim = ghostAnim;
+		ghost.playerHandling = HANDLING::EXPLOSION;
+		jjSample(obj.xPos, obj.yPos, SOUND::RAPIER_GOSTDIE, 63, 16000);
+	}
+}
+
+[SOLID]
+void MyBigRock(jjOBJ@ obj) {
+	if (obj.state == STATE::START) {
+		//obj.putOnGround(true);
+		obj.state = STATE::IDLE;
+		obj.var[0] = 0;
+	} else if (obj.state == STATE::DEACTIVATE) {
+		obj.clearPlatform();
+		if (obj.var[0] == 2) {
+			jjEventSet(uint(obj.xOrg) >> 5, uint(obj.yOrg) >> 5, 0);
+			obj.delete();
+		} else {
+			obj.deactivate();
+		}
+	} else {
+		const jjANIMFRAME@ frame = jjAnimFrames[obj.curFrame];
+		if (!jjMaskedHLine(
+			int(obj.xPos) + frame.hotSpotX,
+			frame.width,
+			int(obj.yPos) + frame.hotSpotY - frame.coldSpotY
+		)) {
+			obj.clearPlatform();
+			obj.yPos += (obj.ySpeed += 0.05);
+			if (obj.ySpeed > 4) obj.ySpeed = 5;
+			if (obj.var[0] == 1)
+				obj.var[0] = 2; //fell after being pushed
+		} else {
+			if (obj.var[0] == 2) {
+				obj.particlePixelExplosion(2);
+				jjEventSet(uint(obj.xOrg) >> 5, uint(obj.yOrg) >> 5, 0);
+				obj.clearPlatform();
+				obj.delete();
+				return;
+			}
+			const int pushDir = obj.beSolid() * 1;
+			if (!jjMaskedVLine(int(obj.xPos) +- frame.hotSpotX * pushDir, int(obj.yPos) + frame.hotSpotY, -frame.coldSpotY - 5)) {
+				bool foundPusher = false;
+				for (int i = 0; i < jjLocalPlayerCount; ++i) {
+					jjPLAYER@ play = jjLocalPlayers[i];
+					if (play.platform == obj.objectID && ((play.keyRight && pushDir > 0) || (play.keyLeft && pushDir < 0))) {
+						foundPusher = true;
+						jjLocalPlayers[i].xPos += pushDir;
+					}
+				}
+				if (foundPusher) {
+					obj.xPos += pushDir;
+					if (obj.var[0] == 0)
+						obj.var[0] = 1;
+				}
+			}
+		}
+		obj.draw();
+	}
+}
+
+const array<int> GrowableOriginOffsetsX = {
+	2, 0, -2, 0
+};
+const array<int> GrowableOriginOffsetsY = {
+	0, -2, 0, -2
+};
+const array<int> GrowableOriginStartAngles = {
+	512, 256, 0, 256
+};
+const array<int> GrowableOriginDeltaAngles = {
+	4, 4, -4, -4
+};
+void GrowableTree(jjOBJ@ obj) {
+	if (obj.state == STATE::DEACTIVATE) {
+		obj.deactivate();
+		return;
+	}
+	if (obj.state == STATE::START) {
+		const uint xEvent = uint(obj.xOrg) >> 5, yEvent = uint(obj.yOrg) >> 5;
+		obj.var[0] = jjParameterGet(xEvent,yEvent, 0, 5); //triggerID
+		obj.var[1] = jjParameterGet(xEvent,yEvent, 5, -4) * 32; //xTile
+		obj.var[2] = jjParameterGet(xEvent,yEvent, 9, 3) * 32; //yTile
+		obj.var[4] = jjParameterGet(xEvent,yEvent, 12, 4); //count
+		obj.state = STATE::DELAYEDSTART;
+		//obj.lightType = LIGHT::POINT2;
+	}
+	if (obj.state == STATE::DELAYEDSTART) {
+		if (jjTriggers[obj.var[0]]) {
+			obj.state = STATE::JUMP;
+			obj.deactivates = false;
+			obj.xOrg -= obj.var[1];
+			MoveOrg(obj);
+		}
+	}
+	if (obj.state == STATE::JUMP) {
+		obj.counter += obj.var[3];
+		obj.xPos = jjCos(obj.counter) * obj.var[1] + obj.xOrg;
+		obj.yPos = jjSin(obj.counter) * obj.var[2] + obj.yOrg;
+		if ((obj.counterEnd -= 1) == 0) {
+			if (obj.var[4] == 1 || obj.age & 1 == 0)
+				jjAddObject(obj.eventID, obj.xPos, obj.yPos - 20, obj.objectID, CREATOR::OBJECT, GrowablePlatform);
+			if ((obj.var[4] = obj.var[4] - 1) <= 0) {
+				obj.delete();
+				//return;
+			} else {
+				obj.age = (obj.age + 1) & 3;
+				MoveOrg(obj);
+			}
+		} 
+		if (obj.counterEnd & 15 == 0) {
+			jjAddObject(obj.eventID, obj.xPos, obj.yPos, obj.objectID, CREATOR::OBJECT, GrowableFoliage);
+		}
+	}
+}
+void MoveOrg(jjOBJ@ obj) {
+	obj.xOrg += GrowableOriginOffsetsX[obj.age] * obj.var[1];
+	obj.yOrg += GrowableOriginOffsetsY[obj.age] * obj.var[2];
+	obj.counter = GrowableOriginStartAngles[obj.age];
+	obj.counterEnd = 64;
+	obj.var[3] = GrowableOriginDeltaAngles[obj.age];
+}
+void GrowablePlatform(jjOBJ@ obj) {
+	if (obj.state == STATE::START) {
+		obj.curFrame += 1;
+		obj.state = STATE::FLY;
+	}
+	obj.bePlatform(obj.xPos, obj.yPos);
+	jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame);
+}
+void GrowableFoliage(jjOBJ@ obj) {
+	if (obj.state == STATE::START) {
+		obj.state = STATE::BOUNCE;
+		obj.var[0] = ((jjRandom() & 1) * 2) - 1;
+		obj.var[1] = ((jjRandom() & 1) * 2) - 1;
+		obj.direction = obj.var[0];
+		if (obj.var[1] == -1)
+			obj.direction ^= 0x40;
+	}
+	if (obj.counter++ < 17) {
+		if (obj.counter < 15)
+			obj.xSpeed += 0.1;
+		else
+			obj.xSpeed -= 0.1;
+		jjDrawResizedSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, obj.xSpeed * obj.var[0],obj.xSpeed * obj.var[1], SPRITE::NORMAL,0, 3);
+	} else
+		jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, obj.direction, SPRITE::NORMAL,0, 3);
+}
+
+class PlayerX {
+	int NextCanJumpOnPoleTime = -70;
+	int LastPoleObjectID = -1;
+	float PoleJumpXSpeed;
+	bool PoleJumping = false;
+	bool CanJumpOffPole;
+	int PoleAngle;
+	int LastHealth = 0;
+	uint8 NumberOfBurgers, BurgerSequence = 0;
+	uint TunnelGhostSequence = 0;
+}
+array<PlayerX> PlayersX(jjLocalPlayerCount);
+class FrenzyPole : jjBEHAVIORINTERFACE {
+	void onBehave(jjOBJ@ obj) {
+		if (obj.state == STATE::START) {
+			obj.curFrame += jjParameterGet(uint(obj.xOrg) >> 5, uint(obj.yOrg) >> 5, 0, 4); //length
+			obj.state = STATE::WAIT;
+		} else if (obj.state == STATE::DEACTIVATE) {
+			obj.deactivate();
+		} else {
+		}
+	}
+	bool onObjectHit(jjOBJ@ obj, jjOBJ@ bullet, jjPLAYER@ play, int force) {
+		if (bullet is null) {
+			PlayerX@ playX = PlayersX[play.localPlayerID];
+			if (jjGameTicks >= playX.NextCanJumpOnPoleTime || playX.LastPoleObjectID == obj.objectID) {
+				if (playX.LastPoleObjectID != obj.objectID) {
+					playX.PoleAngle = (play.xPos < obj.xPos) ? 512 : 0;
+					playX.LastPoleObjectID = obj.objectID;
+					playX.CanJumpOffPole = false;
+				}
+				playX.NextCanJumpOnPoleTime = jjGameTicks + 20;
+				
+				//animation is 11 frames long, but the last is a mirror version of the first
+			}
+		}
+		return true;
+	}
+}
+
+bool ViewingMap = false, ViewedMap = false;
+
+const int shmupLeftBorder = (jjLayerWidth[4] - (800 / 32) - 1) * 32;
+const int shmupRightBorder = shmupLeftBorder + 800;
+const int shmupBottomBorder = 450 / 32 * 32;
+void onPlayer(jjPLAYER@ play) {
+	//jjDrawString(play.xPos, play.yPos - 50, "" + (jjParameterGet(int(play.xPos) >> 5, int(play.yPos) >> 5, -1, 1)));
+	MLLE::WeaponHook.processPlayer(play);
+	PlayerX@ playX = PlayersX[play.localPlayerID];
+	if (playX.LastHealth > play.health) { //hurt
+		if (playX.LastPoleObjectID > 0) {
+			play.keyJump = true;
+		}
+		playX.NextCanJumpOnPoleTime = jjGameTicks + 40;
+	}
+	play.lives = 3;
+	play.coins = CollectedCoins;
+	playX.LastHealth = play.health;
+	
+	if (play.localPlayerID == 0) { //poor man's onMain
+		if (Fog.hasTiles = Crepuscular.hasTiles = jjColorDepth >= 16 && SkyrunnerStage <= 2) {
+			if (Fog.spriteParam < DesiredFogSpriteParam)
+				Fog.spriteParam = Fog.spriteParam + 1;
+			else if (Fog.spriteParam > DesiredFogSpriteParam)
+				Fog.spriteParam = Fog.spriteParam - 1;
+			Fog.hasTiles = Fog.spriteParam != 0;
+		}
+		
+		if (MapLayer !is null) {
+			if (MapLayer.hasTiles = MapHolder.hasTiles = ViewingMap = jjKey[9]) {
+				if (!ViewedMap) {
+					ViewedMap = true;
+					jjHelpStrings[8] = jjHelpStrings[4];
+				}
+			}
+		}
+		jjLayerTileHeight[8] = jjLowDetail; //don't draw more pixel rows of the sky than needed
+	}
+	
+	if (ViewingMap) {
+		play.showText("");
+	} else if (ShowGemArrow && GemLocations.length() != 0) {
+		array<int> possibleTargets(GemLocations.length * 2);
+		for (uint i = 0; i < GemLocations.length; ++i) {
+			possibleTargets[i * 2 + 0] = (GemLocations[i] & 0xFFFF) * 32 + 16;
+			possibleTargets[i * 2 + 1] = (GemLocations[i] >> 16) * 32 + 16;
+		}
+		ArtificialArrow::DrawArrow(possibleTargets, play, SPRITE::SINGLEHUE, 48);
+	}
+	
+	if (play.fly == FLIGHT::AIRBOARD) {
+		if (play.yPos < 640) {
+			if (play.xPos < shmupLeftBorder) {
+				play.xPos = shmupLeftBorder;
+				play.xSpeed = 0;
+			} else if (play.xPos > shmupRightBorder) {
+				play.xPos = shmupRightBorder;
+				play.xSpeed = 0;
+			}
+			
+			int cameraX = int(play.xPos) - jjSubscreenWidth / 2;
+			if (cameraX < shmupLeftBorder)
+				cameraX = shmupLeftBorder;
+			else if (cameraX + jjSubscreenWidth > shmupRightBorder)
+				cameraX = shmupRightBorder - jjSubscreenWidth;
+			
+			int cameraY = int(play.yPos) - jjSubscreenHeight / 2;
+			if (cameraY < 0)
+				cameraY = 0;
+			else if (cameraY + jjSubscreenHeight > shmupBottomBorder)
+				cameraY = shmupBottomBorder - jjSubscreenHeight;
+			
+			play.cameraFreeze(cameraX, cameraY, false, true);
+			
+			if (play.powerup[WEAPON::ICE]) {
+				jjObjectPresets[OBJECT::ICEBULLET].var[0] =
+				jjObjectPresets[OBJECT::ICEBULLET].var[0] + 1;
+				play.powerup[WEAPON::ICE] = false;
+			}
+			
+			if (play.currWeapon == WEAPON::BLASTER || play.currWeapon == WEAPON::GUN9)
+				play.currWeapon = WEAPON::ICE;
+			else if (play.currWeapon == WEAPON::BOUNCER)
+				play.currWeapon = WEAPON::RF;
+			if (play.keyFire) {
+				play.keyFire = !play.keySelect && jjGameTicks & 15 == 0 && SkyrunnerStage >= 200 && SkyrunnerStage < 200000;// && play.curAnim != jjAnimSets[play.setID] + RABBIT::AIRBOARDTURN;
+				SzmolWeaponPack::LockOnMissile::PlayersX[play.localPlayerID].mCounterDelay = 0;
+			}
+			
+			if (play.blink == -206) {
+				if (jjDifficulty >= 1) { //don't reset on Easy
+				if (jjDifficulty >= 2 || jjObjectPresets[OBJECT::ICEBULLET].var[0] <= 1)
+					jjObjectPresets[OBJECT::ICEBULLET].var[0] = 0;
+				else
+					jjObjectPresets[OBJECT::ICEBULLET].var[0] =
+					jjObjectPresets[OBJECT::ICEBULLET].var[0] - 2;
+				}
+			}
+			
+			SpawnSkyrunnerEnemies();
+		} //else ascending
+		return;
+	}
+	//play.cameraUnfreeze(true);
+	
+	if (jjGameTicks % 56 == 34) { //no trees up in the sky
+		jjPARTICLE@ particle = jjAddParticle(PARTICLE::LEAF);
+		if (particle !is null) {
+			particle.xPos = play.cameraX + (jjRandom() % jjSubscreenWidth);
+			particle.yPos = play.cameraY;// + (jjRandom() % jjSubscreenHeight);
+			particle.leaf.noclip = true;
+		}
+	}
+	
+	if (playX.LastPoleObjectID > 0) {
+		if (!play.keyJump)
+			playX.CanJumpOffPole = true;
+		else if (!playX.CanJumpOffPole)
+			play.keyJump = false;
+		if (play.keyJump || play.keyFire) {
+			play.xSpeed = playX.PoleJumpXSpeed = jjCos(playX.PoleAngle) * 6;
+			if (play.keyJump)
+				play.ySpeed = -9;
+			play.doubleJumpCount = 0;
+			playX.PoleJumping = true;
+			playX.LastPoleObjectID = -1;
+		} else if (!play.doesCollide(jjObjects[playX.LastPoleObjectID], false)) { //slid off bottom
+			playX.LastPoleObjectID = -1;
+			return;
+		} else {
+			play.ySpeed = 0.25;
+			play.xSpeed = 0;
+			play.keyLeft = play.keyRight = play.keyDown = false;
+			playX.PoleAngle += (play.keyRun ? 9 : 6);
+			play.xPos = jjObjects[playX.LastPoleObjectID].xPos;
+			play.helicopter = 0;
+		}
+		//jjDrawString(play.xPos, play.yPos - 20, "" + jjCos(playX.PoleAngle));
+		return;
+	}
+	
+	if (playX.PoleJumping) {
+		if (play.ySpeed >= 0)
+			playX.PoleJumping = false;
+		else {
+			play.xSpeed = playX.PoleJumpXSpeed;
+			play.keyLeft = play.keyRight = play.keyRun = false;
+		}
+	}
+	
+	const jjOBJ@ platform = jjObjects[play.platform];
+	if (platform.behavior == Trapeze) {
+		play.keyDown = play.keyUp = false;
+		play.idle = 0;
+		play.direction = (platform.xPos > platform.xOrg) ? 1 : -1;
+	}
+	
+	if (play.bossActivated) {
+		if (jjSubscreenWidth >= 576)
+			play.cameraFreeze(3520, true, true, true);
+		else
+			play.cameraFreeze(true, false, false, true);
+		return;
+	}
+	
+	if (playX.BurgerSequence != 0) {
+		play.keyLeft = play.keyRight = play.keyDown = false;
+		play.xAcc = play.yAcc = 0;
+		if (playX.BurgerSequence <= 100) {
+			if (playX.BurgerSequence++ == 100) {
+				play.ySpeed = 0; //stop rising
+				play.food = 0; //be safe
+				playX.NumberOfBurgers = 0;
+			}
+		} else {
+			if (play.food == 100) {
+				playX.BurgerSequence = 0;
+				play.noclipMode = false;
+				jjObjectPresets[OBJECT::BURGER].points = 0; //don't get 5000 points more than once
+				TunnelGhostsScaredUntil = jjGameTicks + 20 * 70;
+			} else if (jjGameTicks & 7 == 0 && playX.NumberOfBurgers != 50) {
+				const int angle = playX.NumberOfBurgers++ * 4096 / 50;
+				jjAddObject(OBJECT::BURGER, play.xPos, play.yPos, angle);
+				jjAddObject(OBJECT::BURGER, play.xPos, play.yPos, angle + 512);
+			}
+		}
+		return;
+	}
+	
+	if (playX.TunnelGhostSequence != 0) {
+		++playX.TunnelGhostSequence;
+		play.idle = 0;
+		if (playX.TunnelGhostSequence == 50) {
+			for (uint i = 0; i < 4; ++i)
+				jjObjects[jjAddObject(169, (i < 2 ? 20 : 30) * 32, (238 + ((i & 1) * 3)) * 32, play.playerID,CREATOR::PLAYER, TunnelGhost)].counter = i * 50;
+		} else if (playX.TunnelGhostSequence == 270) {
+			play.lighting = 0;
+		} else if (playX.TunnelGhostSequence >= 350) {
+			play.keyLeft = play.keyRight = play.keyDown = play.keyUp = play.keyJump = play.keyFire = play.keyRun = false;
+			if (playX.TunnelGhostSequence == 370) {
+				jjSample(play.xPos, play.yPos, SOUND::SPAZSOUNDS_KARATE8, 0, 10000);
+			} else if (playX.TunnelGhostSequence == 500) {
+				playX.TunnelGhostSequence = 0;
+				play.lighting = 81;
+				play.warpToTile(41,241, true);
+				play.suckerTube(18, -15, true);
+				play.blink = 210;
+				if (jjLocalPlayerCount == 1)
+					jjMusicPlay();
+			}
+		}
+	}
+}
+
+void TunnelGhost(jjOBJ@ obj) {
+	const jjPLAYER@ player = jjPlayers[obj.creatorID];
+	const int sequence = PlayersX[player.localPlayerID].TunnelGhostSequence;
+	if (sequence == 0 || sequence >= 350) {
+		obj.delete();
+		return;
+	}
+	obj.age += 4;
+	obj.frameID = obj.age >> 4;
+	obj.determineCurFrame();
+	switch (obj.state) {
+		case STATE::START:
+		case STATE::IDLE:
+			obj.direction = obj.xPos > 25 * 32 ? -1 : 1;
+			obj.state = STATE::WAIT;
+			obj.playerHandling = HANDLING::PARTICLE;
+			break;
+		case STATE::DEACTIVATE:
+			obj.delete();
+			break;
+		case STATE::WAIT:
+			if (obj.counter == -50) {
+				obj.lightType = LIGHT::POINT2;
+				obj.light = 1;
+			}
+			if (--obj.counter <= 0) {
+				if (obj.counter > -50)
+					obj.xPos = obj.xOrg - (50 + obj.counter) * obj.direction;
+				jjDrawSpriteFromCurFrame(obj.xPos, obj.yOrg + jjSin(obj.age) * 8, obj.curFrame, obj.direction);
+			}
+			if (obj.age == 800) {
+				obj.state = STATE::ATTACK;
+				obj.counter = 0;
+			}
+			break;
+		case STATE::ATTACK:
+			obj.xPos = obj.xOrg - (obj.xOrg - player.xPos) * obj.counter / 100;
+			obj.yPos = obj.yOrg - (obj.yOrg - player.yPos) * obj.counter / 100;
+			++obj.counter;
+			jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos + jjSin(obj.age) * 4, obj.curFrame, obj.direction, layerZ: 3);
+			break;
+	}
+}
+
+void SlotsBurger(jjOBJ@ obj) {
+	if (obj.state == STATE::START) {
+		obj.state = STATE::FLY;
+		obj.age = obj.creatorID;
+		obj.counter = 160;
+	}
+	obj.counter -= 4;
+	obj.xPos = obj.xOrg + jjSin(obj.age) * obj.counter;
+	obj.yPos = obj.yOrg + jjCos(obj.age) * obj.counter;
+	jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, layerZ: 3);
+}
+
+void onPlayerDraw(jjPLAYERDRAW& draw) {
+	if (ViewingMap) {
+		draw.trail = false;
+		draw.lightType = LIGHT::NONE;
+	}
+	
+	if (!draw.sprite) //blinking
+		return;
+	
+	jjPLAYER@ play = draw.player;
+	
+	if (!play.isLocal) {
+		if (play.xPos > shmupLeftBorder && play.yPos < shmupBottomBorder) {
+			//draw.sprite = draw.trail = false; //don't show other players flying around.. well... it would be hard to understand where other players' bullets were coming from in that case.
+			draw.xScale = 1; //direction
+			draw.curFrame = jjObjectPresets[OBJECT::CHECKPOINT].var[1];
+			draw.spriteMode = SPRITE::NORMAL;
+			draw.gunFlash = false;
+		}
+		return; //don't worry about poles and things
+	}
+	
+	if (play.curAnim == jjAnimSets[play.setID] + RABBIT::TELEPORT && play.yPos > 700) { //being lifted up by the skyrunner
+		draw.sprite = false;
+		draw.airboardPuff = false;
+		draw.invincibility = false;
+		draw.lightType = LIGHT::NONE;
+		draw.shield[SHIELD::FIRE] = false;
+		return;
+	}
+		
+	if (draw.airboardBouncingMotion) {
+		draw.xScale = 1; //direction
+		draw.curFrame = jjObjectPresets[OBJECT::CHECKPOINT].var[1];
+		draw.spriteMode = SPRITE::NORMAL;
+		draw.gunFlash = false;
+		if (SkyrunnerStage < 200) {
+			draw.yOffset = (200 - SkyrunnerStage) * 2;
+			draw.lightType = LIGHT::NONE;
+		} else if (SkyrunnerStage > 200000) {
+			draw.yOffset = (SkyrunnerStage - 200000) * 2;
+			draw.lightType = LIGHT::NONE;
+			play.invincibility = -2;
+			if (SkyrunnerStage == 200200) {
+				SkyrunnerStage = 2;
+				LimitCameraSize(false);
+				play.cameraUnfreeze();
+				play.fly = FLIGHT::NONE;
+				play.ySpeed = 0;
+				play.currWeapon = WEAPON::BLASTER;
+				for (int weapon = 3; weapon <= 5; ++weapon)
+					play.ammo[weapon] = 0;
+				SkyrunnerLocations.insertLast(107 | (74 << 16)); //inaccessible checkpoint
+				const auto nextLocation = SkyrunnerLocations[SkyrunnerLocations.length - 1];
+				const auto nextX = nextLocation & 0xFFFF, nextY = nextLocation >> 16;
+				play.xPos = (nextX + jjParameterGet(nextX,nextY, 0, -5)) * 32 + 15;
+				play.yPos = (nextY + jjParameterGet(nextX,nextY, 5, -5)) * 32 + 15;
+				onFunction1(false);
+				setAutoscrollingSpeeds(false);
+			}
+		}
+		return;
+	}
+	
+	const uint localPlayerID = play.localPlayerID;
+	const PlayerX@ playX = PlayersX[localPlayerID];
+	if (playX.LastPoleObjectID >= 0) {
+		const jjANIMATION@ anim = jjAnimations[jjAnimSets[play.setID] + RABBIT::SWINGINGVINE];
+		if (!jjIsTSF || play.charCurr != CHAR::LORI) {
+			draw.curFrame = anim.firstFrame + (((playX.PoleAngle & 511) / 51));
+			draw.xScale = (playX.PoleAngle & 1023) < 512 ? -1 : 1;
+		} else { //Lori
+			draw.curFrame = anim.firstFrame + (((playX.PoleAngle & 1023) / 64));
+			draw.xScale = 1;
+		}
+		//draw.layer = (playX.PoleAngle & 1023) < 512 ? 5 : 4;
+	}
+	
+	else if (jjObjects[play.platform].behavior == Trapeze) {
+		const jjANIMATION@ anim = jjAnimations[jjAnimSets[play.setID] + RABBIT::TELEPORTFALLING];
+		draw.curFrame = anim.firstFrame + ((jjGameTicks >> 3) % anim.frameCount);
+		draw.yOffset = -(!jjIsTSF || play.charCurr != CHAR::LORI ? 12 : 5);
+	}
+	
+	if (Threed::PlayerOnFire[localPlayerID] && Threed::NextSuckerTime[localPlayerID] > jjGameTicks) {
+		draw.spriteMode = SPRITE::SINGLEHUE;
+		draw.spriteParam = 40; //orange
+		jjPARTICLE@ particle = jjAddParticle(PARTICLE::SMOKE);
+		if (particle !is null) {
+			particle.xPos = play.xPos;
+			particle.yPos = play.yPos;
+		}
+	}
+	
+	else if (playX.BurgerSequence != 0) {
+		draw.lightType = LIGHT::BRIGHT;
+		const jjANIMATION@ anim = jjAnimations[jjAnimSets[play.setID] + RABBIT::SPRING];
+		draw.curFrame = anim.firstFrame + ((jjGameTicks >> 3) % anim.frameCount);
+		draw.xScale = 1; //direction
+	}
+	else if (playX.TunnelGhostSequence >= 230) {
+		draw.lightType = LIGHT::NONE;
+		draw.trail = false;
+	}
+}
+
+void Trapeze(jjOBJ@ obj) {
+	if (obj.state == STATE::DEACTIVATE) {
+		obj.clearPlatform();
+		obj.deactivate();
+		return;
+	}
+	const auto lastX = obj.xPos, lastY = obj.yPos;
+	obj.xOrg += 64;
+	obj.behave(BEHAVIOR::SWINGINGVINE);
+	obj.xOrg -= 64;
+	const auto var2 = obj.var[2], var3 = obj.var[3];
+	obj.behave(BEHAVIOR::SWINGINGVINE);
+	obj.var[2] = var2; obj.var[3] = var3;
+	obj.yPos += 30;
+	jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos - 50, obj.curFrame += 2);
+	obj.bePlatform(lastX,lastY);
+	obj.curFrame -= 2;
+}
+
+int NextCarSpawnTime = 0;
+void CarSpawner(jjOBJ@ obj) {
+	if (obj.state == STATE::DEACTIVATE) {
+		obj.deactivate();
+	} else if (jjGameTicks >= NextCarSpawnTime) {
+		const int carSpawnX = 212*32;
+		const int carSpawnY = int(obj.yOrg) + 2;
+		const jjPLAYER@ play = jjLocalPlayers[0];
+		if ((carSpawnX + 70 < play.cameraX || carSpawnX - 40 > play.cameraX + jjSubscreenWidth) && carSpawnY >= play.cameraY) {
+			NextCarSpawnTime = jjGameTicks + 70 + (jjRandom() & 63);
+			jjAddObject(obj.eventID, carSpawnX, carSpawnY, obj.objectID, CREATOR::OBJECT, Car);
+		}
+	}
+}
+void Car(jjOBJ@ obj) {
+	if (obj.state == STATE::START) {
+		obj.state = STATE::WALK;
+		obj.special = (jjRandom() & 2) * 10 + 2050;
+	}
+	else if (obj.xPos > 256*32)
+		obj.delete();
+	else {
+		obj.xPos += 2;
+		for (int x = 0; x < 2; ++x)
+			for (int y = 0; y < 2; ++y)
+				jjDrawTile(obj.xPos + x * 32, obj.yPos + (y - 1) * 32, obj.special + x + ((jjGameTicks >> 3) & 2) + (y*10));
+	}
+}
+
+const array<uint> GemSeriesPatternGemCount = { 4, 8, 16, 16, 4, 6, 6 };
+const array<array<OBJECT::Object>> GemSeriesGemDistribution = {
+	{OBJECT::REDGEM},
+	{OBJECT::GREENGEM},
+	{OBJECT::BLUEGEM},
+	{OBJECT::REDGEM, OBJECT::GREENGEM},
+	{OBJECT::GREENGEM, OBJECT::BLUEGEM},
+	{OBJECT::REDGEM, OBJECT::BLUEGEM},
+	{OBJECT::REDGEM, OBJECT::GREENGEM, OBJECT::BLUEGEM},
+	{OBJECT::REDGEM, OBJECT::GREENGEM, OBJECT::REDGEM, OBJECT::BLUEGEM}
+};
+const array<array<int>> GemSeriesCountDistribution = {
+	{1},
+	{5},
+	{10},
+	{1, 5},
+	{5, 10},
+	{1, 10},
+	{1, 5, 10},
+	{1, 5, 1, 10}
+};
+array<uint16> SeriesGemsCollected;
+class GemSeries : jjBEHAVIORINTERFACE {
+	array<jjOBJ@> Gems;
+	void onBehave(jjOBJ@ obj) {
+		const uint xEvent = uint(obj.xOrg) >> 5, yEvent = uint(obj.yOrg) >> 5;
+		if (obj.state == STATE::START) {
+			obj.special = jjParameterGet(xEvent,yEvent, 0, 5);
+			const array<OBJECT::Object>@ distribution = GemSeriesGemDistribution[jjParameterGet(xEvent,yEvent, 5,3)];
+			const uint gemCount = GemSeriesPatternGemCount[obj.special];
+			const uint collectedIndex = yEvent * jjLayerWidth[4] + xEvent;
+			if (SeriesGemsCollected.length <= collectedIndex)
+				SeriesGemsCollected.resize(collectedIndex + 1);
+			const uint16 collected = SeriesGemsCollected[collectedIndex];
+			for (uint i = 0; i < gemCount; ++i) {
+				jjOBJ@ gem = jjObjects[jjAddObject(collected & (1 << i) == 0 ? distribution[i % distribution.length] : OBJECT::RECTREDGEM, obj.xOrg,obj.yOrg, obj.objectID,CREATOR::OBJECT, BEHAVIOR::INACTIVE)];
+				gem.behavior = SeriesGemInstance;
+				gem.frameID = 16 / gemCount * i;
+				gem.var[8] = collectedIndex;
+				gem.var[9] = 1 << i;
+				Gems.insertLast(gem);
+			}
+			obj.state = STATE::ROTATE;
+			obj.var[0] = jjParameterGet(xEvent,yEvent, -2, 1) == 1 ? -1 : 1;
+			obj.lightType = LIGHT::NONE;
+		} else if (obj.state == STATE::DEACTIVATE) {
+			const uint gemCount = GemSeriesPatternGemCount[obj.special];
+			for (uint i = 0; i < gemCount; ++i) {
+				jjOBJ@ gem = Gems[i];
+				if (cast<jjBEHAVIORINTERFACE@>(gem.behavior) is SeriesGemInstance && int(gem.creatorID) == obj.objectID)
+					gem.delete();
+			}
+			obj.deactivate();
+		} else {
+			const uint gemCount = Gems.length;
+			bool atLeastOneGemStillExists = false;
+			obj.age += obj.var[0];
+			for (uint i = 0; i < gemCount; ++i) {
+				jjOBJ@ gem = Gems[i];
+				if (cast<jjBEHAVIORINTERFACE@>(gem.behavior) is SeriesGemInstance && int(gem.creatorID) == obj.objectID) {
+					//if (gem.eventID != OBJECT::RECTREDGEM)
+						atLeastOneGemStillExists = true;
+					int angle;
+					int8 layer = 5;
+					switch (obj.special) { //pattern
+						case 0: //RingS
+							angle = (obj.age << 2) + (i << 8);
+							gem.xPos = obj.xOrg + jjSin(angle) * 32;
+							gem.yPos = obj.yOrg + jjCos(angle) * 32;
+							break;
+						case 1: //RingM
+							angle = (obj.age << 3) + (i << 7);
+							gem.xPos = obj.xOrg + jjSin(angle) * 64;
+							gem.yPos = obj.yOrg + jjCos(angle) * 64;
+							break;
+						case 2: //RingL
+							angle = (obj.age * 6) + (i << 6);
+							gem.xPos = obj.xOrg + jjSin(angle) * 96;
+							gem.yPos = obj.yOrg + jjCos(angle) * 96;
+							break;
+						case 3: //RingXL
+							angle = (obj.age << 2) + (i << 6);
+							gem.xPos = obj.xOrg + jjSin(angle) * 160;
+							gem.yPos = obj.yOrg + jjCos(angle) * 160;
+							break;
+						case 4: { //Bouncy
+							angle = (obj.age) + (i << 8);
+							int distance = 100 + int(jjCos(obj.age * 7) * 40);
+							gem.xPos = obj.xOrg + jjSin(angle) * distance;
+							gem.yPos = obj.yOrg + jjCos(angle) * distance;
+						break; }
+						case 5: //HTrail
+							angle = i << 9;
+							gem.xPos = obj.xOrg + ((obj.age << 1) + (i * 42) & 255);
+							gem.yPos = obj.yOrg + jjSin((obj.age << 4) + (i * 168)) * 11;
+							break;
+						case 6: //Ladder
+							angle = (i << 9) + 256;
+							gem.xPos = obj.xOrg + jjSin((obj.age << 4) + (i * 168)) * 25;
+							gem.yPos = obj.yOrg + ((obj.age << 1) + (i * 42) & 255);
+							layer = (((obj.age << 4) + i * 168 + 256) & 512) == 0 ? 5 : 6;
+							break;
+					}
+					jjDrawRotatedSpriteFromCurFrame(gem.xPos, gem.yPos, gem.curFrame, angle, 1,1, SPRITE::GEM, gem.var[0] - 1, layer);
+				} else //at least one gem, but not ALL gems, already collected
+					obj.deactivates = false;
+			}
+			if (!atLeastOneGemStillExists) {
+				/*for (uint i = 0; i < gemCount; ++i) {
+					jjOBJ@ gem = Gems[i];
+					if (cast<jjBEHAVIORINTERFACE@>(gem.behavior) is SeriesGemInstance && int(gem.creatorID) == obj.objectID) //black
+						gem.delete();
+				}*/
+				jjSample(obj.xPos, obj.yPos, SOUND::LABRAT_EYE2);
+				obj.delete();
+				GemLocations.removeAt(GemLocations.find(xEvent | (yEvent << 16)));
+				//jjDebug("ded");
+			}
+		}
+	}
+}
+
+
+array<bool> SavedTriggers(32, false);
+void OrangePurpleTriggerCrate(jjOBJ@ obj) {
+	if (obj.state == STATE::START) {
+		const int xTile = int(obj.xOrg) >> 5, yTile = int(obj.yOrg) >> 5;
+		int triggerID = jjParameterGet(xTile,yTile, 0,5);
+		if (triggerID < 20) {
+			obj.var[6] = 64; //brown
+		} else {
+			obj.var[6] = triggerID & 1 == 0 ? 88 : 40;
+			if (jjTriggers[triggerID]) {
+				obj.delete();
+				return;
+			}
+			triggerID &= ~1;
+		}
+		if (jjDifficulty <= 1)
+			for (int distance = 6; distance <= 20; ++distance)
+				for (int x = xTile - distance; x <= xTile + distance; ++x)
+					for (int y = yTile - distance; y <= yTile + distance; ++y)
+						if (abs(x - xTile) == distance || abs(y - yTile) == distance) {
+							const auto event = jjEventGet(x,y);
+							if ((event == OBJECT::TRIGGERSCENERY && jjParameterGet(x,y,5,1) == 0) || event == 168)
+								if (jjParameterGet(x,y,0,5) == triggerID) {
+									obj.var[7] = x * 32 + 16;
+									obj.var[8] = y * 32 + 16;
+								}
+						}
+	}
+	obj.behave(BEHAVIOR::CRATE, false);
+	jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, mode: SPRITE::SINGLEHUE, param: obj.var[6]);
+	if (obj.var[7] != 0 && (jjGameTicks & 63) == 0) { //target found
+		const float dy = obj.var[8] - obj.yPos, dx = obj.var[7] - obj.xPos; //based on Pos, not Org, so we can't precalculate these
+		const auto angle = atan2(dy, dx);
+		jjOBJ@ pulse = jjObjects[jjAddObject(OBJECT::SHARD, obj.xPos, obj.yPos, behavior: BEHAVIOR::INACTIVE)];
+		pulse.var[6] = obj.var[6];
+		pulse.xSpeed = cos(angle) * 2;
+		pulse.ySpeed = sin(angle) * 2;
+		pulse.counter = int(sqrt((dx*dx) + (dy*dy)) / 2);
+		pulse.curFrame = jjAnimations[jjAnimSets[ANIM::AMMO] + 8] + 1;
+		pulse.lightType = LIGHT::POINT2;
+		pulse.behavior = TriggerPulse;
+		pulse.age = jjRandom() & 511;
+	}
+}
+void OrangePurpleTriggerScenery(jjOBJ@ obj) {
+	if (obj.var[2] == 2086 && obj.state != STATE::DEACTIVATE) {
+		const int triggerID = obj.var[3] & ~1;
+		const auto xTile = uint(obj.xOrg) >> 5, yTile = uint(obj.yOrg) >> 5;
+		const uint16 currentTileID = jjTileGet(4, xTile, yTile);
+		switch (currentTileID) {
+			case 2084: //orange
+				if (jjTriggers[triggerID | 1]) {
+					jjTileSet(4, xTile, yTile, 0);
+					SavedTriggers[triggerID] = SavedTriggers[triggerID | 1] = true;
+				}
+				break;
+			case 2085: //purple
+				if (jjTriggers[triggerID]) {
+					jjTileSet(4, xTile, yTile, 0);
+					SavedTriggers[triggerID] = SavedTriggers[triggerID | 1] = true;
+				}
+				break;
+			case 2086: //both
+				if (jjTriggers[triggerID]) //purple
+					jjTileSet(4, xTile, yTile, 2084); //orange
+				else if (jjTriggers[triggerID | 1]) //orange
+					jjTileSet(4, xTile, yTile, 2085); //purple
+				break;
+		}
+	} else {
+		obj.behave(BEHAVIOR::TRIGGERSCENERY);
+	}
+}
+void TriggerPulse(jjOBJ@ obj) {
+	if (--obj.counter > 0) {
+		obj.xPos += obj.xSpeed;
+		obj.yPos += obj.ySpeed;
+		obj.age += 6;
+		jjDrawResizedSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, abs(jjSin(obj.age)) + 0.65, abs(jjCos(obj.age)) + 0.65, mode: SPRITE::TRANSLUCENTSINGLEHUE, param: obj.var[6], layerZ: 2);
+	} else
+		obj.delete();
+}
+
+class MapDetail {
+	int xPos, yPos;
+	string Label;
+	STRING::Alignment Alignment;
+	MapDetail(){}
+	MapDetail(int x, int y, const string &in l, STRING::Alignment a) {
+		xPos = x;
+		yPos = y;
+		Label = l;
+		Alignment = a;
+	}
+}
+const array<MapDetail> MapDetails = {
+	MapDetail(176,24, "Skyrunner", STRING::CENTER),
+	MapDetail(271,45, "Hint@Bunny", STRING::LEFT),
+	MapDetail(231,127, "Eastern@Forest", STRING::LEFT),
+	MapDetail(291,187, "Three-Four@Tunnel", STRING::LEFT),
+	MapDetail(130,82, "Graveyard", STRING::RIGHT),
+	MapDetail(100,129, "Western@Forest", STRING::RIGHT),
+	MapDetail(55,182, "Two-Three@Tunnel", STRING::RIGHT),
+	MapDetail(142,235, "Teeth?", STRING::CENTER),
+	MapDetail(159,138, "Circus", STRING::CENTER),
+	MapDetail(171,118, "Woman", STRING::CENTER),
+	MapDetail(132,163, "Burger", STRING::CENTER),
+	MapDetail(205,70, "Pub", STRING::CENTER)
+};
+bool onDrawHealth(jjPLAYER@ player, jjCANVAS@ canvas) {
+	return (PlayersX[player.localPlayerID].TunnelGhostSequence > 250); //fade to total blackness
+}
+bool onDrawAmmo(jjPLAYER@ player, jjCANVAS@ canvas) {
+	if (ViewingMap) {
+		jjTEXTAPPEARANCE appearance(STRING::BOUNCE);
+		appearance.at=STRING::SPECIALSIGN;
+		const int xOrg = (jjSubscreenWidth - 256) / 2 - 50;
+		const int yOrg = (jjSubscreenHeight - 256) / 2;
+		for (uint i = 0; i < MapDetails.length; ++i) {
+			const MapDetail@ detail = MapDetails[i];
+			appearance.align = detail.Alignment;
+			canvas.drawString(xOrg + detail.xPos, yOrg + detail.yPos, detail.Label, STRING::SMALL, appearance);
+		}
+	}
+	if (PlayersX[player.localPlayerID].TunnelGhostSequence > 250)
+		return true;
+	return MLLE::WeaponHook.drawAmmo(player, canvas);
+}
+
+bool onDrawScore(jjPLAYER@ player, jjCANVAS@ canvas) {
+	if (player.localPlayerID != 0)
+		return false;
+	
+	if (PlayersX[player.localPlayerID].TunnelGhostSequence > 250)
+		return true;
+	
+	bool dark;
+	if (jjGameConnection == GAME::LOCAL) {
+		canvas.drawSprite(14, 42, ANIM::CUSTOM[0],0,1, 1, SPRITE::GEM, 0);
+		dark = CollectedGems < NumberOfGems;
+		//if (dark || (jjGameTicks & 15 < 9))
+			canvas.drawString(25, 42, (CollectedGems * 100 / NumberOfGems) + "%", STRING::SMALL,STRING::NORMAL,0, dark ? SPRITE::BRIGHTNESS : SPRITE::PALSHIFT, dark ? 96 : 208);
+		//canvas.drawString(25, 60, CollectedGems + " / " + NumberOfGems); //debug
+	}
+	const uint displayedCoins = CollectedCoins < NumberOfCoins ? CollectedCoins : NumberOfCoins; //cheats
+	dark = displayedCoins < NumberOfCoins;
+	canvas.drawSprite(72, 42, ANIM::PICKUPS, 84, 0);
+	canvas.drawString(75, 42, "§1" + displayedCoins + "/" + NumberOfCoins, STRING::SMALL,STRING::NORMAL,0, dark ? SPRITE::BRIGHTNESS : SPRITE::PALSHIFT, dark ? 96 : 208);
+	
+	//if (SkyrunnerStage > 1)
+	//	canvas.drawString(80, 60, "" + SkyrunnerStage, STRING::MEDIUM);
+	
+	return false;
+}
+
+bool onDrawLives(jjPLAYER@, jjCANVAS@) {
+	return true;
+}
+
+void CollideAsPickup(jjPLAYER@ play, jjOBJ@ obj) {
+	string score;
+	switch (obj.eventID) {
+		case OBJECT::REDGEM:
+		case OBJECT::PURPLEGEM:
+			CollectedGems += 1;
+			CollectedRed += 1;
+			obj.eventID = OBJECT::FASTFEET; //play sound but do nothing
+			score = "|||||+1";
+			break;
+		case OBJECT::GREENGEM:
+			CollectedGems += 5;
+			CollectedGreen += 1;
+			obj.eventID = OBJECT::FASTFEET;
+			score = "|+5";
+			break;
+		case OBJECT::BLUEGEM:
+			CollectedGems += 10;
+			CollectedBlue += 1;
+			score = "|||+10";
+			obj.eventID = OBJECT::FASTFEET;
+			break;
+		case OBJECT::RECTREDGEM: //old black gem
+			obj.eventID = OBJECT::FASTFEET;
+			//no gem increase
+			break;
+		case OBJECT::SILVERCOIN:
+		case OBJECT::GOLDCOIN:
+			CollectedCoins += (obj.eventID == OBJECT::SILVERCOIN) ? 1 : 5;
+			CoinLocations.removeAt(CoinLocations.find(CoinLocation(jjParameterGet(uint(obj.xOrg) >> 5, uint(obj.yOrg) >> 5, 0, 4))));
+			break;
+	}
+	obj.scriptedCollisions = false;
+	play.objectHit(obj, 0, HANDLING::PICKUP);
+	if (score.length != 0) {
+		jjPARTICLE@ particle = jjAddParticle(PARTICLE::STRING);
+		if (particle !is null) {
+			particle.xPos = obj.xPos;
+			particle.yPos = obj.yPos;
+			particle.xSpeed = (-32768 - int(jjRandom() & 0x3FFF)) / -65536.f; //positive!
+			particle.ySpeed = (-65536 - int(jjRandom() & 0x7FFF)) / -65536.f; //
+			particle.string.text = score;
+		}
+	}
+}
+bool makeIcePowerup = false;
+class PermaPickup : jjBEHAVIORINTERFACE {
+	void onBehave(jjOBJ@ obj) {
+		if (obj.state == STATE::START) {
+			if (obj.creatorType == CREATOR::PLAYER) {
+				if (obj.xSpeed == 0.f && obj.ySpeed == 0.f) { //dropped by enemy
+					if (jjLocalPlayers[0].fly == FLIGHT::AIRBOARD) {
+						if (obj.eventID == OBJECT::FASTFIRE && (makeIcePowerup = !makeIcePowerup))
+							jjAddObject(OBJECT::ICEPOWERUP, obj.xOrg, obj.yOrg);
+					} else if (jjDifficulty < 2)
+						jjAddObject(OBJECT::BOUNCERAMMO3, obj.xOrg, obj.yOrg, obj.creatorID, obj.creatorType);
+					obj.delete();
+					return;
+				} else { //from gem barrel
+					//nothing?
+				}
+			}
+			if (obj.eventID == OBJECT::RECTREDGEM)
+				obj.lightType = LIGHT::NONE; //don't glow inside walls if you've already been collected
+			else if (obj.lightType != LIGHT::NONE) {
+				obj.lightType = LIGHT::BRIGHT;
+				obj.light = 9;
+			}
+		} else if (obj.state == STATE::DEACTIVATE && obj.creatorType == CREATOR::PLAYER)
+			obj.state = STATE::FLOAT;
+		obj.behave(BEHAVIOR::PICKUP);
+		obj.scriptedCollisions = obj.playerHandling == HANDLING::PICKUP;
+	}
+	bool onObjectHit(jjOBJ@ obj, jjOBJ@ bullet, jjPLAYER@ play, int force) {
+		if (obj.creatorType == CREATOR::LEVEL) { //be safe
+			const auto xTile = uint(obj.xOrg) >> 5, yTile = uint(obj.yOrg) >> 5;
+			jjEventSet(xTile,yTile, OBJECT::RECTREDGEM);
+			jjParameterSet(xTile,yTile, -1,1, 1); //active
+			GemLocations.removeAt(GemLocations.find(xTile | (yTile << 16))); //includes coins, because coins are also in GemLocations, but that's okay because you never get to see the gem arrow until you've found all the coins
+		}
+		CollideAsPickup(play, obj);
+		return true;
+	}
+}
+class MyIcePowerup : jjBEHAVIORINTERFACE {
+	void onBehave(jjOBJ@ obj) {
+		obj.xPos = obj.xOrg;
+		obj.yPos = obj.yOrg;
+		obj.xSpeed = obj.ySpeed = 0;
+		obj.behave(obj.eventID == OBJECT::CARROT ? BEHAVIOR::PICKUP : BEHAVIOR::FLICKERGEM);
+	}
+	bool onObjectHit(jjOBJ@ obj, jjOBJ@, jjPLAYER@ player, int) {
+		jjObjectPresets[OBJECT::ICEBULLET].var[0] = 
+		jjObjectPresets[OBJECT::ICEBULLET].var[0] + 1;
+		jjSample(obj.xPos, obj.yPos, SOUND::COMMON_GLASS2);
+		if (jjAutoWeaponChange)
+			player.currWeapon = WEAPON::ICE;
+		obj.delete();
+		return true;
+	}
+}
+class SeriesGem : jjBEHAVIORINTERFACE {
+	void onBehave(jjOBJ@ obj) {
+		if (obj.state == STATE::START) {
+			obj.deactivates = false;
+			obj.scriptedCollisions = true;
+		}
+		obj.xSpeed = obj.ySpeed = 0;
+		obj.behave(BEHAVIOR::PICKUP, obj.state == STATE::EXPLODE);
+	}
+	bool onObjectHit(jjOBJ@ obj, jjOBJ@ bullet, jjPLAYER@ play, int force) {
+		SeriesGemsCollected[obj.var[8]] = SeriesGemsCollected[obj.var[8]] | obj.var[9];
+		CollideAsPickup(play, obj);
+		return true;
+	}
+}
+SeriesGem SeriesGemInstance;
+
+uint SkyrunnerStage = 0;	//0: not yet encountered skyrunner
+							//1: skyrunner is visible in the cave only, post-skyrunner checkpoint has been manually inserted into the location array
+							//2: skyrunner is visible and usable at all checkpoints (coop skips 1 but still inserts the manual checkpoint)
+							//>2: actively playing skyrunner stage
+array<uint32> SkyrunnerLocations;
+void Skyrunner(jjOBJ@ obj) {
+	switch (obj.state) {
+	case STATE::START: {
+		const auto xTile = uint(obj.xOrg) >> 5, yTile = uint(obj.yOrg) >> 5;
+		obj.var[2] = int(obj.xOrg) + jjParameterGet(xTile, yTile, 0, -5) * 32;
+		obj.var[3] = int(obj.yOrg) + jjParameterGet(xTile, yTile, 5, -5) * 32 - 16;
+	break; }
+	case STATE::STOP: //don't do anything anymore
+		jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame);
+		break;
+	case STATE::DEACTIVATE: //due to death
+		obj.deactivate();
+		return;
+	case STATE::DONE: { //triggered by the player hitting it
+		obj.state = STATE::STOP;
+		//save the current state of some properties
+		//OPTIONAL: this loop makes checkpoints reusable, so only the most recent checkpoint you touched is ever active
+		for (int i = jjObjectCount; --i > 0;) {
+			jjOBJ@ obj2 = jjObjects[i];
+			if (obj2.eventID == OBJECT::CHECKPOINT && i != obj.objectID && obj2.isActive) {
+				obj2.state = STATE::SLEEP;
+				obj2.var[0] = 0;
+			}
+		}
+		const uint location = (uint(obj.xOrg) >> 5) | ((uint(obj.yOrg) >> 5) << 16);
+		if (SkyrunnerLocations.find(location) < 0)
+			SkyrunnerLocations.insertLast(location);
+		}
+	}
+	obj.behave(BEHAVIOR::CHECKPOINT);
+	
+	if (SkyrunnerStage < 1) //skyrunner hasn't been discovered yet
+		return;
+	
+	float skyrunnerSpriteY = obj.var[3] + jjSin(jjGameTicks << 2) * 12;
+	
+	if (obj.var[4] >= 70) {
+		obj.var[4] = obj.var[4] + 1;
+		skyrunnerSpriteY -= (obj.var[4] - 70) * 3; //lifting off
+		if (obj.var[4] >= 240)
+			obj.var[4] = 0;
+	} else {
+		int localPlayerID = 0;
+		while (true) {
+			jjPLAYER@ localPlayer = jjLocalPlayers[localPlayerID];
+			if (abs(localPlayer.xPos - obj.var[2]) < 40 && abs(localPlayer.yPos - obj.var[3]) < 40) {
+				if (obj.state == STATE::SLEEP && (jjGameTicks & 7) == 0) {
+					obj.state = STATE::ACTION;
+					obj.frameID = 80;
+					obj.special = localPlayer.playerID | CREATOR::PLAYER;
+					obj.behave(BEHAVIOR::CHECKPOINT, false);
+					for (int lp2 = 0; lp2 < jjLocalPlayerCount; ++lp2) {
+						jjLocalPlayers[lp2].xOrg = obj.var[2]; //start at the skyrunner, not the checkpoint
+						jjLocalPlayers[lp2].yOrg = obj.var[3];
+					}
+				}
+				if (localPlayer.curAnim == jjAnimSets[localPlayer.setID] + RABBIT::LOOKUP) {
+					obj.var[4] = obj.var[4] + 1;
+					if (obj.var[4] == 70) { //not inside cave
+						localPlayer.lighting = 81;
+						if (SkyrunnerStage == 2) {
+							const auto nextLocation = SkyrunnerLocations[(SkyrunnerLocations.find((uint(obj.xOrg) >> 5) | ((uint(obj.yOrg) >> 5) << 16)) + 1) % SkyrunnerLocations.length];
+							const auto nextX = nextLocation & 0xFFFF, nextY = nextLocation >> 16;
+							localPlayer.warpToTile(nextX + jjParameterGet(nextX,nextY, 0, -5), nextY + jjParameterGet(nextX,nextY, 5, -5));
+						} else {
+							localPlayer.warpToID(0);
+							localPlayer.fly = FLIGHT::AIRBOARD;
+							LimitCameraSize(true);
+							if (localPlayer.ammo[WEAPON::BOUNCER] == 0)
+								localPlayer.ammo[WEAPON::BOUNCER] = 1;
+							for (int weapon = 3; weapon <= 5; ++weapon)
+								localPlayer.ammo[weapon] = 1;
+							jjObjectPresets[WEAPON::ICE].var[0] = (jjDifficulty <= 0) ? 1 : 0; //number of laser bullets
+							SkyrunnerStage = 1;
+							jjMusicLoad("EB_Valley_Gremlins_OC_ReMix.mp3");
+							setAutoscrollingSpeeds(true);
+						}
+					}
+					break;
+				}
+			}
+			if (++localPlayerID == jjLocalPlayerCount) {
+				obj.var[4] = 0; //no one is holding up
+				break;
+			}
+		}
+	}
+	jjDrawSpriteFromCurFrame(obj.var[2], skyrunnerSpriteY, obj.var[1], layerZ: 3);
+}
+void onFunction0() {
+	if (SkyrunnerStage != 2) {
+		if (jjLocalPlayerCount != 1) {
+			SkyrunnerLocations.insertLast(125 | (27 << 16)); //final checkpoint before skyrunner
+			SkyrunnerLocations.insertLast(107 | (74 << 16)); //inaccessible checkpoint
+		}
+		SkyrunnerStage = jjLocalPlayerCount == 1 ? 1 : 2;
+	}
+}
+
+void Flyhive(jjOBJ@ obj) {
+	if (obj.state == STATE::START) {
+		/*if (jjDifficulty <= 0) {
+			obj.delete();
+			return;
+		}*/
+		while (!jjMaskedHLine(int(obj.xPos) - 5, 10, int(obj.yPos) - 17))
+			obj.yPos -= 1;
+		obj.state = STATE::ATTACK;
+	} else if (obj.state == STATE::DEACTIVATE) {
+		obj.deactivate();
+	} else if (obj.state == STATE::KILL) {
+		obj.delete();
+	} else {
+		jjDrawTile(obj.xPos - 16, obj.yPos - 16, 2054);
+		if (jjGameTicks & 15 == 1) {
+			obj.var[1] = (jjGameTicks * 5) & 1023;
+			if (obj.var[1] >= 512)
+				obj.var[1] = 1024 - obj.var[1];
+			jjObjects[jjAddObject(OBJECT::BULLET, obj.xPos, obj.yPos, obj.objectID, CREATOR::OBJECT, Threed::SmellyGhostBee)].counterEnd -= (jjDifficulty >= 1 ? 60 : 120);
+		}
+	}
+}
+
+namespace LaserBlaster {
+	class NonBouncing : Weapon {
+		void onBehave(jjOBJ@ obj) override {
+			Weapon::onBehave(obj);
+			obj.behavior = BEHAVIOR::BULLET;
+			obj.behave();
+			if (obj.var[0] > 0) {
+				obj.yPos -= obj.var[0] * 8;
+				do {
+					jjOBJ@ newObj = jjObjects[jjAddObject(OBJECT::ICEBULLET, obj.xPos, obj.yPos + 16 * obj.var[0], obj.creatorID, CREATOR::PLAYER, BEHAVIOR::INACTIVE)];
+					//newObj.direction = obj.direction;
+					newObj.xSpeed = obj.xSpeed;
+					newObj.xAcc = obj.xAcc;
+					newObj.var[7] = obj.var[7];
+					newObj.behavior = BEHAVIOR::BULLET;
+					newObj.eventID = OBJECT::BLASTERBULLET;
+					obj.var[0] = obj.var[0] - 1;
+				} while (obj.var[0] != 0);
+			}
+		}
+	}
+}
+
+void MrBatty(jjOBJ@ obj) {
+	switch (obj.state) {
+		case STATE::START:
+			if (obj.creatorID == 1) {
+				obj.direction = 1;
+				obj.xSpeed = 1;
+			} else {
+				obj.direction = -1;
+				obj.xSpeed = -2;
+			}
+			obj.counterEnd = jjRandom();
+			obj.counter = (jjRandom() & 1023) + 150;
+			obj.state = STATE::FLY;
+			break;
+		case STATE::DEACTIVATE:
+			obj.delete();
+			break;
+		case STATE::KILL:
+			obj.delete();
+			break;
+		case STATE::ROTATE:
+			obj.yPos += 0.2;
+			obj.frameID = ++obj.counterEnd / 11;
+			obj.determineCurFrame();
+			jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, obj.direction, SPRITE::SINGLECOLOR, obj.justHit == 0 ? 91 : 15);
+			jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, obj.direction, SPRITE::BLEND_NORMAL, obj.doesHurt < 128 ? 255 - obj.doesHurt : obj.doesHurt);
+			jjDrawSprite(obj.xPos - 8, obj.yPos - 32, ANIM::FONT, 0, 31, 1, SPRITE::PALSHIFT, 16); //?
+			if ((obj.doesHurt += 2) == 0) {
+				obj.direction = -obj.direction;
+				obj.xSpeed = (obj.direction >= 0) ? 1 : -2;
+				obj.state = STATE::FLY;
+			}
+			break;
+		default:
+			if (!obj.isTarget && abs(obj.xPos - obj.xOrg) >= 50) {
+				obj.playerHandling = HANDLING::ENEMY;
+				obj.isTarget = true;
+			}
+			if (--obj.counter <= 0) {
+				obj.counter = 9001;
+				obj.state = STATE::ROTATE; //confuses itself
+				obj.doesHurt = 0;
+			}
+			obj.xPos += obj.xSpeed;
+			obj.frameID = ++obj.counterEnd >> 3;
+			obj.determineCurFrame();
+			obj.draw();
+			break;
+	}
+}
+void SmilinSphere(jjOBJ@ obj) {
+	if (obj.state == STATE::FLY) {
+		obj.xPos += obj.xSpeed;
+		obj.yPos = obj.yOrg + jjSin(obj.age += 9) * 7;
+		obj.draw();
+		
+		for (int i = 0; i < 1024; i += 256) {
+			const int angle = (obj.xSpeed >= 0 ? -obj.age : obj.age) + i;
+			jjDrawSprite(obj.xPos + jjSin(angle) * 37, obj.yPos + jjCos(angle) * 37, ANIM::AMMO, 1, angle);
+		}
+		if (!obj.isTarget && abs(obj.xPos - obj.xOrg) >= 50) {
+			obj.playerHandling = HANDLING::ENEMY;
+			obj.isTarget = true;
+		}
+		return;
+	} else if (obj.state == STATE::KILL) {
+		obj.eventID = OBJECT::STEADYLIGHT;
+		obj.playerHandling = HANDLING::EXPLOSION;
+		obj.lightType = LIGHT::RING2;
+		if (obj.counter++ % 7 == 0) {
+			jjSample(obj.xPos, obj.yPos, SOUND::AMMO_BOEM1);
+			const int radius = obj.counter * 5;
+			for (int explosionID = 0; explosionID < 5; ++explosionID) {
+				const int angle = obj.counter * 12 + explosionID * 205;
+				jjOBJ@ explosion = jjObjects[jjAddObject(OBJECT::EXPLOSION, obj.xPos + jjSin(angle) * radius, obj.yOrg + jjCos(angle) * radius)];
+				explosion.playerHandling = HANDLING::ENEMYBULLET;
+				explosion.animSpeed = 1;
+				explosion.killAnim = explosion.determineCurAnim(ANIM::AMMO, 3);
+				explosion.lightType = LIGHT::BRIGHT;
+				explosion.light = 10;
+			}
+		}
+		obj.light = obj.counter + obj.counter / 2;
+		if (obj.counter == (24 + jjDifficulty * 6)) {
+			if (jjDifficulty < 3)
+				obj.grantPickup(jjLocalPlayers[0], 10); //risk/reward
+			obj.delete();
+		}
+	} else {
+		MrBatty(obj);
+		obj.counter = 0;
+	}
+}
+
+void SpitefulCrow(jjOBJ@ obj) {
+	if (obj.state == STATE::DEACTIVATE) {
+		obj.delete();
+		return;
+	}
+	if (obj.state == STATE::START) {
+		obj.direction = obj.xOrg >= shmupRightBorder ? -1 : 1;
+		obj.xAcc = obj.direction * 2;
+		obj.yAcc = obj.xOrg;
+	}
+	obj.xPos += obj.xAcc;
+	obj.xOrg += obj.xAcc;
+	obj.behave(BEHAVIOR::RAVEN);
+	if (!obj.isTarget && abs(obj.xPos - obj.yAcc) >= 50) {
+		obj.playerHandling = HANDLING::ENEMY;
+		obj.isTarget = true;
+	}
+}
+
+void AddMitten(const jjOBJ@ obj, float xSpeed, float ySpeed, int xOffset = 0, int yOffset = 0) {
+	jjOBJ@ subcloud = jjObjects[jjAddObject(OBJECT::EXPLOSION, obj.xPos + xOffset, obj.yPos + yOffset, obj.objectID, CREATOR::OBJECT, ThunderMitten)];
+	subcloud.killAnim = subcloud.determineCurAnim(ANIM::AMMO, 2);
+	subcloud.frameID = 4;
+	subcloud.xSpeed = xSpeed;
+	subcloud.ySpeed = ySpeed;
+	
+}
+void ThunderMite(jjOBJ@ obj) {
+	switch (obj.state) {
+		case STATE::START:
+			if (obj.creatorID == 1) {
+				obj.direction = 1;
+				obj.xSpeed = 0.5;
+			} else {
+				obj.direction = -1;
+				obj.xSpeed = -1;
+			}
+			obj.state = STATE::FLY;
+			break;
+		case STATE::DEACTIVATE:
+			obj.delete();
+			break;
+		case STATE::KILL:
+			obj.delete();
+			break;
+		case STATE::ATTACK: {
+			const int angle = jjRandom() & 1023;
+			const int angle2 = jjRandom() & 1023;
+			if (++obj.counter & 7 == 5)
+				AddMitten(obj, jjSin(angle) * 3, jjCos(angle) * 3, int(jjCos(angle2) * 10), int(jjSin(angle2) * 10));
+			obj.xPos = obj.xOrg - (angle - 512) / 128;
+			obj.yPos = obj.yOrg - (angle2 - 512) / 128;
+			jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, 1, obj.justHit == 0 ? SPRITE::BRIGHTNESS : SPRITE::SINGLECOLOR, obj.justHit == 0 ? 128 + obj.counter : 15, layerZ: 3);
+			if (obj.counter >= 65) {
+				jjPLAYER@ player = jjLocalPlayers[0];
+				obj.var[0] = jjSampleLooped(obj.xPos, player.yPos, SOUND::AMMO_LASER3, obj.var[0]);
+				jjDrawSwingingVineSpriteFromCurFrame(obj.xPos, player.cameraY, obj.special, jjSubscreenHeight, 0);
+				jjDrawSwingingVineSpriteFromCurFrame(obj.xOrg, player.cameraY, obj.special + 1, jjSubscreenHeight, 0, mode:SPRITE::ALPHAMAP, param:41);
+				if (obj.counter == 108) {
+					obj.counter -= 8;
+					if (++obj.counterEnd == 11) {
+						obj.counter = 0;
+						obj.counterEnd = 0;
+						obj.state = STATE::FLY;
+					} 
+				} else if (abs(obj.xOrg - player.xPos) < 62) {
+					player.hurt(1);
+				}
+			}
+			break; }
+		default:
+			obj.xPos += obj.xSpeed;
+			obj.yPos = obj.yOrg + jjSin(obj.age += 7) * 5;
+			jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, 1, obj.justHit == 0 ? SPRITE::NORMAL : SPRITE::SINGLECOLOR, 15, layerZ: 3);
+			if (jjGameTicks & 15 == 0)
+				AddMitten(obj, obj.xSpeed * -3, 0, obj.direction * -12, -16 + int(jjRandom() & 31));
+			if (abs(obj.xPos - jjLocalPlayers[0].xPos) < 15) {
+				obj.xOrg = obj.xPos;
+				obj.state = STATE::ATTACK;
+				obj.playerHandling = HANDLING::ENEMY;
+				obj.isTarget = true;
+			} else if (!obj.isTarget && abs(obj.xPos - obj.xOrg) >= 50) {
+				obj.playerHandling = HANDLING::ENEMY;
+				obj.isTarget = true;
+			}
+			
+		break;
+	}
+}
+void ThunderMitten(jjOBJ@ obj) {
+	obj.xPos += obj.xSpeed;
+	obj.yPos += obj.ySpeed;
+	obj.behave(BEHAVIOR::EXPLOSION);
+}
+
+void PogoPunk(jjOBJ@ obj) {
+	switch (obj.state) {
+		case STATE::START:
+			obj.direction = obj.creatorID == 1 ? 1 : -1;
+			obj.yPos = 490;
+			obj.ySpeed = obj.yPos - obj.yOrg;
+			obj.xSpeed = obj.ySpeed / 2;
+			obj.state = STATE::BOUNCE;
+			break;
+		case STATE::DEACTIVATE:
+			obj.delete();
+			break;
+		case STATE::KILL:
+			obj.delete();
+			break;
+		default: {
+			const int angle = ++obj.counter * 3;
+			if (angle >= 512)
+				obj.delete();
+			else {
+				obj.yPos = 490 - jjSin(angle) * obj.ySpeed + 75;
+				obj.xPos = obj.xOrg - jjCos(angle) * obj.xSpeed * obj.direction;
+				int frameID = (obj.counter / 10) & 3;
+				if (frameID == 3) frameID = 1;
+				obj.curFrame = jjAnimations[obj.curAnim] + frameID;
+				obj.draw();
+			}
+		break; }
+	}
+}
+ 
+void SpawnSkyrunnerEnemies() {
+	++SkyrunnerStage;
+	if (SkyrunnerStage < 200000 && SkyrunnerStage >= 200 && (SkyrunnerStage - 200) % 70 == 0) { //one enemy column per second, after the fade-in sequence
+		const uint xTile = 12 + SkyrunnerStage / 70;
+		if (xTile >= uint(jjLayerWidth[7])) {
+			SkyrunnerStage = 200000;
+			return;
+		}
+		const float right = shmupRightBorder + 48;
+		const float left = shmupLeftBorder - 48;
+		for (uint yTile = 0; yTile < 14; ++yTile) {
+			const uint16 tileID = jjTileGet(7, xTile, yTile);
+			const bool faceLeft = (tileID & TILE::HFLIPPED) != 0;
+			OBJECT::Object enemy;
+			switch (tileID & TILE::RAWRANGE) {
+				case 2120:
+					enemy = OBJECT::BAT;
+					break;
+				case 2121:
+					enemy = OBJECT::RAVEN;
+					break;
+				case 2122:
+					enemy = OBJECT::SUCKER;
+					break;
+				case 2557:
+					enemy = OBJECT::FLOATSUCKER;
+					break;
+				case 2291:
+					if (jjDifficulty > 0)
+						jjAddObject(OBJECT::FENCER, left + (right - left) / 2, yTile * 32 + 16, faceLeft ? 0 : 1);
+					continue;
+				case 1594: //stop sign
+					if (jjDifficulty < 2) //Easy or Normal
+						yTile += 1; //skip next row
+				default:
+					continue;
+			}
+			jjOBJ@ obj = jjObjects[jjAddObject(enemy, faceLeft ? right : left, yTile * 32 + 16, faceLeft ? 0 : 1, CREATOR::LEVEL)];
+			obj.playerHandling = HANDLING::SPECIALDONE;
+			obj.isTarget = false;
+		}
+	}
+}
+
+void LimitCameraSize(bool limit) {
+	if (jjGameConnection != GAME::LOCAL || jjLocalPlayerCount > 1) //servers don't limit resolution for skyrunner, splitscreeners don't play skyrunner at all
+		return;
+	const int newHeight = limit ? 450 : 600;
+	if (jjResolutionMaxHeight != newHeight || jjResolutionMaxWidth != 800) {
+		jjChat("/maxresolution 800x" + newHeight);
+		for (int i = 0; i < 8; ++i)
+			jjAlert(""); //hide from onscreen chatlog
+	}
+}
+
+/* //deceive MLLE
+void onMain() {
+	MLLE::WeaponHook.processMain();
+}
+*/
+
+void onFunction1(bool circus) {
+	if (jjLocalPlayerCount > 1)
+		return;
+	DesiredFogSpriteParam = circus ? 0 : 50;
+	jjMusicLoad(circus ? "EB_Battling_Organs_OC_ReMix.mp3" : "EB_Zombie_Lounge_OC_ReMix.mp3");
+	jjLayerOrderSet(circus ? LayersCircus : LayersNormal);
+	jjLocalPlayers[0].lighting = circus ? 100 : 81;
+	if (circus)
+		jjLayerHasTiles[2] = (jjLocalPlayers[0].yPos < 250 * 32) || jjTriggers[13]; //no scaffolding at the boss
+}
+
+void onFunction3(bool enter) {
+	if (jjLocalPlayerCount > 1)
+		return;
+	MLLE::GetLayer("Hide the Circus").hasTiles = !enter;
+}
+
+jjLAYER@ Clouds2, Fog, Crepuscular, Bushes;
+uint8 DesiredFogSpriteParam = 50;
+void setAutoscrollingSpeeds(bool on) {
+	if (jjLocalPlayerCount > 1)
+		return;
+	array<jjLAYER@> layers = {MLLE::GetLayer("Skyscrapers"), MLLE::GetLayer("Smallscrapers"), MLLE::GetLayer("Sky")};
+	for (uint i = 0; i < layers.length; ++i) {
+		jjLAYER@ layer = layers[i];
+		layer.xAutoSpeed = on ? layer.xSpeed : 0;
+	}
+	Clouds2.hasTiles = MLLE::GetLayer("Clouds").hasTiles = on;
+	
+	//for (uint tileID = 2866; tileID <= 2871; ++tileID)
+	//	jjTileType[tileID] = 
+	//	jjTileType[tileID + 10] = on ? 0 : 1; //clouds/balloons
+}
+
+void onDrawLayer1(jjPLAYER@ player, jjCANVAS@ canvas) {
+	const int yPos = 97;
+	//if (yPos > jjSubscreenHeight)
+	//	return;
+	//const int playerX = int(Bushes.getXPosition(player));
+	int xPos = jjRenderFrame;
+	for (int i = 0; i < 4; ++i) {
+		const jjANIMATION@ anim = jjAnimations[(i < 2) ? jjAnimSets[ANIM::SKELETON].firstAnim + 2 : jjObjectPresets[i == 2 ? 170 : 181].curAnim];
+		canvas.drawSpriteFromCurFrame((uint((i & 1 == 0 ? xPos : int(3100 - xPos)) /*- playerX*/) % 3200) - 20, yPos, anim.firstFrame + (((jjGameTicks >> 3) + (i << 1)) % anim.frameCount), i & 1 == 0 ? 1 : -1, SPRITE::SINGLEHUE, 229);
+		xPos += 400;
+	}
+}
+
+void onFunction2(jjPLAYER@ player) {
+	player.activateBoss(); //no music change
+}
+
+void addEyeBeam(const jjOBJ@ obj, float xSpeed, float ySpeed) {
+	jjOBJ@ beam = jjObjects[jjAddObject(OBJECT::FIREBALLBULLET, obj.xPos, obj.yPos, obj.objectID, CREATOR::OBJECT)];
+	beam.killAnim = beam.determineCurAnim(ANIM::AMMO, 75, false);
+	beam.determineCurAnim(ANIM::AMMO, 11);
+	beam.determineCurFrame();
+	beam.xSpeed = xSpeed;
+	beam.ySpeed = ySpeed;
+	beam.xAcc = beam.yAcc = 0;
+	beam.playerHandling = HANDLING::ENEMYBULLET;
+	beam.animSpeed = 1;
+	beam.counterEnd = 255;
+}
+class BoogeyEyeClass : jjBEHAVIORINTERFACE {
+	void onBehave(jjOBJ@ obj) {
+		if (jjLocalPlayerCount == 1) {
+			jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame + 1, obj.direction, SPRITE::CHROMAKEY, 113, layerZ: 15);
+			jjDrawRotatedSpriteFromCurFrame( //eyebrow
+				obj.xPos - 71 * obj.direction,
+				obj.yPos + 32, obj.curFrame + 3,
+				(obj.counterEnd == 0 ? (14 - int(abs(jjSin(jjGameTicks * 5) * 14))) : (obj.counterEnd >> 1)) * -obj.direction,
+				obj.direction,1,
+				layerZ: 15
+			);
+		} else { //splitscreen, no pink circus background to chromakey onto
+			if (obj.state == STATE::KILL)
+				return;
+			jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame + 1, obj.direction, layerZ: 5);
+		}
+		if (obj.justHit == 0) {
+			if (obj.state == STATE::WAIT) {
+				float pupilX = obj.xPos, pupilY = obj.yPos;
+				const int playerID = obj.findNearestPlayer(500 * 500);
+				if (playerID >= 0) {
+					const jjPLAYER@ target = jjPlayers[playerID];
+					const auto angle = atan2(
+						target.yPos - pupilY,
+						target.xPos - pupilX
+					);
+					pupilX += cos(angle) * 6;
+					pupilY += sin(angle) * 6;
+				}
+				jjDrawSpriteFromCurFrame(pupilX, pupilY, obj.curFrame + 2, obj.direction, SPRITE::CHROMAKEY, 15, layerZ: 5);
+			}
+			jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, obj.direction, SPRITE::CHROMAKEY, 15, layerZ: 5);
+		}
+		if (obj.state == STATE::KILL) {
+			if (obj.counterEnd < 255)
+				++obj.counterEnd;
+			return;
+		}
+		if (obj.counterEnd != 0 && obj.counterEnd != 255)
+			--obj.counterEnd;
+		if (obj.state != STATE::WAIT) {
+			obj.var[1] = jjSampleLooped(obj.xPos, obj.yPos, SOUND::COMMON_SHIELD4, obj.var[1]);
+			if (++obj.counter > 120 && (obj.counter & 3 == 0)) {
+				if (obj.state == STATE::BOUNCE) {
+					obj.age += (12 + obj.counter / 40);
+					addEyeBeam(obj, jjSin(obj.age) * 2.75 * -obj.direction, 4);
+				} else { //rotate
+					if (obj.state == STATE::CIRCLE || obj.counter < obj.var[2] / 2)
+						obj.age += 10;
+					else
+						obj.age -= 10;
+					if (obj.state == STATE::ROTATE)
+						addEyeBeam(obj, jjSin(obj.age - 64) * 4, jjCos(obj.age - 64) * 4);
+					addEyeBeam(obj, jjSin(obj.age + 64) * 4, jjCos(obj.age + 64) * 4);
+				}
+				if (obj.counter >= obj.var[2]) {
+					obj.state = STATE::WAIT;
+					obj.lightType = LIGHT::NONE;
+				}
+			}
+		}
+	}
+	bool onObjectHit(jjOBJ@ obj, jjOBJ@ bullet, jjPLAYER@ play, int force) {
+		if (bullet !is null) {
+			obj.justHit = 5; //should this be up here? idk
+			if ((bullet.var[6] & 16) == 16) { //sword
+				if (jjGameTicks > obj.var[0]) {
+					obj.energy -= 1;
+					obj.var[0] = jjGameTicks - bullet.age + 35; //one hit per stab
+				}
+			} else {
+				obj.energy -= 1;
+				bullet.state = STATE::EXPLODE;
+			}
+		} //else... don't hurt player?
+		return true;
+	}
+}
+void AddBossClown() {
+	jjOBJ@ clown = jjObjects[jjAddObject(141, 109 * 32 + (jjRandom() & 63), 263 * 32, 0,CREATOR::OBJECT, BEHAVIOR::INACTIVE)];
+	clown.direction = (jjRandom() & 1 == 1) ? 1 : -1;
+	clown.state = STATE::FALL;
+	clown.curFrame = jjAnimations[clown.curAnim += 3];
+	clown.bulletHandling = HANDLING::IGNOREBULLET;
+	clown.xSpeed = clown.xAcc = 0;
+	clown.behavior = Threed::Clown;
+}
+void AddBossFires(int duration = 600) {
+	for (uint x = 101; x <= 118; ++x)
+	jjObjects[jjAddObject(141, x * 32 + 16,283*32, 0,CREATOR::OBJECT, function(obj) {
+		if (obj.state == STATE::START) {
+			obj.determineCurAnim(ANIM::PLUS_SCENERY, 1);
+			obj.frameID = jjRandom();
+			obj.state = STATE::FLY;
+			obj.animSpeed = 2;
+			obj.playerHandling = HANDLING::ENEMYBULLET;
+			obj.isTarget = false;
+		} else {
+			--obj.counter;
+			if (obj.yPos > 8986) {
+				obj.yPos -= 0.45;
+			} else if (obj.counter <= 0) {
+				obj.particlePixelExplosion(80);
+				obj.delete();
+			}
+			if (jjGameTicks & 7 == 0) {
+				++obj.frameID;
+				obj.determineCurFrame();
+			}
+			jjDrawTile(int(obj.xPos) & ~31, obj.yPos + 8, 2683);
+			obj.draw();
+		}
+	})].counter = duration;
+}
+class BoogeyTent : jjBEHAVIORINTERFACE {
+	array<jjOBJ@> Teeth;
+	array<jjOBJ@> Eyes;
+	array<jjOBJ@> Rings;
+	bool DropTeeth = false;
+	uint TimeTillTeethReappear = 110;
+	void StartBouncing(uint i, int initialAngle = 0, int duration = 550, STATE::State state = STATE::BOUNCE) {
+		jjOBJ@ eye = Eyes[i];
+		eye.counter = 0;
+		eye.state = state;
+		eye.lightType = LIGHT::LASER;
+		eye.light = 1;
+		eye.age = initialAngle;
+		eye.var[2] = duration;
+	}
+	void onBehave(jjOBJ@ obj) {
+		bool found = false;
+		for (int localPlayerID = 0; localPlayerID < jjLocalPlayerCount; ++localPlayerID)
+			if (jjLocalPlayers[localPlayerID].bossActivated) {
+				jjLocalPlayers[localPlayerID].boss = obj.objectID;
+				found = true;
+			}
+					
+		switch (obj.state) {
+			case STATE::START: {
+				jjOBJ@ eye;
+				@eye = jjObjects[jjAddObject(obj.eventID, obj.xOrg + 96, obj.yOrg - 150, obj.objectID, CREATOR::OBJECT, BEHAVIOR::BEES)];
+				eye.direction = -1;
+				Eyes.insertLast(eye);
+				@eye = jjObjects[jjAddObject(obj.eventID, obj.xOrg + 448, obj.yOrg - 150, obj.objectID, CREATOR::OBJECT, BEHAVIOR::BEES)];
+				eye.direction = 1;
+				Eyes.insertLast(eye);
+				const auto eyeFrameID = jjAnimations[obj.curAnim + 2];
+				BoogeyEyeClass BoogeyEye;
+				for (uint i = 0; i < 2; ++i) {
+					Eyes[i].behavior = BoogeyEye;
+					Eyes[i].curFrame = eyeFrameID;
+					Eyes[i].counterEnd = 255; //eye angle
+					Eyes[i].playerHandling = HANDLING::SPECIAL;
+					Eyes[i].bulletHandling = HANDLING::DETECTBULLET;
+					Eyes[i].scriptedCollisions = true;
+					Eyes[i].state = STATE::WAIT;
+					Eyes[i].isTarget = true; //eh why not, have fun typing jjammo
+				}
+				obj.state = STATE::DELAYEDSTART;
+			}
+			case STATE::DELAYEDSTART:
+				if (found) {
+					obj.state = STATE::FADEIN;
+					obj.xPos = int(obj.xOrg) & ~31;
+					Eyes[0].counterEnd = 254; //start opening
+					Eyes[1].counterEnd = 254;
+					jjSample(0, jjLocalPlayers[0].yPos, SOUND::DOG_AGRESSIV, 0, 14000);
+					jjVerticalSplitscreen = true;
+				}
+				return;
+			case STATE::DEACTIVATE:
+				for (uint i = 0; i < Eyes.length; ++i)
+					Eyes[i].delete();
+				obj.deactivate();
+				break;
+			case STATE::FADEIN:
+				if (++obj.counterEnd == 200) {
+					obj.state = STATE::IDLE;
+					NewTeeth(obj);
+				}
+				DrawBoogeyMouth(obj, obj.counterEnd >> 1);
+				break;
+			case STATE::IDLE:
+				++obj.counter;
+				//jjDrawString(108 * 32, 272 * 32, "" + obj.counter, STRING::LARGE);
+				if (obj.counter == 100) {
+					DropTeeth = true;
+				} else if (obj.counter == 850) {
+					AddBossClown();
+				} else if (obj.counter == 1000) {
+					StartBouncing(0);
+					StartBouncing(1, 0x200);
+				} else if (obj.counter == 1700) {
+					AddRing(2);
+					AddRing(15);
+				} else if (obj.counter == 1800) {
+					AddBossFires();
+				} else if (obj.counter == 2400) {
+					DeleteRings();
+				} else if (obj.counter == 2550) {
+					StartBouncing(0);
+					StartBouncing(1);
+				} else if (obj.counter == 3050) {
+					NewTeeth(obj);
+				} else if (obj.counter == 3320) {
+					DropTeeth = true;
+					AddBossClown();
+					if (jjDifficulty <= 1)
+						jjObjects[jjAddObject(OBJECT::CARROT, 110 * 32, 263 * 32, 0,CREATOR::OBJECT, BEHAVIOR::PICKUP)].state = STATE::FLOATFALL;
+				} else if (obj.counter == 3550) {
+					AddBossClown();
+				} else if (obj.counter == 3600) {
+					AddBossClown();
+				} else if (obj.counter == 4040) {
+					AddRing(8);
+				} else if (obj.counter == 4120) {
+					AddRing(1);
+				} else if (obj.counter == 4200) {
+					AddRing(16);
+					StartBouncing(0, state: STATE::ROTATE);
+					StartBouncing(1, state: STATE::ROTATE);
+				} else if (obj.counter == 4300) {
+					AddBossFires(duration: 450);
+				} else if (obj.counter == 4800) {
+					AddBossClown();
+					DeleteRings();
+					AddRing(8);
+					StartBouncing(0, duration: 1200, initialAngle: 0x300, state: STATE::CIRCLE);
+					StartBouncing(1, duration: 1750);
+				} else if (obj.counter == 6000) {
+					StartBouncing(0);
+				} else if (obj.counter == 6100) {
+					AddBossFires(duration: 475);
+					NewTeeth(obj);
+				} else if (obj.counter == 6600) {
+					DeleteRings();
+					jjObjects[jjAddObject(OBJECT::CARROT, 110 * 32, 263 * 32, 0,CREATOR::OBJECT, BEHAVIOR::PICKUP)].state = STATE::FLOATFALL;
+					obj.counter = 0; //loop
+				}
+				
+				DrawBoogeyMouth(obj, 100 + int(jjSin(jjGameTicks * 12) * 4));
+				break;
+			case STATE::KILL:
+				if (obj.counterEnd == 1) {
+					for (int j = 0; j < jjLocalPlayerCount; ++j) {
+						jjLocalPlayers[j].bossActivated = false;
+						jjLocalPlayers[j].cameraFreeze(true, false, false, true);
+					}
+					jjTriggers[13] = true;
+					obj.deactivates = true;
+					jjVerticalSplitscreen = false;
+					jjLayerHasTiles[2] = true;
+				}
+				if (obj.counterEnd != 0) {
+					--obj.counterEnd;
+					DrawBoogeyMouth(obj, obj.counterEnd >> 1);
+					jjObjects[jjAddObject(OBJECT::EXPLOSION, obj.xPos + (jjRandom() % jjAnimFrames[obj.curFrame].width), obj.yPos - 150 + (jjRandom() % 150))].determineCurAnim(ANIM::AMMO, 3);
+				}
+				return;
+		}
+		
+		if (Teeth.length == 0) {
+			if (TimeTillTeethReappear != 0)
+				--TimeTillTeethReappear;
+			//else
+			//	NewTeeth(obj);
+		} else
+			for (int i = Teeth.length; --i >= 0; ) {
+				jjOBJ@ tooth = Teeth[i];
+				float yPos = tooth.yPos;
+				if (tooth.counter < 110 || DropTeeth)
+					++tooth.counter;
+				if (tooth.counter < 110)
+					yPos += (110 - tooth.counter) * ((tooth.yPos > obj.yOrg) ? .85 : -.85);
+				else if (tooth.counter == 110)
+					tooth.counter = 2000 - tooth.age;
+				else if (tooth.counter == 2001) {
+					tooth.state = STATE::FADEIN;
+					Teeth.removeAt(i);
+					if (Teeth.length == 0) {
+						TimeTillTeethReappear = 500;
+						DropTeeth = false;
+					}
+				}
+				jjDrawSpriteFromCurFrame(tooth.xPos, yPos, tooth.curFrame, tooth.direction, SPRITE::CHROMAKEY, 175, layerZ: 5);
+			}
+			
+		for (uint i = 0; i < 2; ++i) {
+			jjOBJ@ eye = Eyes[i];
+			if (eye.energy < 60) {
+				obj.energy -= (60 - eye.energy);
+				eye.energy = 60;
+				if (obj.energy <= 0) {
+					obj.state = STATE::KILL; //shut mouth
+					for (uint j = 0; j < 2; ++j) {
+						@eye = Eyes[j];
+						eye.state = STATE::KILL; //shut eyes
+						eye.isTarget = false;
+						eye.lightType = LIGHT::NONE;
+					}
+					DeleteRings();
+					for (int j = Teeth.length; --j >= 0; ) {
+						jjOBJ@ tooth = Teeth[j];
+						tooth.particlePixelExplosion(2);
+						tooth.delete();
+					}
+					for (int spawnID = jjObjectCount; --spawnID != 0;) {
+						const jjOBJ@ spawn = jjObjects[spawnID];
+						if ((spawn.eventID == 141 || spawn.eventID == OBJECT::BULLET) && spawn.isActive) //clowns and fire and beams
+							jjDeleteObject(spawnID);
+					}
+					SavedTriggers[13] = true;
+					jjEnabledASFunctions[2] = false;
+					jjEventSet(uint(obj.xOrg) >> 5, uint(obj.yOrg) >> 5, 0);
+					obj.creatorType = CREATOR::OBJECT;
+					jjSample(0, jjLocalPlayers[0].yPos, SOUND::DOG_AGRESSIV, 0, 14000);
+					return;
+				}
+			}
+		}
+		for (int i = Rings.length; --i >= 0;)
+			if (Rings[i].yPos > obj.yOrg)
+				Rings[i].yPos -= 1;
+	}
+	void NewTeeth(const jjOBJ@ obj) {
+		const array<uint> frameIDs = {
+			2,3, 1,1,1, 3, 0,0,0,
+			0,0,0, 3, 1,1,1, 3,2,
+			2,2,2, 1,1,1, 3, 0,0,
+			0,0, 3, 1,1,1, 2,2,2
+		};
+		array<uint> delays;
+		SPRITE::Direction direction = SPRITE::FLIPNONE;
+		float ySpeed = 1.5;
+		for (uint i = 0; i < 36; ++i)
+			delays.insertLast(i * 18);
+		for (uint i = 0; i < 36; ++i) {
+			if (i == 9)
+				direction = SPRITE::FLIPH;
+			else if (i == 18) {
+				direction = SPRITE::FLIPV;
+				ySpeed = -6;
+			} else if (i == 27)
+				direction = SPRITE::FLIPHV;
+			jjOBJ@ tooth = jjObjects[jjAddObject(obj.eventID, obj.xOrg + (i % 18) * 32, obj.yOrg + ((i < 18) ? -36 : 36), obj.objectID, CREATOR::OBJECT, jjVOIDFUNCOBJ(Tooth))];
+			tooth.direction = direction;
+			tooth.ySpeed = ySpeed;
+			tooth.curFrame += frameIDs[i];
+			const uint delayIndex = jjRandom() % delays.length;
+			tooth.age = delays[delayIndex];
+			delays.removeAt(delayIndex);
+			Teeth.insertLast(@tooth);
+		}
+	}
+	void AddRing(int x) {
+		jjOBJ@ ring = jjObjects[jjAddObject(158, (101 + x) * 32 + 16, 284 * 32 - 1)];
+		ring.special = ring.age = 256;
+		Rings.insertLast(ring);
+	}
+	void DeleteRings() {
+		while (Rings.length != 0) {
+			Rings[0].particlePixelExplosion(1);
+			Rings[0].state = STATE::DEACTIVATE;
+			Rings[0].behave();
+			Rings.removeAt(0);
+		}
+	}
+	void DrawBoogeyMouth(const jjOBJ@ obj, uint height) const {
+		const int top = int(obj.yPos) - height / 2;
+		const auto spriteMode = height < 60 ? SPRITE::CHROMAKEY : SPRITE::NORMAL; //presumably NORMAL is ever so slightly faster
+		jjDrawRectangle(obj.xPos, top, jjAnimFrames[obj.curFrame].width, height + 1, 175, layerZ:5);
+		jjDrawSpriteFromCurFrame(obj.xPos, top, obj.curFrame, 1, spriteMode, 175, layerZ:5);
+		jjDrawSpriteFromCurFrame(obj.xPos, top + height, obj.curFrame, SPRITE::FLIPV, spriteMode, 175, layerZ:5);
+		jjDrawSpriteFromCurFrame(obj.xPos, top, obj.curFrame + 1, 1, layerZ:5);
+		jjDrawSpriteFromCurFrame(obj.xPos, top + height, obj.curFrame + 1, SPRITE::FLIPV, layerZ:5);
+	}
+	void Tooth(jjOBJ@ obj) {
+		if (obj.state == STATE::START) {
+			obj.state = STATE::WAIT;
+			obj.curFrame = jjAnimations[obj.curAnim + 1];
+			return;
+		} else if (obj.state == STATE::FADEIN) {
+			float xPos = obj.xPos, yPos = obj.yPos;
+			xPos += int(jjRandom() & 7) - 3.5;
+			yPos += int(jjRandom() & 7) - 3.5;
+			jjDrawSpriteFromCurFrame(xPos, yPos, obj.curFrame, obj.direction);
+			if (++obj.counter == 2050) {
+				obj.state = STATE::BOUNCE;
+				obj.playerHandling = HANDLING::ENEMYBULLET;
+				obj.animSpeed = 1;
+			}
+		} else if (obj.state == STATE::BOUNCE) {
+			if ((obj.ySpeed += 0.1) > 16) {
+				obj.delete();
+			} else {
+				obj.yPos += obj.ySpeed;
+				jjDrawSpriteFromCurFrame(obj.xPos, obj.yPos, obj.curFrame, obj.direction);
+			}
+		} else if (obj.state == STATE::EXPLODE) {
+			obj.particlePixelExplosion(0);
+			obj.curAnim = jjAnimSets[ANIM::AMMO] + 3;
+			obj.behavior = BEHAVIOR::EXPLOSION;
+			obj.playerHandling = HANDLING::EXPLOSION;
+			obj.behave();
+		}
+	}
+}
+
+///@Event 44=Silver Coin                      |+|Goodies   |Silver |Coin|Location:{Hint Man, Skyrunner, Graveyard, Pole corner, Respawn bumpers, Teddy bear, Circus, Float ups, Under forest, Boogey Tent, Burger, Woman}4
+///@Event 45=Gold Coin                        |+|Goodies   |Gold   |Coin|Location:{Hint Man, Skyrunner, Graveyard, Pole corner, Respawn bumpers, Teddy bear, Circus, Float ups, Under forest, Boogey Tent, Burger, Woman}4
+const string coinPrefix = jjHelpStrings[7];
+class CoinLocation {
+	uint16 x,y,idx;
+	int d;
+	CoinLocation(){}
+	CoinLocation(uint8 i){ idx = i; }
+	CoinLocation(uint8 h, uint16 v, uint8 i) {
+		x = h; y = v; idx = i;
+		const int dx = 209 - int(x);
+		const int dy = 30 - int(y);
+		d = int(dx * dx + dy * dy);
+	}
+	int opCmp(const CoinLocation &in other) const {
+		return d - other.d;
+	}
+	bool opEquals(const CoinLocation &in other) const {
+		return idx == other.idx;
+	}
+}
+array<CoinLocation> CoinLocations;
+const array<string> CoinHints = {
+	"on@the way here. Buttstomp@MacLellan's Pub & Grill.",
+	"by@where the Skyrunner first landed.@Did you really miss it?@Did you do that on purpose?",
+	"between@the main graveyard's tall trees.@Climb the hidden pole.",
+	"at@the top of a tall pole@near some fire escapes.@It's a very precise jump.",
+	"west@from the mysterious woman,@above two ghost bumpers.@Time yourself carefully.",
+	"above@a big parking sign. Stomp off of@the smelly ghost and its flies.",
+	"inside@the central circus. Go up from@the Two-Three tunnel, then turn@right at the forest.",
+	"under@a hollowed out treestump@that you float out of.@Try buttstomping into it.",
+	"beneath@the eastern forest.@There's a buttstomp block@obscured behind some leaves.",
+	"far@to the left of the battle@with the flying teeth.@Open the colored crates@to get down there, then head left.",
+	"slightly@northeast of the burger shop.@Use the horde of puppets@to get up high.",
+	"by the@top of some fire escapes.@Can you reach the two@hidden trigger crates?"
+};
+bool ShowGemArrow = false;
+void onFunction4() {
+	if (CoinLocations.length > 0) {
+		jjHelpStrings[7] = coinPrefix + CoinHints[CoinLocations[0].idx] + "@@@Come back later, I'll tell you more...";
+	} else if (CollectedGems < NumberOfGems) {
+		jjHelpStrings[7] =
+			"@@@@@@You've found all the coins!@Now how about the skulls?@Follow that pink arrow!";
+		ShowGemArrow = true;
+	} else {
+		jjHelpStrings[7] =
+			"@@@@@@You've found everything!@Take the coins to the burger shop.@Then use the Two-Three Tunnel...";
+	}
+}
+
+void BurgerBooth(jjOBJ@ obj) {
+	array<float> realY(jjLocalPlayerCount);
+	for (int i = 0; i < jjLocalPlayerCount; ++i) {
+		realY[i] = jjLocalPlayers[i].yPos;
+		jjLocalPlayers[i].yPos = -40;
+	}
+	obj.behave(BEHAVIOR::WARP);
+	for (int i = 0; i < jjLocalPlayerCount; ++i)
+		jjLocalPlayers[i].yPos = realY[i];
+	
+	const int nearestPlayerID = obj.findNearestPlayer(32*32);
+	if (nearestPlayerID >= 0) {
+		jjPLAYER@ player = jjPlayers[nearestPlayerID];
+		if (player.isLocal && player.getObjectHitForce() != 1 && PlayersX[player.localPlayerID].BurgerSequence == 0) {
+			if (player.testForCoins(obj.var[0])) {
+				obj.var[0] = 0; //don't show price anymore
+				jjParameterSet(uint(obj.xOrg) >> 5, uint(obj.yOrg) >> 5, 8,8, 0); //, even if it deactivates
+				PlayersX[player.localPlayerID].BurgerSequence = 1;
+				player.buttstomp = 121;
+				player.specialMove = 0;
+				player.extendInvincibility(-1000);
+				player.noclipMode = true;
+				player.ySpeed = -1;
+				player.xSpeed = 0;
+				jjSamplePriority(SOUND::COMMON_HARP1);
+			}
+		}
+	}
+}
+
+bool onCheat(string &in cheat) {
+	if (cheat == "jjcoins") {
+		CollectedCoins = NumberOfCoins;
+		jjAlert("jjcoins", size: STRING::MEDIUM);
+		return true;
+	}
+	if (cheat == "jjgems" || cheat == "jjbird") {
+		/*auto layers = jjLayerOrderGet();
+		for (uint i = 0; i < layers.length; ++i)
+			layers[i].spriteMode = SPRITE::INVISIBLE;*/ //debug
+		return true; //nope
+	}
+	if (cheat == "jjfly") {
+		for (int i = 0; i < jjLocalPlayerCount; ++i) {
+			jjPLAYER@ play = jjLocalPlayers[i];
+			if (play.fly == FLIGHT::NONE)
+				play.fly = FLIGHT::FLYCARROT;
+			else if (play.fly == FLIGHT::FLYCARROT) //no airboards
+				play.fly = FLIGHT::NONE;
+		}
+		jjAlert("jjfly", size: STRING::MEDIUM);
+		return true;
+	}
+	return false;
+}
+
+int TunnelGhostsScaredUntil = 0;
+void onFunction5(jjPLAYER@ play) {
+	jjTriggers[15] = true; //can't go back
+	play.showText("");
+	if (jjLocalPlayerCount == 1)
+		jjMusicStop();
+	if (TunnelGhostsScaredUntil < jjGameTicks) { //scary!
+		if (PlayersX[play.localPlayerID].TunnelGhostSequence == 0)
+			PlayersX[play.localPlayerID].TunnelGhostSequence = 1;
+	} else { //you win!
+		jjTriggers[14] = true; //can go forwards!
+		jjEnabledASFunctions[5] = false;
+		play.gems[GEM::RED] = CollectedRed;
+		play.gems[GEM::GREEN] = CollectedGreen;
+		play.gems[GEM::BLUE] = CollectedBlue;
+		if (jjLocalPlayerCount == 1) {
+			DesiredFogSpriteParam = 0;
+			Crepuscular.spriteMode = SPRITE::INVISIBLE;
+			MLLE::GetLayer("Skyscrapers").hasTiles = false;
+			MLLE::GetLayer("Smallscrapers").hasTiles = false;
+			jjPAL carrotus;
+			carrotus.load("Carrot1.j2t");
+			jjPalette.copyFrom(176, 32, 176, carrotus);
+			for (uint i = 144; i <= 159; ++i)
+				jjPalette.color[i].swizzle(COLOR::RED, COLOR::BLUE, COLOR::GREEN);
+			for (uint i = 216; i <= 239; ++i)
+				jjPalette.color[i].swizzle(COLOR::RED, COLOR::BLUE, COLOR::GREEN);
+			jjPalette.apply();
+			jjSetFadeColors();
+			MLLE::GetLayer("Reflection").reflection.tintColor = 35;
+		}
+		jjAnimations[jjAnimSets[ANIM::JAZZ] + RABBIT::TELEPORT].frameCount -= 15; //skyrunner animation offset
+		jjAnimations[jjAnimSets[ANIM::SPAZ] + RABBIT::TELEPORT].frameCount -= 15;
+		if (jjIsTSF) {
+			jjAnimations[jjAnimSets[ANIM::LORI] + RABBIT::TELEPORT].frameCount -= 15;
+		}
+	}
+}
+
+void onFunction6(uint8 triggerID) {
+	jjTriggers[triggerID] = SavedTriggers[triggerID] = true;
+}
