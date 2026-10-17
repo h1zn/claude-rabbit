@@ -1,7 +1,9 @@
-// Enemies, pickups, props (springs, checkpoints, sign, secrets), shots and particles.
+// Enemies, pickups, props (springs, checkpoints, sign, secrets, warps, poles,
+// hints), shots, sprite effects and particles.
 
 import { ENEMY, PHYS, PLAYER, TILE } from './config.js';
 import { hash2 } from './paint.js';
+import { frameAt } from './sheets.js';
 
 export function overlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -35,8 +37,7 @@ class Enemy {
     this.dead = true;
     game.enemiesKilled++;
     game.audio.play('kill');
-    const color = { bugbot: '#a06cf0', blobble: '#4ade78', buzzwing: '#ffcf2e', frostmite: '#cfe6ff' }[this.type];
-    game.explode(this.cx, this.y + this.h / 2, color);
+    game.explode(this.cx, this.y + this.h / 2, this.color || '#ffd54a');
     game.addScore(this.score, this.cx, this.y);
   }
 
@@ -68,22 +69,88 @@ class Enemy {
     const dx = p.cx - this.cx; const dy = p.cy - (this.y + this.h / 2);
     return dx * dx + dy * dy < range * range;
   }
+
+  anim(art, name, speed) { return frameAt(art.enemy.anims[name], this.t, speed); }
 }
 
-// Basic walker, measured: 1 px/tick, 1 hit point, 100 points.
-export class Bugbot extends Enemy {
-  constructor(x, y) { super('bugbot', x, y - 26 + TILE, 30, 26, 1, 100); this.vx = -1; }
+// Basic walker, measured: 1 px/tick, 1 hit point, 100 points. Stomping it
+// leaves its shell behind, which can be kicked into other enemies.
+export class Turtle extends Enemy {
+  constructor(x, y) {
+    super('turtle', x, y - 28 + TILE, 30, 28, 1, 100);
+    this.vx = -1;
+    this.color = '#4ade78';
+  }
+
   update(game) { this.begin(); this.walk(game, 1); }
-  frame(art) { return art.bugbot[Math.floor(this.t / 8) % 2]; }
+  sprite(art) { return frameAt(art.turtle.anims.turtleWalk, this.t, 8); }
+
+  stomped(game) {
+    this.dead = true;
+    game.enemiesKilled++;
+    game.addScore(this.score, this.cx, this.y);
+    game.audio.play('stomp');
+    game.effect('poof', this.cx, this.y + this.h / 2);
+    game.enemies.push(new Shell(this.x, this.y + this.h));
+  }
+}
+
+// A turtle's shell: still until touched, then slides at 6 px/tick (the
+// measured walker speed cap), knocking out every enemy in its path.
+export class Shell extends Enemy {
+  constructor(x, feet) {
+    super('shell', x, feet - 18, 30, 18, 1, 100);
+    this.color = '#c48aff';
+    this.kickLock = 0;
+    this.counted = true;   // its turtle already counted toward the tally
+  }
+
+  update(game) {
+    this.begin();
+    if (this.kickLock > 0) this.kickLock--;
+    const { level } = game;
+    this.vy = Math.min(this.vy + ENEMY.gravity, ENEMY.maxFall);
+    const hit = level.move(this, this.vx, this.vy, { climb: this.onGround });
+    this.onGround = hit.bottom || (this.onGround && level.snapDown(this, this.vx));
+    if (this.onGround) this.vy = 0;
+    if (hit.left || hit.right) { this.vx = -this.vx; game.audio.play('hit'); }
+    if (this.vx) {
+      for (const e of game.enemies) {
+        if (e !== this && !e.dead && e.type !== 'shell' && overlap(this, e)) e.kill(game);
+      }
+    }
+  }
+
+  kick(game, dir) {
+    this.vx = dir * 6;
+    this.kickLock = 12;
+    game.audio.play('stomp');
+  }
+
+  get moving() { return Math.abs(this.vx) > 0.1; }
+
+  kill(game) {
+    if (this.dead) return;
+    this.dead = true;
+    game.audio.play('kill');
+    game.explode(this.cx, this.y + this.h / 2, this.color);
+    game.addScore(this.score, this.cx, this.y);
+  }
+
+  sprite(art) {
+    const a = art.turtle.anims.turtleShell;
+    return this.moving ? frameAt(a, this.t, 3) : a.frames[0];
+  }
 }
 
 // Lurching walker, measured: speed pulses (sin + 1) / 2, and it lunges
 // (vx 3, vy -4) when Kip comes within 96 px.
-export class Frostmite extends Enemy {
+export class Lizard extends Enemy {
   constructor(x, y) {
-    super('frostmite', x, y - 28 + TILE, 28, 28, 2, 200);
+    super('lizard', x, y - 40 + TILE, 26, 40, 2, 200);
     this.vx = -0.5;
     this.cool = 60;
+    this.color = '#ffd54a';
   }
 
   update(game) {
@@ -105,15 +172,28 @@ export class Frostmite extends Enemy {
     this.walk(game, 0.5);
   }
 
-  frame(art) { return art.frostmite[Math.floor(this.t / 6) % 4]; }
+  sprite(art) { return this.anim(art, 'lizardWalk'); }
+}
+
+// Fast walker with a pitchfork: the measured walker routine at double speed.
+export class Demon extends Enemy {
+  constructor(x, y) {
+    super('demon', x, y - 38 + TILE, 30, 38, 3, 300);
+    this.vx = -2;
+    this.color = '#ff5a3a';
+  }
+
+  update(game) { this.begin(); this.walk(game, 2); }
+  sprite(art) { return this.anim(art, 'demonRun', 4); }
 }
 
 // Hopper, measured: within 362 px it hops toward Kip, a small hop (vy -2)
 // or a big one (vy -5) when he is close.
-export class Blobble extends Enemy {
+export class Frog extends Enemy {
   constructor(x, y) {
-    super('blobble', x, y - 24 + TILE, 26, 24, 3, 400);
+    super('frog', x, y - 22 + TILE, 24, 22, 3, 400);
     this.wait = 40 + Math.floor(Math.random() * 40);
+    this.color = '#4ade78';
   }
 
   update(game) {
@@ -122,8 +202,10 @@ export class Blobble extends Enemy {
     this.vy = Math.min(this.vy + ENEMY.gravity, ENEMY.maxFall);
     const hit = level.move(this, this.vx, this.vy, { climb: this.onGround });
     if (hit.left || hit.right) this.vx = -this.vx * 0.5;
+    const was = this.onGround;
     this.onGround = hit.bottom;
     if (this.onGround) {
+      if (!was) this.hopT = 0;
       this.vy = 0;
       this.vx *= 0.7;
       if (--this.wait <= 0 && this.near(game, ENEMY.hopRange)) {
@@ -133,31 +215,41 @@ export class Blobble extends Enemy {
         this.vx = dir * (close ? 2 : 1);
         this.vy = close ? ENEMY.hopBig : ENEMY.hopSmall;
         this.wait = close ? 70 : 40;
+        this.hopT = 0;
         game.audio.play('blob');
       }
     }
+    this.hopT = (this.hopT || 0) + 1;
   }
 
-  frame(art) { return art.blobble[!this.onGround ? 2 : this.wait < 12 ? 1 : 0]; }
+  sprite(art) {
+    if (!this.onGround) return frameAt(art.enemy.anims.frogJump, this.hopT, 6);
+    return this.anim(art, 'frogIdle', 20);
+  }
 }
 
 // Chasing flier, measured: within 256 px it steers toward Kip at 0.0625 per
-// axis per tick, capped at 3 px/tick. Otherwise it drifts around its perch.
-export class Buzzwing extends Enemy {
+// axis per tick, capped at 3 px/tick. Otherwise it drifts back to its perch
+// and hangs there.
+export class Bat extends Enemy {
   constructor(x, y) {
-    super('buzzwing', x, y, 28, 22, 1, 200);
+    super('bat', x, y, 28, 22, 1, 200);
     this.homeX = x; this.homeY = y;
+    this.color = '#c48aff';
+    this.awake = false;
   }
 
   update(game) {
     this.begin();
     const { player } = game;
     if (this.near(game, ENEMY.chaseRange)) {
+      this.awake = true;
       this.vx += Math.sign(player.cx - this.cx) * ENEMY.chaseAccel;
       this.vy += Math.sign(player.cy - (this.y + this.h / 2)) * ENEMY.chaseAccel;
     } else {
-      this.vx += Math.sign(this.homeX + Math.sin(this.t / 40) * 60 - this.x) * ENEMY.chaseAccel;
-      this.vy += Math.sign(this.homeY + Math.sin(this.t / 13) * 12 - this.y) * ENEMY.chaseAccel;
+      const dx = this.homeX - this.x; const dy = this.homeY - this.y;
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) { this.awake = false; this.vx = 0; this.vy = 0; }
+      else { this.vx += Math.sign(dx) * ENEMY.chaseAccel; this.vy += Math.sign(dy) * ENEMY.chaseAccel; }
     }
     const cap = ENEMY.chaseMax;
     this.vx = Math.max(-cap, Math.min(cap, this.vx));
@@ -168,15 +260,62 @@ export class Buzzwing extends Enemy {
     this.facing = Math.sign(player.cx - this.cx) || this.facing;
   }
 
-  frame(art) { return art.buzzwing[Math.floor(this.t / 3) % 2]; }
+  sprite(art) { return this.awake ? this.anim(art, 'batFly', 4) : art.enemy.anims.batHang.frames[0]; }
 }
 
+// Hover-and-dive flier, measured: hangs about 64 px above Kip with a sine bob,
+// then dives at difficulty + 4 (5 px/tick on normal).
+export class Dragonfly extends Enemy {
+  constructor(x, y) {
+    super('dragonfly', x, y, 30, 20, 1, 300);
+    this.homeX = x; this.homeY = y;
+    this.mode = 'idle';
+    this.timer = 0;
+    this.color = '#ff7ad9';
+  }
+
+  update(game) {
+    this.begin();
+    const { player, level } = game;
+    this.timer++;
+    let tx; let ty;
+    if (this.mode === 'dive') {
+      const hit = level.move(this, this.vx, this.vy, {});
+      if (hit.left || hit.right || hit.top || hit.bottom || this.timer > 60) { this.mode = 'hover'; this.timer = 0; }
+      return;
+    }
+    if (this.near(game, 260)) {
+      this.mode = 'hover';
+      tx = player.cx - this.w / 2;
+      ty = player.y - 64 + Math.sin(this.t / 9) * 10;
+      if (this.timer > 110 && Math.abs(player.cx - this.cx) < 80) {
+        const dx = player.cx - this.cx; const dy = player.cy - (this.y + this.h / 2);
+        const d = Math.hypot(dx, dy) || 1;
+        this.vx = (dx / d) * 5; this.vy = (dy / d) * 5;
+        this.mode = 'dive';
+        this.timer = 0;
+        game.audio.play('blob');
+        return;
+      }
+    } else {
+      this.mode = 'idle';
+      tx = this.homeX + Math.sin(this.t / 50) * 40;
+      ty = this.homeY + Math.sin(this.t / 11) * 8;
+    }
+    this.vx = Math.max(-2, Math.min(2, (tx - this.x) * 0.05));
+    this.vy = Math.max(-2, Math.min(2, (ty - this.y) * 0.05));
+    level.move(this, this.vx, this.vy, {});
+    this.facing = Math.sign(player.cx - this.cx) || this.facing;
+  }
+
+  sprite(art) { return this.anim(art, 'dragonfly', 3); }
+}
+
+const ENEMIES = { w: Turtle, k: Lizard, n: Demon, h: Frog, f: Bat, d: Dragonfly };
+
 export function makeEnemy(ch, px, py) {
-  if (ch === 'w') return new Bugbot(px, py);
-  if (ch === 'h') return new Blobble(px, py);
-  if (ch === 'f') return new Buzzwing(px, py);
-  if (ch === 'k') return new Frostmite(px, py);
-  return null;
+  const Kind = ENEMIES[ch];
+  return Kind ? new Kind(px, py) : null;
 }
 
 // ---------------------------------------------------------------- pickups
@@ -187,62 +326,100 @@ const GEMS = {
   b: { color: 'blue', value: 10, score: 1000 },
   v: { color: 'purple', value: 20, score: 2000 },
 };
-const FOODS = {
-  meadow: ['apple', 'cherry', 'cupcake', 'donut'],
-  winter: ['candy', 'cupcake', 'icecream', 'donut'],
-  crystal: ['icecream', 'cherry', 'cupcake', 'apple'],
-};
+const GEM_ANIM = { red: 'gemRed', green: 'gemGreen', blue: 'gemBlue', purple: 'gemPurple' };
+const RING = { red: '#ff6a8a', green: '#5ae08a', blue: '#6aa8ff', purple: '#c48aff' };
 
 export class Pickup {
   constructor(kind, x, y, extra = {}) {
     Object.assign(this, { kind, x, y, w: 16, h: 16, taken: false, t: Math.floor(Math.random() * 100) }, extra);
   }
 
-  static fromChar(ch, tx, ty, theme) {
+  static fromChar(ch, tx, ty) {
     const x = tx * TILE + 8;
     const y = ty * TILE + 8;
     if (GEMS[ch]) return new Pickup('gem', x - 2, y - 2, { ...GEMS[ch], w: 20, h: 20 });
-    if (ch === '$') return new Pickup('coin', x - 1, y - 1, { w: 18, h: 18 });
-    if (ch === 'o') {
-      const list = FOODS[theme] || FOODS.meadow;
-      return new Pickup('food', x - 3, y - 3, { w: 22, h: 22, food: list[Math.floor(hash2(tx, ty, 4) * list.length)] });
-    }
+    // Measured: silver coin 1 coin / 500 pts, gold coin 5 coins / 1000 pts.
+    if (ch === '$') return new Pickup('coin', x - 1, y - 1, { w: 18, h: 18, coins: 1, score: 500 });
+    if (ch === '@') return new Pickup('coin', x - 1, y - 1, { w: 18, h: 18, coins: 5, score: 1000, gold: true });
+    if (ch === 'o') return new Pickup('food', x - 3, y - 3, { w: 22, h: 22, food: hash2(tx, ty, 4) });
     if (ch === '+') return new Pickup('carrot', x - 3, y - 4, { w: 22, h: 22 });
-    if (ch === 'A') return new Pickup('crate', x - 4, ty * TILE + TILE - 22, { w: 24, h: 22 });
+    if (ch === '%') return new Pickup('carrot', x - 3, y - 4, { w: 22, h: 22, full: true });
+    if (ch === '1') return new Pickup('life', x - 4, y - 4, { w: 24, h: 22 });
+    if (ch === 'A') return new Pickup('crate', x - 4, ty * TILE + TILE - 22, { w: 24, h: 22, needsHit: true });
+    if (ch === 'Q') return new Pickup('shield', x - 4, ty * TILE + TILE - 30, { w: 28, h: 30, needsHit: true });
+    if (ch === 'F') return new Pickup('fastfire', x - 4, y - 4, { w: 24, h: 22 });
     return null;
   }
 
   update() { this.t++; }
 
+  sprite(art) {
+    const a = art.items.anims;
+    if (this.kind === 'gem') return frameAt(a[GEM_ANIM[this.color]], this.t, 5);
+    if (this.kind === 'coin') return frameAt(this.gold ? a.coinGold : a.coinSilver, this.t, 3);
+    if (this.kind === 'food') return a.food.frames[Math.floor(this.food * a.food.frames.length)];
+    if (this.kind === 'carrot') return this.full ? frameAt(a.carrotFull, this.t, 5) : a.carrot.frames[0];
+    if (this.kind === 'life') return frameAt(a.oneUp, this.t, 5);
+    if (this.kind === 'fastfire') return frameAt(a.fastfire, this.t, 4);
+    if (this.kind === 'shield') return frameAt(a.shieldMonitor, this.t, 6);
+    return a.ammoCrate.frames[0];
+  }
+
   collect(game) {
     this.taken = true;
     const cx = this.x + this.w / 2;
     const cy = this.y + this.h / 2;
+    const p = game.player;
     if (this.kind === 'gem') {
+      // Manual: gems earn extra lives as well as the end-of-level bonus.
+      if (Math.floor((game.gems + this.value) / 100) > Math.floor(game.gems / 100)) {
+        game.lives++;
+        game.banner('100 GEMS - 1UP!', 80);
+      }
       game.gems += this.value;
       game.levelGems += this.value;
       game.addScore(this.score, cx, this.y);
       game.audio.play('gem');
-      game.ring(cx, cy, { red: '#ff6a8a', green: '#5ae08a', blue: '#6aa8ff', purple: '#c48aff' }[this.color]);
+      game.ring(cx, cy, RING[this.color]);
     } else if (this.kind === 'coin') {
-      game.coins++;
-      game.addScore(500, cx, this.y);
+      game.coins += this.coins;
+      game.levelCoins += this.coins;
+      game.addScore(this.score, cx, this.y);
       game.audio.play('coin');
-      game.ring(cx, cy, '#ffd54a');
+      game.effect('sparkle', cx, cy);
     } else if (this.kind === 'food') {
       game.addScore(50, cx, this.y);
       game.audio.play('food');
       game.eat();
     } else if (this.kind === 'carrot') {
-      // Measured carrot: +1 heart and 70 ticks of invulnerability.
-      game.player.health = Math.min(PLAYER.maxHealth, game.player.health + 1);
-      game.player.invuln = Math.max(game.player.invuln, PLAYER.carrotInvuln);
+      // Measured carrot: +1 heart and 70 ticks of invulnerability; the full
+      // carrot restores every heart and gives 350 ticks.
+      p.health = this.full ? PLAYER.maxHealth : Math.min(PLAYER.maxHealth, p.health + 1);
+      p.invuln = Math.max(p.invuln, this.full ? 350 : PLAYER.carrotInvuln);
       game.addScore(200, cx, this.y);
       game.audio.play('berry');
-      game.banner(game.player.health >= PLAYER.maxHealth ? 'FULL HEALTH!' : '+1 HEART', 50);
-      game.ring(cx, cy, '#ff5a7a');
+      game.banner(p.health >= PLAYER.maxHealth ? 'FULL HEALTH!' : '+1 HEART', 50);
+      game.ring(cx, cy, '#ff8a3a');
+    } else if (this.kind === 'life') {
+      game.lives++;
+      game.addScore(1000, cx, this.y);
+      game.audio.play('secret');
+      game.banner('1UP!', 60);
+      game.ring(cx, cy, '#5ae08a');
+    } else if (this.kind === 'fastfire') {
+      // Measured: each Fastfire cuts the fire delay by 3 ticks, down to 6.
+      p.shotDelay = Math.max(PLAYER.minShotDelay, p.shotDelay - PLAYER.fastfireStep);
+      game.addScore(100, cx, this.y);
+      game.audio.play('crate');
+      game.banner('FASTFIRE!', 50);
+    } else if (this.kind === 'shield') {
+      p.shield = PLAYER.shieldTicks;
+      game.addScore(500, cx, this.y);
+      game.audio.play('rush');
+      game.banner('FIRE SHIELD!', 80);
+      game.explode(cx, cy, '#ff9a3a');
     } else if (this.kind === 'crate') {
-      game.player.spreadAmmo += 30;
+      p.spreadAmmo += 30;
       game.addScore(300, cx, this.y);
       game.audio.play('crate');
       game.explode(cx, cy, '#c08a4e');
@@ -252,44 +429,88 @@ export class Pickup {
 
 // ---------------------------------------------------------------- props
 
+const SPRINGS = {
+  S: { color: 'red', dir: 0 },
+  T: { color: 'green', dir: 0 },
+  U: { color: 'blue', dir: 0 },
+  '>': { color: 'red', dir: 1 },
+  '<': { color: 'red', dir: -1 },
+};
+export const SPRING_CHARS = Object.keys(SPRINGS);
+
+// Floor springs launch Kip up (measured red -16; green and blue scaled, see
+// config). Side springs, standing against a wall, throw him sideways at 16.
 export class Spring {
-  constructor(tx, ty) {
+  constructor(tx, ty, ch = 'S') {
     this.kind = 'spring';
-    this.x = tx * TILE; this.y = ty * TILE + 6; this.w = TILE; this.h = 26;
+    Object.assign(this, SPRINGS[ch]);
+    if (this.dir) {
+      this.x = tx * TILE + (this.dir > 0 ? 0 : 10); this.y = ty * TILE; this.w = 22; this.h = TILE;
+    } else {
+      this.x = tx * TILE; this.y = ty * TILE + 12; this.w = TILE; this.h = 20;
+    }
     this.squash = 0;
   }
 
   update(game) {
     if (this.squash > 0) this.squash--;
     const p = game.player;
+    if (p.dead || p.pole) return;
+    if (this.dir) {
+      if (!overlap(this, p)) return;
+      p.vx = this.dir * PHYS.springSide;
+      p.vy = Math.min(p.vy, -2);
+      p.facing = this.dir;
+      p.x = this.dir > 0 ? this.x + this.w : this.x - p.w;
+      p.springLock = 30;
+      this.launch(game, p.cx, p.cy);
+      return;
+    }
     const feet = p.y + p.h;
-    if (!p.dead && p.vy >= 0 && feet >= this.y + 4 && feet <= this.y + 20 && p.x + p.w > this.x + 4 && p.x < this.x + this.w - 4) {
-      p.y = this.y + 4 - p.h;
-      p.vy = PHYS.springLaunch;
+    if (p.vy >= 0 && feet >= this.y && feet <= this.y + 18 && p.x + p.w > this.x + 4 && p.x < this.x + this.w - 4) {
+      p.y = this.y - p.h;
+      p.vy = PHYS.springs[this.color];
       p.jumping = false; p.onGround = false; p.stomping = false;
       p.hoverLeft = PHYS.hoverTicks;
-      this.squash = 10;
-      game.audio.play('spring');
-      game.dust(p.cx, this.y + 6, 6);
+      p.springLock = 0;
+      this.launch(game, p.cx, this.y + 6);
     }
+  }
+
+  launch(game, x, y) {
+    this.squash = 12;
+    game.audio.play('spring');
+    game.dust(x, y, 6);
+  }
+
+  sprite(art) {
+    const a = art.items.anims[{ red: 'springRed', green: 'springGreen', blue: 'springBlue' }[this.color]];
+    return this.squash > 0 ? a.frames[Math.min(a.frames.length - 1, (12 - this.squash) >> 1)] : a.frames[0];
   }
 }
 
 export class Checkpoint {
   constructor(tx, ty) {
     this.kind = 'checkpoint';
-    this.x = tx * TILE + 4; this.y = ty * TILE + TILE - 56; this.w = 24; this.h = 56;
+    this.x = tx * TILE + 2; this.y = ty * TILE + TILE - 56; this.w = 28; this.h = 56;
     this.active = false;
+    this.t = 0;
   }
 
   update(game) {
+    if (this.active) this.t++;
     if (!this.active && overlap(this, game.player)) {
       this.active = true;
       game.respawn = { x: this.x, y: this.y + this.h - game.player.h };
       game.audio.play('checkpoint');
       game.banner('CHECKPOINT!', 90);
-      for (let i = 0; i < 16; i++) game.spark(this.x + 12, this.y + 10, '#ffd54a');
+      for (let i = 0; i < 16; i++) game.spark(this.x + 14, this.y + 20, '#ffd54a');
     }
+  }
+
+  sprite(art) {
+    const a = art.items.anims;
+    return this.active ? frameAt(a.checkpointOpen, this.t, 5) : a.checkpoint.frames[0];
   }
 }
 
@@ -297,16 +518,16 @@ export class Checkpoint {
 export class Sign {
   constructor(tx, ty) {
     this.kind = 'sign';
-    this.x = tx * TILE - 6; this.y = ty * TILE + TILE - 60; this.w = 44; this.h = 60;
-    this.angle = 0; this.speed = 0.15; this.hit = 0;
+    this.x = tx * TILE - 4; this.y = ty * TILE + TILE - 52; this.w = 40; this.h = 52;
+    this.angle = 0; this.speed = 0.04; this.hit = 0;
   }
 
   update(game) {
     this.angle += this.speed;
     if (this.hit > 0) {
       this.hit++;
-      this.speed = Math.max(0.15, this.speed * 0.985);
-      if (this.hit % 4 === 0) game.spark(this.x + 22 + (Math.random() - 0.5) * 30, this.y + 10, ['#ffd54a', '#5ee8ff', '#ff7ad9'][this.hit % 3]);
+      this.speed = Math.max(0.04, this.speed * 0.985);
+      if (this.hit % 4 === 0) game.spark(this.x + 20 + (Math.random() - 0.5) * 30, this.y + 10, ['#ffd54a', '#5ee8ff', '#ff7ad9'][this.hit % 3]);
       if (this.hit === 70) game.completeLevel();
     } else if (game.state === 'play' && !game.player.dead && overlap(this, game.player)) {
       // Measured: the sign spins faster the faster Kip runs into it; 1000 points.
@@ -318,10 +539,9 @@ export class Sign {
     }
   }
 
-  frame(art) {
-    const n = art.sign.length;
-    return art.sign[Math.floor(((this.angle / (Math.PI * 2)) % 1 + 1) % 1 * n) % n];
-  }
+  sprite(art) { return art.items.anims.exitSign.frames[0]; }
+  // Horizontal squash that fakes the sign spinning on its post.
+  get spin() { return Math.cos(this.angle); }
 }
 
 // Invisible 3x3-tile trigger; counts a secret the first time Kip enters.
@@ -344,7 +564,81 @@ export class SecretZone {
   }
 }
 
-// ---------------------------------------------------------------- shots and particles
+// In-level warp. Measured behaviour: a warp may cost coins, and when Kip has
+// too few it shows "x N" (the coins still needed) instead of moving him. A
+// coin warp is the same thing leading to a bonus room. Warps marked `exitOnly`
+// are arrival points that do nothing when touched.
+export class Warp {
+  constructor(o) {
+    this.kind = 'warp';
+    Object.assign(this, o);
+    this.x = o.tx * TILE; this.y = o.ty * TILE - TILE; this.w = TILE; this.h = TILE * 2;
+    this.t = Math.floor(Math.random() * 100);
+    this.near = 0;
+  }
+
+  update(game) {
+    this.t++;
+    const p = game.player;
+    if (this.near > 0) this.near--;
+    if (this.exitOnly || p.dead || game.state !== 'play') return;
+    if (!overlap(this, p)) {
+      if (p.warpLock === this) p.warpLock = null;
+      return;
+    }
+    if (p.warpLock === this) return;
+    const short = (this.cost || 0) - game.coins;
+    if (short > 0) {
+      if (this.near === 0) game.audio.play('hit');
+      this.near = 60;
+      return;
+    }
+    const target = game.warps.find((w) => w.id === this.to);
+    if (!target) return;
+    if (this.cost) {
+      game.coins -= this.cost;
+      game.banner(this.label || 'COIN WARP!', 90);
+      this.cost = 0;
+    }
+    game.warpTo(target);
+  }
+
+  get bottom() { return this.y + this.h; }
+}
+
+// Swinging pole. Measured: Kip is held for up to 70 ticks while he spins,
+// then flung out at up to 20 px/tick. Horizontal poles throw him sideways,
+// vertical poles throw him up. Jump lets go early.
+export class Pole {
+  constructor(tx, ty, vertical) {
+    this.kind = 'pole';
+    this.vertical = vertical;
+    this.px = tx * TILE + TILE / 2; this.py = ty * TILE + TILE / 2;
+    this.x = this.px - 14; this.y = this.py - 14; this.w = 28; this.h = 28;
+  }
+
+  update(game) {
+    const p = game.player;
+    if (p.dead || p.pole || p.poleCool > 0 || p.stomping || p.special > 0) return;
+    if (!overlap(this, { x: p.cx - 4, y: p.y + 2, w: 8, h: 18 })) return;
+    p.grabPole(this, game);
+  }
+}
+
+// A hint sign: shows its text while Kip stands in front of it.
+export class Hint {
+  constructor(o) {
+    this.kind = 'hint';
+    Object.assign(this, o);
+    this.x = o.tx * TILE - TILE; this.y = o.ty * TILE - TILE; this.w = TILE * 3; this.h = TILE * 2;
+  }
+
+  update(game) {
+    if (overlap(this, game.player)) game.hintText = this.text;
+  }
+}
+
+// ---------------------------------------------------------------- shots, effects and particles
 
 export class Shot {
   constructor(x, y, vx, vy, spread) {
@@ -359,14 +653,26 @@ export class Shot {
     if (--this.life <= 0) this.dead = true;
     const tx = Math.floor((this.x + this.w / 2) / TILE);
     const ty = Math.floor((this.y + this.h / 2) / TILE);
-    if (game.level.breakTile(tx, ty)) {
+    if (game.hitTile(tx, ty)) {
       this.dead = true;
-      game.breakBlock(tx, ty);
     } else if (game.level.groundish(tx, ty)) {
       this.dead = true;
-      game.spark(this.x + this.w / 2, this.y + this.h / 2, this.spread ? '#ffd54a' : '#5ee8ff');
+      game.effect('hitSpark', this.x + this.w / 2, this.y + this.h / 2);
     }
     if (game.levelTime % 2 === 0) game.trail(this.x + 4, this.y + 4, this.spread ? '#ffb02e' : '#2ad8ff');
+  }
+}
+
+// A one-shot sprite animation from the effects sheet, centred on (x, y).
+export class Effect {
+  constructor(anim, x, y, speed) {
+    Object.assign(this, { anim, x, y, speed, t: 0 });
+  }
+
+  update(game) {
+    this.t++;
+    const a = game.art.fx.anims[this.anim];
+    this.dead = this.t >= a.frames.length * (this.speed || a.speed);
   }
 }
 

@@ -1,10 +1,12 @@
 {
-  "sheet": "../../sprites/new/Miscellaneous - SFX.png",
+  "sheet": "../new/Miscellaneous - SFX.png",
   "minBand": 3,
   "anims": {
-    "blaster":   { "region": [40, 24, 140, 37], "speed": 3, "loop": true },
-    "poof":      { "region": [35, 243, 290, 268], "speed": 3, "loop": false },
-    "explosion": { "region": [15, 318, 545, 372], "speed": 3, "loop": false },
-    "sparkle":   { "region": [290, 243, 480, 268], "speed": 3, "loop": false }
+    "blaster": {"boxes": [[46, 38, 56, 42], [60, 38, 70, 42], [74, 38, 85, 42], [90, 38, 102, 42], [105, 38, 117, 42], [119, 38, 132, 42]], "speed": 3, "loop": true},
+    "blasterPower": {"boxes": [[50, 48, 62, 55], [65, 48, 75, 55], [78, 48, 92, 55], [99, 47, 110, 58], [116, 50, 129, 57]], "speed": 3, "loop": true},
+    "poof": {"region": [35, 243, 290, 268], "speed": 3, "loop": false, "pick": [2, 3, 4, 5]},
+    "explosion": {"region": [15, 318, 545, 372], "speed": 3, "loop": false, "pick": [5, 2, 6, 7, 8]},
+    "sparkle": {"region": [290, 243, 480, 268], "speed": 3, "loop": false, "pick": [1, 2, 3, 4]},
+    "hitSpark": {"region": [15, 318, 545, 372], "speed": 3, "loop": false, "pick": [0, 1]}
   }
 }

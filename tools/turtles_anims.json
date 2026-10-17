@@ -1,5 +1,5 @@
 {
-  "sheet": "../../sprites/new/Turtle Enemies.png",
+  "sheet": "../new/Turtle Enemies.png",
   "minBand": 10,
   "anims": {
     "turtleWalk":  { "region": [5, 0, 310, 55], "speed": 6, "loop": true },

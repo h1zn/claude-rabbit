@@ -19,6 +19,16 @@ function cutTiles(image, [c, r, cols, rows, clear = []]) {
 export async function buildArt() {
   const art = buildSprites();
   art.hero = await loadSheet('assets/hero.json');
+  [art.items, art.enemy, art.turtle, art.fx] = await Promise.all(
+    ['items', 'enemies', 'turtles', 'fx'].map((n) => loadSheet(`assets/${n}.json`)),
+  );
+  // Special blocks (see tools/build_blocks.py for the order).
+  const blocks = await loadTileset('assets/blocks.png');
+  art.blocks = Array.from({ length: blocks.w / 32 }, (_, i) => cutTiles(blocks.image, [i, 0, 1, 1]));
+  // Menus and the HUD draw gems as plain images.
+  for (const [color, anim] of [['red', 'gemRed'], ['green', 'gemGreen'], ['blue', 'gemBlue'], ['purple', 'gemPurple']]) {
+    art.gems[color] = art.items.anims[anim].frames.map((f) => f.right);
+  }
   art.tilesets = {};
   for (const [name, t] of Object.entries(TILESETS)) {
     const pixels = await loadTileset(t.image);

@@ -3,7 +3,11 @@
 import { arcadeText } from './art.js';
 import { PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import { frameAt } from './sheets.js';
+import { BLOCKS } from './level.js';
 import { THEME_TILESET } from './tilesets.js';
+
+// Block tile -> index in the shared block sheet (tools/build_blocks.py).
+const BLOCK_SPRITE = { x: 0, m: 5, p: 6, Y: 7, u: 8, i: 8 };
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 
@@ -12,21 +16,20 @@ export class Renderer {
     this.ctx = ctx;
     this.art = art;
     ctx.imageSmoothingEnabled = false;
-    this.breakable = this.paintBreakable();
   }
 
-  paintBreakable() {
-    const c = document.createElement('canvas');
-    c.width = TILE; c.height = TILE;
-    const x = c.getContext('2d');
-    x.fillStyle = '#7a4a1e'; x.fillRect(0, 0, TILE, TILE);
-    x.fillStyle = '#b8803e'; x.fillRect(1, 1, TILE - 2, TILE - 2);
-    x.fillStyle = '#e8b878'; x.fillRect(1, 1, TILE - 2, 3); x.fillRect(1, 1, 3, TILE - 2);
-    x.fillStyle = '#5a3216'; x.fillRect(1, TILE - 4, TILE - 2, 3); x.fillRect(TILE - 4, 1, 3, TILE - 2);
-    x.strokeStyle = '#5a3216'; x.lineWidth = 2;
-    x.beginPath(); x.moveTo(6, 8); x.lineTo(14, 16); x.lineTo(10, 25); x.moveTo(14, 16); x.lineTo(25, 12); x.stroke();
-    return c;
+  // Draw a sheet frame with its anchor (body centre, feet) at (x, footY).
+  sprite(f, x, footY, right = true) {
+    this.ctx.drawImage(right ? f.right : f.left, Math.round(x - (right ? f.ax : f.w - f.ax)), Math.round(footY - f.ay));
   }
+
+  // Draw a sheet frame centred on (x, y).
+  centred(f, x, y, right = true) {
+    this.ctx.drawImage(right ? f.right : f.left, Math.round(x - f.w / 2), Math.round(y - f.h / 2));
+  }
+
+
+
 
   camera(game, alpha) {
     let x = lerp(game.prevCam.x, game.cam.x, alpha);
@@ -43,31 +46,32 @@ export class Renderer {
     ctx.imageSmoothingEnabled = false;
     const cam = this.camera(game, alpha);
     game.sky.draw(ctx, cam.x, cam.y, game.time);
-    game.weather.draw(ctx, false, game.time);
+    // No weather inside caves and buildings (cells with a back wall).
+    const p = game.player;
+    const indoors = !!game.level.back[Math.floor(p.cy / TILE)]?.[Math.floor(p.cx / TILE)];
+    if (!indoors) game.weather.draw(ctx, false, game.time);
 
-    ctx.save();
-    ctx.translate(-cam.x, -cam.y);
-    this.decor(game, cam, false);
-    ctx.restore();
-
+    // Scenery goes after the terrain so cave back walls don't hide it.
     game.terrain.draw(ctx, cam.x, cam.y, VIEW_W, VIEW_H);
 
     ctx.save();
     ctx.translate(-cam.x, -cam.y);
-    this.breakables(game, cam);
+    this.decor(game, cam, false);
+    this.blocks(game, cam);
     this.props(game);
     this.pickups(game);
     this.enemies(game, alpha);
     this.shots(game, alpha);
     this.player(game, alpha);
+    this.effects(game);
     this.particles(game);
     this.debris(game);
     this.popups(game);
     this.decor(game, cam, true);
     ctx.restore();
 
-    game.weather.draw(ctx, true, game.time);
-    if (game.level.meta.theme === 'crystal') this.lighting(game, cam, alpha);
+    if (!indoors) game.weather.draw(ctx, true, game.time);
+    if (game.level.meta.dark) this.lighting(game, cam, alpha);
     if (game.player.rush > 0) this.rushTint(game);
     if (game.flashTime > 0) {
       ctx.globalAlpha = game.flashTime / 12;
@@ -105,7 +109,10 @@ export class Renderer {
     light(lerp(p.prevX, p.x, alpha) + p.w / 2, lerp(p.prevY, p.y, alpha) + p.h / 2, 150 * flicker);
     for (const s of game.shots) light(s.x + s.w / 2, s.y + s.h / 2, 48, 0.8);
     for (const k of game.pickups) if (k.kind === 'gem') light(k.x + k.w / 2, k.y + k.h / 2, 30, 0.5);
-    for (const prop of game.props) if (prop.kind === 'sign' || (prop.kind === 'checkpoint' && prop.active)) light(prop.x + prop.w / 2, prop.y + 20, 90, 0.8);
+    for (const prop of game.props) {
+      if (prop.kind === 'sign' || prop.kind === 'warp' || (prop.kind === 'checkpoint' && prop.active)) light(prop.x + prop.w / 2, prop.y + 20, 90, 0.8);
+    }
+    for (const fx of game.effects) light(fx.x, fx.y, 60, 0.7);
     for (const dec of game.level.decor) if (dec.kind === 'crystals') light(dec.x * TILE + TILE / 2, dec.y * TILE - 10, 70 * flicker, 0.55);
     for (const q of game.particles) if (q.glow) light(q.x, q.y, 16, 0.5);
     this.ctx.drawImage(this.dark, 0, 0);
@@ -128,28 +135,97 @@ export class Renderer {
     }
   }
 
-  breakables(game, cam) {
+  blocks(game, cam) {
     const level = game.level;
+    const ctx = this.ctx;
     const tx0 = Math.max(0, Math.floor(cam.x / TILE)); const tx1 = Math.min(level.w - 1, Math.floor((cam.x + VIEW_W) / TILE));
     const ty0 = Math.max(0, Math.floor(cam.y / TILE)); const ty1 = Math.min(level.h - 1, Math.floor((cam.y + VIEW_H) / TILE));
     for (let ty = ty0; ty <= ty1; ty++) {
-      for (let tx = tx0; tx <= tx1; tx++) if (level.tiles[ty][tx] === 'x') this.ctx.drawImage(this.breakable, tx * TILE, ty * TILE);
+      for (let tx = tx0; tx <= tx1; tx++) {
+        const ch = level.tiles[ty][tx];
+        if (!BLOCKS.has(ch)) continue;
+        // Countdown blocks show the hits they have left (1-4).
+        const k = ch === 'c' ? Math.min(4, Math.max(1, level.hits.get(`${tx},${ty}`) || 1)) : BLOCK_SPRITE[ch];
+        if (ch === 'i') ctx.globalAlpha = 0.3 + Math.sin(game.time / 10) * 0.08;
+        ctx.drawImage(this.art.blocks[k], tx * TILE, ty * TILE);
+        ctx.globalAlpha = 1;
+      }
     }
   }
+
 
   props(game) {
     const ctx = this.ctx;
     for (const prop of game.props) {
-      if (prop.kind === 'spring') ctx.drawImage(this.art.spring[prop.squash > 0 ? 1 : 0], prop.x, prop.y);
-      else if (prop.kind === 'checkpoint') {
-        const img = this.art.lantern[prop.active ? 1 : 0];
-        if (prop.active) this.glow(prop.x + 12, prop.y + 10, 26, 'rgba(255,214,90,0.35)');
-        ctx.drawImage(img, prop.x, prop.y);
+      if (prop.kind === 'spring') {
+        const f = prop.sprite(this.art);
+        if (!prop.dir) this.sprite(f, prop.x + TILE / 2, prop.y + prop.h, true);
+        else {
+          // Side springs: the floor spring turned to face along `dir`.
+          ctx.save();
+          ctx.translate(prop.dir > 0 ? prop.x : prop.x + prop.w, prop.y + TILE / 2);
+          ctx.rotate(prop.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+          ctx.drawImage(f.right, -f.ax, -f.ay);
+          ctx.restore();
+        }
+      } else if (prop.kind === 'checkpoint') {
+        if (prop.active) this.glow(prop.x + prop.w / 2, prop.y + 30, 30, 'rgba(255,214,90,0.3)');
+        this.sprite(prop.sprite(this.art), prop.x + prop.w / 2, prop.y + prop.h);
       } else if (prop.kind === 'sign') {
-        ctx.drawImage(prop.frame(this.art), prop.x, prop.y);
-      }
+        const f = prop.sprite(this.art);
+        const sx = Math.abs(prop.spin) < 0.15 ? 0.15 : Math.abs(prop.spin);
+        ctx.save();
+        ctx.translate(prop.x + prop.w / 2, prop.y + prop.h);
+        ctx.scale(sx, 1);
+        ctx.drawImage(prop.spin < 0 ? f.left : f.right, -f.ax, -f.ay);
+        ctx.restore();
+      } else if (prop.kind === 'warp') this.warp(game, prop);
+      else if (prop.kind === 'pole') this.pole(prop);
+      else if (prop.kind === 'hint') ctx.drawImage(this.art.decor.sign, prop.tx * TILE + TILE / 2 - this.art.decor.sign.width / 2, prop.ty * TILE + TILE - this.art.decor.sign.height);
     }
   }
+
+  // A warp: a ring of orbiting sparks. Coin warps show their price, and
+  // "x N" (the coins still missing) when Kip is too poor to use them.
+  warp(game, w) {
+    const ctx = this.ctx;
+    const cx = w.x + w.w / 2; const cy = w.y + w.h / 2;
+    const gold = w.cost > 0;
+    if (w.exitOnly) {
+      this.glow(cx, cy + 10, 18, 'rgba(160,220,255,0.25)');
+      return;
+    }
+    this.glow(cx, cy, 30, gold ? 'rgba(255,210,80,0.45)' : 'rgba(120,200,255,0.45)');
+    for (let i = 0; i < 10; i++) {
+      const a = w.t * 0.08 + (i / 10) * Math.PI * 2;
+      const r = 14 + Math.sin(w.t * 0.05 + i) * 3;
+      ctx.fillStyle = i % 2 ? '#ffffff' : gold ? '#ffd54a' : '#7ad8ff';
+      ctx.fillRect(Math.round(cx + Math.cos(a) * r) - 1, Math.round(cy + Math.sin(a) * r * 1.5) - 1, 3, 3);
+    }
+    if (gold) {
+      const f = this.art.items.anims.coinGold.frames[0];
+      const short = w.cost - game.coins;
+      const label = w.near > 0 && short > 0 ? `x${short}` : `${w.cost}`;
+      this.centred(f, cx - 10, w.y - 10);
+      arcadeText(ctx, label, cx + 2, w.y - 18, { size: 12, top: '#ffffff', bottom: short > 0 ? '#ff8a8a' : '#ffe08a' });
+    }
+  }
+
+  pole(pole) {
+    const ctx = this.ctx;
+    const { px, py } = pole;
+    ctx.fillStyle = '#2a1e3a';
+    if (pole.vertical) ctx.fillRect(px - 3, py - 16, 6, 32);
+    else ctx.fillRect(px - 16, py - 3, 32, 6);
+    ctx.fillStyle = '#c8d0e8';
+    if (pole.vertical) ctx.fillRect(px - 2, py - 15, 2, 30);
+    else ctx.fillRect(px - 15, py - 2, 30, 2);
+    ctx.fillStyle = '#ffd54a';
+    ctx.fillRect(px - 4, py - 4, 8, 8);
+    ctx.fillStyle = '#fff6c0';
+    ctx.fillRect(px - 3, py - 3, 3, 3);
+  }
+
 
   glow(x, y, r, color) {
     const ctx = this.ctx;
@@ -161,51 +237,54 @@ export class Renderer {
   }
 
   pickups(game) {
-    const ctx = this.ctx;
     for (const k of game.pickups) {
+      const f = k.sprite(this.art);
+      if (k.needsHit) { this.sprite(f, k.x + k.w / 2, k.y + k.h); continue; }
       const bob = Math.round(Math.sin(k.t / 12) * 2);
-      if (k.kind === 'gem') {
-        const frames = this.art.gems[k.color];
-        ctx.drawImage(frames[Math.floor(k.t / 5) % frames.length], k.x, k.y + bob);
-        if (k.t % 40 < 6) { ctx.fillStyle = '#ffffff'; ctx.fillRect(k.x + 5, k.y + 4 + bob, 2, 2); }
-      } else if (k.kind === 'coin') {
-        ctx.drawImage(this.art.coin[Math.floor(k.t / 4) % this.art.coin.length], k.x, k.y + bob);
-      } else if (k.kind === 'food') ctx.drawImage(this.art.food[k.food], k.x, k.y + bob);
-      else if (k.kind === 'carrot') ctx.drawImage(this.art.carrot, k.x, k.y + bob);
-      else if (k.kind === 'crate') ctx.drawImage(this.art.crate, k.x, k.y);
+      this.centred(f, k.x + k.w / 2, k.y + k.h / 2 + bob);
     }
   }
 
+
   enemies(game, alpha) {
-    const ctx = this.ctx;
     for (const e of game.enemies) {
       if (e.flash > 0 && e.flash % 2) continue;
-      const sprite = e.frame(this.art)[e.facing > 0 ? 'right' : 'left'];
-      const x = Math.round(lerp(e.prevX, e.x, alpha) + e.w / 2 - sprite.width / 2);
-      const y = Math.round(lerp(e.prevY, e.y, alpha) + e.h - sprite.height + 2);
-      if (e.type === 'bugbot') this.glow(x + (e.facing > 0 ? 30 : 6), y + 16, 8, 'rgba(255,60,80,0.35)');
-      ctx.drawImage(sprite, x, y);
+      const f = e.sprite(this.art);
+      const x = lerp(e.prevX, e.x, alpha) + e.w / 2;
+      const y = lerp(e.prevY, e.y, alpha) + e.h + 2;
+      // Sheet sprites face right; flying enemies hang from their centre.
+      if (e.type === 'bat' && !e.awake) this.sprite(f, x, lerp(e.prevY, e.y, alpha) + f.ay - 4, e.facing > 0);
+      else if (e.type === 'bat' || e.type === 'dragonfly') this.centred(f, x, y - e.h / 2, e.facing > 0);
+      else this.sprite(f, x, y, e.facing > 0);
     }
   }
+
+  effects(game) {
+    for (const fx of game.effects) {
+      const a = this.art.fx.anims[fx.anim];
+      this.centred(frameAt(a, fx.t, fx.speed || a.speed), fx.x, fx.y);
+    }
+  }
+
 
   shots(game, alpha) {
     for (const s of game.shots) {
-      const img = s.spread ? this.art.spreadShot : this.art.shot;
-      const x = Math.round(lerp(s.prevX, s.x, alpha));
-      const y = Math.round(lerp(s.prevY, s.y, alpha));
-      this.glow(x + 9, y + 4, 12, s.spread ? 'rgba(255,190,60,0.5)' : 'rgba(60,220,255,0.5)');
-      this.ctx.save();
-      if (s.vx < 0) { this.ctx.translate(x + img.width, y); this.ctx.scale(-1, 1); this.ctx.drawImage(img, 0, 0); }
-      else this.ctx.drawImage(img, x, y);
-      this.ctx.restore();
+      const a = this.art.fx.anims[s.spread ? 'blasterPower' : 'blaster'];
+      const f = frameAt(a, s.life, a.speed);
+      const x = lerp(s.prevX, s.x, alpha) + s.w / 2;
+      const y = lerp(s.prevY, s.y, alpha) + s.h / 2;
+      this.glow(x, y, 12, s.spread ? 'rgba(255,190,60,0.5)' : 'rgba(255,240,160,0.45)');
+      this.centred(f, x, y, s.vx > 0);
     }
   }
+
 
   // Which hero animation fits the player's current state.
   heroAnim(p) {
     const speed = Math.abs(p.vx);
     if (p.dead) return 'dead';
     if (p.celebrate) return 'victory';
+    if (p.pole) return 'spring';
     if (p.knock > 0) return 'hurt';
     if (p.special > 0) return p.special < PHYS.uppercutWindup ? 'uppercutWindup' : 'uppercut';
     if (p.stomping) return 'stomp';
@@ -240,7 +319,28 @@ export class Renderer {
     if (p.rush > 0) this.glow(x + f.w / 2, y + f.h / 2, 34, `hsla(${(game.time * 12) % 360},100%,60%,0.45)`);
     if (p.special > 0 && p.special >= PHYS.uppercutWindup) this.glow(x + f.w / 2, y + 12, 22, 'rgba(255,214,90,0.5)');
     if (p.stomping) this.glow(x + f.w / 2, y + f.h, 20, 'rgba(255,255,255,0.4)');
+    if (p.shield > 0 && (p.shield > 210 || game.time % 8 < 5)) this.shieldRing(game, x + f.w / 2, y + f.h / 2);
+    if (p.pole) {
+      // Spinning round the pole, hands on the bar.
+      ctx.save();
+      ctx.translate(p.pole.px, p.pole.py);
+      ctx.rotate(p.poleT * (0.18 + p.poleSpeed * 0.012) * p.poleDir);
+      ctx.drawImage(right ? f.right : f.left, -(right ? f.ax : f.w - f.ax), -6);
+      ctx.restore();
+      return;
+    }
     ctx.drawImage(right ? f.right : f.left, x, y);
+  }
+
+  // Fire shield: flames circling Kip.
+  shieldRing(game, cx, cy) {
+    const ctx = this.ctx;
+    this.glow(cx, cy, 34, 'rgba(255,120,40,0.35)');
+    for (let i = 0; i < 8; i++) {
+      const a = game.time * 0.12 + (i / 8) * Math.PI * 2;
+      ctx.fillStyle = ['#fff2a0', '#ffb02e', '#ff5a2a'][i % 3];
+      ctx.fillRect(Math.round(cx + Math.cos(a) * 22) - 2, Math.round(cy + Math.sin(a) * 26) - 2, 4, 4);
+    }
   }
 
   particles(game) {
@@ -315,10 +415,15 @@ export class Renderer {
     // Hearts, top-right.
     for (let i = 0; i < PLAYER.maxHealth; i++) this.heart(VIEW_W - 26 - (PLAYER.maxHealth - 1 - i) * 20, 8, i < p.health);
     // Gems and coins under the score.
-    ctx.drawImage(this.art.gems.red[0], 8, 30);
-    arcadeText(ctx, `${game.levelGems}`, 30, 32, { size: 12, top: '#ffffff', bottom: '#ffb0c0' });
-    ctx.drawImage(this.art.coin[0], 70, 31);
-    arcadeText(ctx, `${game.coins}`, 91, 32, { size: 12, top: '#ffffff', bottom: '#ffe08a' });
+    const items = this.art.items.anims;
+    this.centred(items.gemRed.frames[0], 18, 40);
+    arcadeText(ctx, `${game.gems}`, 32, 32, { size: 12, top: '#ffffff', bottom: '#ffb0c0' });
+    this.centred(items.coinSilver.frames[0], 84, 40);
+    arcadeText(ctx, `${game.coins}`, 96, 32, { size: 12, top: '#ffffff', bottom: '#ffe08a' });
+    if (p.shield > 0) {
+      this.centred(items.shieldMonitor.frames[0], 146, 40);
+      arcadeText(ctx, `${Math.ceil(p.shield / 70)}`, 162, 32, { size: 12, top: '#ffffff', bottom: '#ff9a3a' });
+    }
     // Food meter toward a sugar rush.
     if (game.food > 0 || p.rush > 0) {
       const w = 90;
@@ -328,7 +433,7 @@ export class Renderer {
       if (p.rush > 0) { for (let i = 0; i <= 6; i++) g.addColorStop(i / 6, `hsl(${(i * 60 + game.time * 6) % 360},100%,60%)`); }
       else { g.addColorStop(0, '#ff7ac0'); g.addColorStop(1, '#ffd54a'); }
       ctx.fillStyle = g; ctx.fillRect(VIEW_W / 2 - w / 2, 10, Math.round(w * fill), 6);
-      ctx.drawImage(this.art.food.cupcake, VIEW_W / 2 - w / 2 - 26, 3);
+      this.centred(this.art.items.anims.food.frames[4], VIEW_W / 2 - w / 2 - 14, 13);
       if (p.rush === 0) arcadeText(ctx, `${game.food}`, VIEW_W / 2 + w / 2 + 6, 7, { size: 10, top: '#ffffff', bottom: '#ffb0d8' });
     }
     // Measured: a sugar rush shows its seconds left, blinking in the last 140 ticks.
@@ -341,8 +446,25 @@ export class Renderer {
     arcadeText(ctx, `x${Math.max(0, game.lives)}`, 44, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: '#ffb04a' });
     // Weapon and ammo, bottom-right.
     const spread = p.spreadAmmo > 0;
-    ctx.drawImage(spread ? this.art.spreadShot : this.art.shot, VIEW_W - 92, VIEW_H - 24);
+    this.centred(this.art.fx.anims[spread ? 'blasterPower' : 'blaster'].frames[0], VIEW_W - 84, VIEW_H - 20);
+    if (p.shotDelay < PLAYER.shotDelay) {
+      // One gun icon per Fastfire collected.
+      const n = Math.round((PLAYER.shotDelay - p.shotDelay) / PLAYER.fastfireStep);
+      for (let i = 0; i < Math.min(n, 10); i++) ctx.drawImage(this.art.items.anims.fastfire.frames[0].right, VIEW_W - 100 - i * 9, VIEW_H - 50, 12, 12);
+    }
     arcadeText(ctx, spread ? `x${p.spreadAmmo}` : 'x∞', VIEW_W - 70, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: spread ? '#ffd54a' : '#7ae8ff' });
+    // Hint sign text, in a box near the bottom.
+    if (game.hintText && game.state === 'play') {
+      ctx.font = '12px "Arial Black", Impact, sans-serif';
+      const lines = game.hintText.split('\n');
+      const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 24;
+      const h = lines.length * 16 + 12;
+      ctx.fillStyle = 'rgba(10,4,26,0.8)';
+      ctx.fillRect(VIEW_W / 2 - w / 2, VIEW_H - 54 - h, w, h);
+      ctx.strokeStyle = '#ffd54a';
+      ctx.strokeRect(VIEW_W / 2 - w / 2 + 0.5, VIEW_H - 54 - h + 0.5, w - 1, h - 1);
+      lines.forEach((l, i) => arcadeText(ctx, l, VIEW_W / 2, VIEW_H - 48 - h + i * 16, { size: 12, align: 'center', shadow: false, top: '#ffffff', bottom: '#cfe6ff' }));
+    }
     // Level banner.
     if (game.bannerTime > 0 && game.state === 'play') {
       const a = Math.min(1, game.bannerTime / 30);

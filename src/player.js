@@ -11,6 +11,7 @@ export class Player {
     this.spawn(x, y);
     this.health = PLAYER.maxHealth;
     this.spreadAmmo = 0;
+    this.shotDelay = PLAYER.shotDelay;
   }
 
   spawn(x, y) {
@@ -19,6 +20,8 @@ export class Player {
       coyote: 0, jumpBuffer: 0, jumping: false, hovering: false, hoverLeft: PHYS.hoverTicks,
       invuln: 0, knock: 0, dropThrough: 0, shotCooldown: 0, shootPose: 0,
       stomping: false, special: 0, rush: 0, celebrate: false,
+      pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
+      crouchT: 0, superJump: false, shield: 0,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0,
     });
   }
@@ -33,8 +36,9 @@ export class Player {
     this.prevX = this.x;
     this.prevY = this.y;
     this.animTime++;
-    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid']) if (this[k] > 0) this[k]--;
+    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock']) if (this[k] > 0) this[k]--;
     if (this.rush > 0 && --this.rush === 0) game.endRush();
+    if (this.shield > 0) this.shield--;
 
     if (this.dead) {
       this.deadTimer++;
@@ -50,13 +54,19 @@ export class Player {
       return;
     }
 
-    const controlled = this.knock === 0 && this.special === 0;
+    if (this.pole) {
+      this.swing(game, input);
+      return;
+    }
+
+    const controlled = this.knock === 0 && this.special === 0 && this.springLock === 0;
     const dir = controlled ? (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0) : 0;
     const running = input.held('run') || this.rush > 0;
     const boost = this.rush > 0 ? PHYS.rushSpeedScale : 1;
     const accel = (running ? PHYS.runAccel : PHYS.walkAccel) * boost;
     const max = (running ? PHYS.runMax : PHYS.walkMax) * boost;
     const crouching = controlled && this.onGround && input.held('down') && !dir;
+    this.crouchT = crouching ? this.crouchT + 1 : 0;
     if (dir) {
       if (this.onGround && Math.sign(this.vx) === -dir && Math.abs(this.vx) > 3) {
         this.skid = 10;
@@ -75,7 +85,7 @@ export class Player {
       }
     } else if (dir) {
       this.vx = accelerate(this.vx, dir, accel * PHYS.airAccelScale, max, accel * PHYS.airAccelScale);
-    } else if (this.knock === 0) {
+    } else if (this.knock === 0 && this.springLock === 0) {
       this.vx *= PHYS.airDrag;
     }
 
@@ -113,8 +123,14 @@ export class Player {
         this.jumpBuffer = 0;
         this.onGround = false;
       } else if (this.jumpBuffer > 0 && (this.onGround || this.coyote > 0)) {
-        // Measured: vy = jumpBase - |vx| / 4 (running jumps go higher).
+        // Measured: vy = jumpBase - |vx| / 4 (running jumps go higher). From a
+        // full crouch it is a super jump (manual: 60% higher, smashes blocks).
         this.vy = PHYS.jumpBase - Math.abs(this.vx) / PHYS.jumpRunBonusDivisor;
+        this.superJump = this.onGround && this.crouchT >= PHYS.superJumpCoil;
+        if (this.superJump) {
+          this.vy *= PHYS.superJumpScale;
+          audio.play('uppercut');
+        }
         this.onGround = false;
         this.coyote = 0;
         this.jumpBuffer = 0;
@@ -149,7 +165,7 @@ export class Player {
       if (this.animTime % 4 === 0) game.trail(this.cx + (Math.random() * 8 - 4), this.y + this.h + 2, '#ffb02e');
     } else {
       // Measured variable jump: releasing while rising damps the climb.
-      if (this.jumping && this.vy < 0 && !input.held('jump')) {
+      if (this.jumping && !this.superJump && this.vy < 0 && !input.held('jump')) {
         const cut = PHYS.jumpCut.find((c) => this.vy < c.below);
         this.vy = cut ? this.vy + cut.add : 0;
       }
@@ -163,7 +179,7 @@ export class Player {
     // releasing the button cuts the wait to 5 ticks, so tapping fires faster.
     if (input.released('shoot')) this.shotCooldown = Math.min(this.shotCooldown, PLAYER.tapDelay);
     if (controlled && !input.held('up') && input.held('shoot') && this.shotCooldown === 0 && !this.stomping) {
-      this.shotCooldown = PLAYER.shotDelay;
+      this.shotCooldown = this.shotDelay;
       this.shootPose = 8;
       const spread = this.spreadAmmo > 0;
       if (spread) this.spreadAmmo--;
@@ -190,6 +206,49 @@ export class Player {
     this.idleTime = this.anim === 'idle' ? this.idleTime + 1 : 0;
   }
 
+  grabPole(pole, game) {
+    // Fling speed grows with the speed Kip arrives at (measured cap 20).
+    const entry = Math.hypot(this.vx, this.vy);
+    this.poleSpeed = Math.max(PHYS.poleMinFling, Math.min(PHYS.poleMaxFling, entry * 1.5 + 6));
+    this.poleHold = Math.round(PHYS.poleHoldTicks - (this.poleSpeed - PHYS.poleMinFling) * 3);
+    this.poleDir = Math.sign(this.vx) || this.facing;
+    this.pole = pole;
+    this.poleT = 0;
+    this.vx = 0; this.vy = 0;
+    this.hovering = false; this.jumping = false;
+    game.audio.hover(false);
+    game.audio.play('uppercutCharge');
+  }
+
+  // Spinning on a pole: steer with left/right, jump lets go early.
+  swing(game, input) {
+    const pole = this.pole;
+    this.poleT++;
+    const dir = (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0);
+    if (dir) this.poleDir = dir;
+    this.facing = this.poleDir;
+    this.x = pole.px - this.w / 2;
+    this.y = pole.py - this.h / 2;
+    this.anim = 'pole';
+    if (this.poleT < this.poleHold && !(this.poleT > 8 && input.pressed('jump'))) return;
+    this.pole = null;
+    this.poleCool = 24;
+    if (pole.vertical) {
+      this.vx = this.poleDir * 2;
+      this.vy = -this.poleSpeed * 0.8;
+      this.y = pole.py - this.h - 4;
+    } else {
+      this.vx = this.poleDir * this.poleSpeed;
+      this.vy = -3;
+      this.x = pole.px + this.poleDir * 18 - this.w / 2;
+    }
+    this.springLock = 12;
+    this.hoverLeft = PHYS.hoverTicks;
+    this.onGround = false;
+    game.audio.play('uppercut');
+    game.ring(pole.px, pole.py, '#ffd54a');
+  }
+
   fall(game) {
     this.vy = Math.min(this.vy + PHYS.gravity, PHYS.maxFall);
     this.collide(game);
@@ -200,12 +259,24 @@ export class Player {
     const wasAir = !this.onGround;
     const impact = this.vy;
     const grounded = this.onGround;
+    const vx = this.vx;
     const hit = level.move(this, this.vx, this.vy, { dropThrough: this.dropThrough > 0, climb: grounded });
-    if (hit.left || hit.right) this.vx = 0;
+    if (hit.left || hit.right) {
+      // Speed blocks only give way to a full-speed run (or a sugar rush).
+      const fast = Math.abs(vx) >= PHYS.runMax * 0.9 || this.rush > 0;
+      const tx = Math.floor((hit.right ? this.x + this.w + 1 : this.x - 1) / TILE);
+      let broke = false;
+      if (fast) {
+        for (let ty = Math.floor(this.y / TILE); ty <= Math.floor((this.y + this.h - 1) / TILE); ty++) {
+          if (level.at(tx, ty) === 'p' && game.hitTile(tx, ty, { speed: true })) broke = true;
+        }
+      }
+      this.vx = broke ? vx : 0;
+    }
     if (hit.top) {
-      // An uppercut or stomp breaks blocks it runs into.
-      if (this.special > 0) game.breakAround(this.cx, this.y - 4);
-      this.vy = Math.max(this.vy, 0.5);
+      // An uppercut or super jump smashes the blocks it runs into.
+      const smash = (this.special > 0 || this.superJump) && game.breakAround(this.cx, this.y - 4);
+      if (!smash) this.vy = Math.max(this.vy, 0.5);
     }
     this.onGround = hit.bottom;
     if (!this.onGround && grounded && this.vy >= 0 && this.dropThrough === 0) this.onGround = level.snapDown(this, this.vx);
@@ -227,6 +298,7 @@ export class Player {
       }
       this.vy = 0;
       this.jumping = false;
+      this.superJump = false;
       this.hovering = false;
       this.hoverLeft = PHYS.hoverTicks;
       this.coyote = PHYS.coyoteTicks;
@@ -238,10 +310,19 @@ export class Player {
   // Measured knockback: vx = ±4, vy -= 4.
   hurt(game, fromX, { spikes = false } = {}) {
     if (this.invuln > 0 || this.dead || this.rush > 0) return;
+    if (this.shield > 0) {
+      // Manual: a shield soaks the hit but loses 5 seconds.
+      this.shield = Math.max(0, this.shield - PLAYER.shieldHitCost);
+      this.invuln = 60;
+      game.audio.play('hit');
+      game.ring(this.cx, this.cy, '#ff9a3a');
+      return;
+    }
     this.health--;
     this.invuln = PHYS.hurtInvulnTicks;
     this.knock = 20;
     this.special = 0;
+    this.pole = null;
     this.stomping = false;
     const away = this.cx < fromX ? -1 : 1;
     this.vx = away * PHYS.hurtKnockX;

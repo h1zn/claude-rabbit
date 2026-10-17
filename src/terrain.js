@@ -39,6 +39,13 @@ export const TERRAIN_THEMES = {
   },
 };
 
+// Themes drawn from a tileset borrow a palette for stone blocks and ledges.
+TERRAIN_THEMES.castle = { ...TERRAIN_THEMES.meadow, stone: TERRAIN_THEMES.winter.stone };
+TERRAIN_THEMES.town = TERRAIN_THEMES.meadow;
+TERRAIN_THEMES.tube = { ...TERRAIN_THEMES.crystal };
+
+const BACK_DIM = 0.5;
+
 export class TerrainRenderer {
   constructor(level, themeName, sprites) {
     this.level = level;
@@ -108,14 +115,30 @@ export class TerrainRenderer {
           underPx.push([x, y]);
         }
         prev = m;
-        if (!m) continue;
+        if (!m) {
+          const back = this.level.back[Math.floor(wy / TILE)]?.[Math.floor(wx / TILE)];
+          if (back) this.backPixel(d, (y * CHUNK + x) * 4, wx, wy, back);
+          continue;
+        }
         const depth = wy - runTop;
         const i = (y * CHUNK + x) * 4;
-        if (this.tileset && m === 1) {
-          const k = this.tilePixel(wx, wy, depth);
+        // Rough underside where ground hangs over air (floating masses).
+        const ly = wy % TILE;
+        let shade = 1;
+        if (ly >= TILE - 10 && depth >= 12 && this.overAir(wx, wy)) {
+          const jag = 3 + Math.floor(hash2(wx >> 2, Math.floor(wy / TILE), 61) * 7);
+          if (ly >= TILE - jag) {
+            prev = 0;
+            if (this.level.back[Math.floor(wy / TILE)]?.[Math.floor(wx / TILE)] || this.level.back[Math.floor(wy / TILE) + 1]?.[Math.floor(wx / TILE)]) this.backPixel(d, i, wx, wy);
+            continue;
+          }
+          shade = ly >= TILE - jag - 4 ? 0.55 : 0.8;
+        }
+        if (this.tileset) {
+          const k = m === 2 && this.tileset.stone ? this.stonePixel(wx, wy, depth) : this.tilePixel(wx, wy, depth);
           const td = this.tileset.pixels.data;
           if (td[k + 3] === 0) continue;
-          d[i] = td[k]; d[i + 1] = td[k + 1]; d[i + 2] = td[k + 2]; d[i + 3] = 255;
+          d[i] = td[k] * shade; d[i + 1] = td[k + 1] * shade; d[i + 2] = td[k + 2] * shade; d[i + 3] = 255;
           continue;
         }
         const color = m === 2 ? this.stoneColor(wx, wy, depth) : this.groundColor(wx, wy, depth);
@@ -125,6 +148,7 @@ export class TerrainRenderer {
           : (!this.material(wx - 2, wy) || !this.material(wx + 2, wy)) ? 0.8
             : (!this.material(wx - 3, wy) || !this.material(wx + 3, wy)) ? 0.9 : 1;
         if (side < 1 && depth >= t.capDepth) { r *= side; g *= side; b *= side; }
+        r *= shade; g *= shade; b *= shade;
         d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255;
       }
     }
@@ -132,6 +156,57 @@ export class TerrainRenderer {
     if (!this.tileset) this.overhangs(ctx, capPx, underPx, ox, oy);
     this.props(ctx, ox, oy);
     return canvas;
+  }
+
+  // True when the tile below this ground pixel's tile is open air.
+  overAir(wx, wy) {
+    const tx = Math.floor(wx / TILE); const ty = Math.floor(wy / TILE) + 1;
+    if (ty >= this.level.h) return false;
+    const ch = this.level.tiles[ty][tx];
+    return ch !== '#' && ch !== '=' && !SLOPES[ch];
+  }
+
+  // Dimmed back wall behind caves and interiors.
+  backPixel(d, i, wx, wy, kind = 1) {
+    let r; let g; let b; let k = BACK_DIM;
+    if (kind === 2 && this.tileset?.stone) {
+      const j = this.stonePixel(wx, wy, 999);
+      const td = this.tileset.pixels.data;
+      k = 0.62;
+      d[i] = td[j] * k; d[i + 1] = td[j + 1] * k; d[i + 2] = td[j + 2] * k; d[i + 3] = 255;
+      return;
+    }
+    if (this.tileset) {
+      const ts = this.tileset;
+      const tx = Math.floor(wx / 32); const ty = Math.floor(wy / 32);
+      let id;
+      if (ts.backBlock) {
+        const rows = ts.backBlock.length; const cols = ts.backBlock[0].length;
+        id = ts.backBlock[ty % rows][tx % cols];
+      } else if (ts.backList) {
+        id = ts.backList[Math.floor(hash2(tx, ty, 17) * ts.backList.length)];
+      } else {
+        id = null;
+        k = BACK_DIM * 0.7;
+      }
+      const j = id === null ? this.tilePixel(wx, wy, 999) : tilePixel(ts.pixels, id, wx % 32, wy % 32);
+      const td = ts.pixels.data;
+      if (td[j + 3] === 0) { r = 20; g = 10; b = 30; } else { r = td[j]; g = td[j + 1]; b = td[j + 2]; }
+    } else {
+      [r, g, b] = hex(this.groundColor(wx, wy, 200));
+      k = BACK_DIM * 0.8;
+    }
+    d[i] = r * k; d[i + 1] = g * k; d[i + 2] = b * k; d[i + 3] = 255;
+  }
+
+  // Tileset pixel for a stone block ('='): its own cap (e.g. roof tiles) over
+  // its own fill (e.g. plaster walls).
+  stonePixel(wx, wy, depth) {
+    const st = this.tileset.stone;
+    const lx = ((wx % 32) + 32) % 32; const ly = ((wy % 32) + 32) % 32;
+    const tx = Math.floor(wx / 32); const ty = Math.floor(wy / 32);
+    if (depth < 32) return tilePixel(this.tileset.pixels, st.cap[tx % st.cap.length], lx, depth);
+    return tilePixel(this.tileset.pixels, st.fill[Math.floor(hash2(tx, ty, 23) * st.fill.length)], lx, ly);
   }
 
   // Tileset pixel for ground at (wx, wy), `depth` px below its surface. The cap
@@ -242,7 +317,13 @@ export class TerrainRenderer {
       for (let tx = tx0; tx < tx0 + CHUNK / TILE && tx < level.w; tx++) {
         const ch = level.tiles[ty][tx];
         const x = tx * TILE - ox; const y = ty * TILE - oy;
-        if (ch === '-') ctx.drawImage(this.platform, x, y);
+        if (ch === '-') {
+          const ledge = this.tileset?.ledge;
+          if (ledge) {
+            const id = ledge[tx % ledge.length];
+            ctx.drawImage(this.tileset.pixels.image, (id % 10) * 32, Math.floor(id / 10) * 32, 32, 32, x, y, 32, 32);
+          } else ctx.drawImage(this.platform, x, y);
+        }
         else if (ch === '^') ctx.drawImage(spikes, x, y + TILE / 2);
       }
     }
@@ -273,6 +354,13 @@ export class TerrainRenderer {
     const r1 = Math.min(this.rows - 1, Math.floor((camY + viewH) / CHUNK));
     for (let cy = r0; cy <= r1; cy++) {
       for (let cx = c0; cx <= c1; cx++) ctx.drawImage(this.chunk(cx, cy), cx * CHUNK - camX, cy * CHUNK - camY);
+    }
+    // Paint at most one chunk next to the view per frame, so chunks are
+    // usually ready before they scroll in.
+    for (let cy = Math.max(0, r0 - 1); cy <= Math.min(this.rows - 1, r1 + 1); cy++) {
+      for (let cx = Math.max(0, c0 - 1); cx <= Math.min(this.cols - 1, c1 + 1); cx++) {
+        if (!this.chunks.has(cx + cy * 1000)) { this.chunk(cx, cy); return; }
+      }
     }
   }
 

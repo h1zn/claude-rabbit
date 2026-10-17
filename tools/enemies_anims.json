@@ -1,11 +1,13 @@
 {
-  "sheet": "../../sprites/new/enemies.png",
+  "sheet": "../new/enemies.png",
   "minBand": 10,
   "anims": {
-    "bat":      { "region": [12, 388, 510, 432], "speed": 4, "loop": true },
-    "demonRun": { "region": [30, 848, 530, 897], "speed": 4, "loop": true },
-    "frog":     { "region": [912, 452, 1090, 532], "speed": 5, "loop": true },
-    "lizard":   { "region": [12, 8, 1075, 72], "speed": 5, "loop": true },
-    "dragonfly":{ "region": [920, 425, 1090, 452], "speed": 3, "loop": true }
+    "demonRun": {"region": [30, 848, 530, 897], "speed": 4, "loop": true},
+    "dragonfly": {"region": [920, 425, 1090, 452], "speed": 3, "loop": true},
+    "batFly": {"region": [12, 388, 510, 432], "speed": 4, "loop": true, "pick": [3, 4, 5, 6, 7]},
+    "batHang": {"region": [12, 388, 510, 432], "speed": 1, "loop": false, "pick": [2]},
+    "lizardWalk": {"region": [12, 8, 1075, 72], "speed": 6, "loop": true, "pick": [6, 8, 9, 10, 11, 7]},
+    "frogIdle": {"region": [912, 452, 1090, 532], "speed": 20, "loop": true, "pick": [1, 2]},
+    "frogJump": {"region": [912, 452, 1090, 532], "speed": 6, "loop": false, "pick": [6, 4, 5]}
   }
 }

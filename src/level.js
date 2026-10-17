@@ -4,17 +4,28 @@ import { TILE } from './config.js';
 
 // Tile characters
 //   #  ground (solid)            =  stone (solid)           x  breakable block (solid until shot)
+//   m  butt-stomp block (only a buttstomp, uppercut or super jump breaks it)
+//   c  countdown block (takes several hits; see Builder.countdown)
+//   p  speed block (only running into it at full speed breaks it)
+//   Y  switch crate (break it to flip every switch block in the level)
+//   u  switch block (solid until flipped)   i  ghost switch block (solid once flipped)
 //   -  one-way platform          ^  spikes (hurt, not solid)
 //   /  45° slope rising right    \  45° slope falling right
 //   q  gentle rise, lower half   r  gentle rise, upper half
 //   y  gentle fall, upper half   z  gentle fall, lower half
 // Entity characters (removed from the grid when parsed)
-//   P start  C checkpoint  E exit sign  S spring
-//   * red gem  g green gem  b blue gem  v purple gem  $ coin  o food
-//   +  health carrot  A spread-shot crate  X secret zone
-//   w Bugbot  h Blobble  f Buzzwing  k Snowball (rolls)  Z boss
-const SOLID = new Set(['#', '=', 'x']);
-const ENTITY = new Set(['P', 'C', 'E', 'S', '*', 'g', 'b', 'v', '$', 'o', '+', 'A', 'X', 'w', 'h', 'f', 'k', 'Z']);
+//   P start  C checkpoint  E exit sign  X secret zone
+//   S red spring  T green spring  U blue spring  > <  side springs (push right / left)
+//   H horizontal pole  I vertical pole
+//   * red gem  g green gem  b blue gem  v purple gem  $ silver coin  @ gold coin
+//   o food  + carrot  % full carrot  1 extra life  A spread-shot crate
+//   F fastfire  Q fire-shield monitor (shoot or stomp it open)
+//   w turtle  k lizard  n demon  h frog  f bat  d dragonfly
+// Warps and hint signs carry data, so they are objects (Builder.warp/hint).
+const SOLID = new Set(['#', '=', 'x', 'm', 'c', 'p', 'Y', 'u']);
+// Blocks drawn from the shared block sheet instead of the terrain.
+export const BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u', 'i']);
+const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQwknhfd'.split(''));
 
 // Surface height (pixels from the tile's top) at local x in [0, TILE].
 export const SLOPES = {
@@ -32,8 +43,101 @@ export class Builder {
     this.h = height;
     this.grid = Array.from({ length: height }, () => new Array(width).fill('.'));
     this.decor = [];
+    this.objects = [];
+    this.hits = new Map();
     this.tops = new Array(width).fill(null);   // surface row per column (may be .5)
+    // Cells with a back wall: carved caves show rock behind them, not sky.
+    this.back = Array.from({ length: height }, () => new Uint8Array(width));
   }
+
+  // Hollow out a rectangle (a cave room or tunnel) with a back wall.
+  carve(x, y, w, h) {
+    for (let j = 0; j < h; j++) {
+      for (let i = 0; i < w; i++) {
+        if (x + i < 0 || y + j < 0 || x + i >= this.w || y + j >= this.h) continue;
+        this.grid[y + j][x + i] = '.';
+        this.back[y + j][x + i] = 1;
+      }
+    }
+    return this;
+  }
+
+  // Hollow out a building interior: its back wall uses the stone style.
+  room(x, y, w, h) {
+    this.carve(x, y, w, h);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (this.back[y + j]?.[x + i]) this.back[y + j][x + i] = 2;
+    return this;
+  }
+
+  // Back wall without carving (for open areas meant to read as indoors).
+  wall(x, y, w, h) {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      if (x + i >= 0 && y + j >= 0 && x + i < this.w && y + j < this.h) this.back[y + j][x + i] = 1;
+    }
+    return this;
+  }
+
+  stomp(x, y, w, h) { return this.fill(x, y, w, h, 'm'); }
+  speedBlocks(x, y, w, h) { return this.fill(x, y, w, h, 'p'); }
+
+  // Countdown blocks: each takes `hits` shots (1-4), shown on its face.
+  countdown(x, y, w, h, hits = 3) {
+    this.fill(x, y, w, h, 'c');
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.hits.set(`${x + i},${y + j}`, hits);
+    return this;
+  }
+
+  // Warp standing on the cell (x, y). It sends Kip to the warp with id `to`;
+  // `cost` coins makes it a coin warp. Arrival-only warps have no `to`.
+  warp(x, y, id, to = null, { cost = 0, label = null } = {}) {
+    this.objects.push({ type: 'warp', tx: x, ty: y, id, to, cost, label, exitOnly: to === null });
+    return this;
+  }
+
+  hint(x, y, text) {
+    this.objects.push({ type: 'hint', tx: x, ty: y, text });
+    return this;
+  }
+
+  // Items in a row along a cave floor: every empty cell on `row` from x0 to
+  // x1 that has something to stand on below it.
+  floorRow(x0, x1, row, ch = 'o', step = 1) {
+    for (let c = x0; c < x1; c += step) {
+      if (this.grid[row]?.[c] !== '.') continue;
+      const below = this.grid[row + 1]?.[c];
+      if (below && '#=x-m'.includes(below)) this.put(c, row, ch);
+    }
+    return this;
+  }
+
+  // First ground row at or below `from` in a column (for stacked strata).
+  surface(col, from = 0) {
+    for (let r = Math.max(0, from); r < this.h; r++) {
+      const ch = this.grid[r][col];
+      if (ch === '#' || ch === '=' || ch === '-' || '/\\qryz'.includes(ch)) return r;
+    }
+    return this.h;
+  }
+
+  // Put something standing on the first ground at or below row `from`.
+  on(col, ch, from = 0) {
+    let r = this.surface(col, from) - 1;
+    while (r > 0 && '/\\qryz'.includes(this.grid[r][col])) r--;
+    return this.put(col, r, ch);
+  }
+
+  // Food (or other items) along the first ground below row `from`.
+  line(x0, x1, from, ch = 'o', step = 2) {
+    for (let c = x0; c < x1; c += step) {
+      let r = this.surface(c, from) - 1;
+      while (r > 0 && '/\\qryz'.includes(this.grid[r][c])) r--;
+      if (r > 0 && this.grid[r][c] === '.' && this.grid[r + 1][c] !== '^') this.put(c, r, ch);
+    }
+    return this;
+  }
+
+  // A floating mass of ground: surface row `top`, `depth` rows thick.
+  mass(x, top, w, depth = 3) { return this.fill(x, top, w, depth, '#'); }
 
   // Row just above the ground at a column (for standing entities).
   above(col, rows = 1) {
@@ -66,7 +170,8 @@ export class Builder {
   // Rolling terrain from a polyline of [column, surfaceRow] points. Between
   // points the surface may change by 0, 0.5 or 1 tile per column; the right
   // slope tiles are chosen automatically. Rows may be halves (e.g. 9.5).
-  profile(points) {
+  profile(points, depth = 0) {
+    this.depth = depth;
     for (let i = 0; i + 1 < points.length; i++) {
       const [c0, h0] = points[i];
       const [c1, h1] = points[i + 1];
@@ -75,12 +180,14 @@ export class Builder {
       if (![0, 0.5, -0.5, 1, -1].includes(dh)) throw new Error(`profile ${c0}->${c1}: slope ${dh} per column`);
       for (let k = 0; k < n; k++) this.column(c0 + k, h0 + dh * k, h0 + dh * (k + 1));
     }
+    this.depth = 0;
     return this;
   }
 
   column(col, hl, hr) {
     if (col >= 0 && col < this.w) this.tops[col] = Math.min(hl, hr);
-    const fillBelow = (row) => this.fill(col, row, 1, this.h - row, '#');
+    // A band `depth` rows thick under its surface, or ground to the bottom.
+    const fillBelow = (row) => this.fill(col, row, 1, this.depth ? Math.max(1, Math.ceil(Math.max(hl, hr)) + this.depth - row) : this.h - row, '#');
     if (hl === hr) {
       if (!Number.isInteger(hl)) throw new Error(`flat ground at half row ${hl}`);
       return fillBelow(hl);
@@ -152,6 +259,9 @@ export class Builder {
   build(meta) {
     const level = new Level(this.grid.map((r) => r.join('')), meta);
     level.decor = this.decor;
+    level.objects = this.objects;
+    level.back = this.back;
+    level.hits = this.hits;
     return level;
   }
 }
@@ -164,6 +274,9 @@ export class Level {
     this.tiles = rows.map((r) => r.split(''));
     this.entities = [];
     this.decor = [];
+    this.objects = [];
+    this.back = Array.from({ length: this.h }, () => new Uint8Array(this.w));
+    this.hits = new Map();
     for (let y = 0; y < this.h; y++) {
       for (let x = 0; x < this.w; x++) {
         const ch = this.tiles[y][x];
@@ -190,10 +303,34 @@ export class Level {
   // Anything you can stand on: used for ledge checks and tile art.
   groundish(tx, ty) { return this.solid(tx, ty) || this.slope(tx, ty); }
 
-  breakTile(tx, ty) {
-    if (this.at(tx, ty) !== 'x') return false;
+  // Shots and attacks break 'x' blocks and switch crates, and wear down
+  // countdown blocks; a stomp also breaks 'm' blocks; `speed` (running at
+  // full tilt, an uppercut or a sugar rush) breaks 'p' blocks.
+  breakTile(tx, ty, { stomp = false, speed = false } = {}) {
+    const ch = this.at(tx, ty);
+    if (ch === 'c') {
+      const key = `${tx},${ty}`;
+      const left = (this.hits.get(key) || 1) - 1;
+      this.hits.set(key, left);
+      if (left > 0) return 'dent';
+    } else if (ch !== 'x' && ch !== 'Y' && !(stomp && ch === 'm') && !(speed && ch === 'p')) {
+      return false;
+    }
     this.tiles[ty][tx] = '.';
-    return true;
+    return ch === 'Y' ? 'switch' : true;
+  }
+
+  // A switch crate broke: solid switch blocks vanish, ghost ones go solid.
+  flipSwitches() {
+    const changed = [];
+    for (let y = 0; y < this.h; y++) {
+      for (let x = 0; x < this.w; x++) {
+        const ch = this.tiles[y][x];
+        if (ch === 'u') { this.tiles[y][x] = '.'; changed.push([x, y, false]); }
+        else if (ch === 'i') { this.tiles[y][x] = 'u'; changed.push([x, y, true]); }
+      }
+    }
+    return changed;
   }
 
   // Surface y (world) of a slope tile under world x, or null.

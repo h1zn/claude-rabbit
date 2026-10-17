@@ -15,6 +15,16 @@ export const BACKDROPS = {
     { rect: [0, 62, 10, 4], sx: 0.25, sy: 0.12, bottom: 20, under: true },
     { rect: [2, 66, 8, 12], sx: 0.3, sy: 0.18, bottom: -40, gap: 520, strip: true },
   ],
+  castle: [
+    { rect: [0, 60, 7, 6], fill: true, sx: 0.3, sy: 0.3, dim: 0.45 },
+  ],
+  town: [
+    { rect: [0, 7, 4, 2], fill: true, stretch: true, sx: 0.04, sy: 0.02 },
+    { rect: [0, 86, 8, 10], sx: 0.2, sy: 0.1, bottom: 30, gap: 420, dim: 0.65 },
+  ],
+  tube: [
+    { rect: [0, 24, 10, 6], fill: true, sx: 0.3, sy: 0.3, dim: 0.5 },
+  ],
   beach: [
     { rect: [0, 24, 8, 5], fill: true, stretch: true, sx: 0.04, sy: 0.02 },
     { rect: [0, 48, 9, 6], sx: 0.18, sy: 0.08, bottom: 40, gap: 700, strip: true },
@@ -30,6 +40,13 @@ function cutLayer(tileset, layer) {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(tileset.image, c * 32, r * 32, cols * 32, rows * 32, 0, 0, cols * 32, rows * 32);
   for (const [x, y, w, h] of layer.clear || []) ctx.clearRect(x * 32, y * 32, w * 32, h * 32);
+  // Dimmed layers sit further back (and keep busy interiors readable).
+  if (layer.dim) {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = `rgba(6,2,16,${1 - layer.dim})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = 'source-over';
+  }
   // Remove the tileset's editor guide lines (light lavender grid, blue labels).
   if (layer.strip) {
     const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -54,8 +71,10 @@ function cutLayer(tileset, layer) {
 export class Backdrop {
   constructor(tileset, name, level) {
     this.layers = BACKDROPS[name].map((l) => cutLayer(tileset, l));
-    // Camera height at which `bottom` offsets apply: resting near the ground.
-    this.refY = level.pixelH - VIEW_H - 96;
+    // Camera height at which `bottom` offsets apply: resting near the ground
+    // (the level's surface row when it has caves below it).
+    const ground = level.meta.horizon !== undefined ? level.meta.horizon * 32 : level.pixelH - 96;
+    this.refY = ground - VIEW_H;
   }
 
   draw(ctx, camX, camY) {

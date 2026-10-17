@@ -3,7 +3,9 @@
 import { Backdrop, BACKDROPS } from './backdrop.js';
 import { THEME_TILESET } from './tilesets.js';
 import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
-import { Checkpoint, makeEnemy, overlap, Particle, Pickup, SecretZone, Shot, Sign, Spring } from './entities.js';
+import {
+  Checkpoint, Effect, Hint, makeEnemy, overlap, Particle, Pickup, Pole, SecretZone, Shot, Sign, Spring, SPRING_CHARS, Warp,
+} from './entities.js';
 import { LEVELS } from './levels.js';
 import { Player } from './player.js';
 import { Sky, Weather } from './sky.js';
@@ -44,8 +46,8 @@ export class Game {
     this.sky = tsName && BACKDROPS[tsName] ? new Backdrop(this.art.tilesets[tsName].pixels, tsName, this.level) : new Sky(theme);
     this.weather = new Weather(WEATHER[theme]);
     Object.assign(this, {
-      enemies: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [],
-      levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins0: this.coins,
+      enemies: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
+      levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,
     });
     let start = { x: 64, y: 64 };
@@ -55,21 +57,27 @@ export class Game {
       const py = e.ty * TILE;
       const enemy = makeEnemy(e.ch, px, py);
       if (enemy) { this.enemies.push(enemy); totals.enemies++; continue; }
+      if (SPRING_CHARS.includes(e.ch)) { this.props.push(new Spring(e.tx, e.ty, e.ch)); continue; }
       switch (e.ch) {
         case 'P': start = { x: px + (TILE - PLAYER.w) / 2, y: py + TILE - PLAYER.h }; break;
-        case 'S': this.props.push(new Spring(e.tx, e.ty)); break;
+        case 'H': this.props.push(new Pole(e.tx, e.ty, false)); break;
+        case 'I': this.props.push(new Pole(e.tx, e.ty, true)); break;
         case 'C': this.props.push(new Checkpoint(e.tx, e.ty)); break;
         case 'E': this.props.push(new Sign(e.tx, e.ty)); break;
         case 'X': this.props.push(new SecretZone(e.tx, e.ty)); totals.secrets++; break;
         default: {
-          const pickup = Pickup.fromChar(e.ch, e.tx, e.ty, theme);
+          const pickup = Pickup.fromChar(e.ch, e.tx, e.ty);
           if (!pickup) break;
           this.pickups.push(pickup);
           if (pickup.kind === 'gem') totals.gems += pickup.value;
-          if (pickup.kind === 'coin') totals.coins++;
+          if (pickup.kind === 'coin') totals.coins += pickup.coins;
           if (pickup.kind === 'food') totals.food++;
         }
       }
+    }
+    for (const o of this.level.objects) {
+      if (o.type === 'warp') { const w = new Warp(o); this.warps.push(w); this.props.push(w); }
+      if (o.type === 'hint') this.props.push(new Hint(o));
     }
     this.totals = totals;
     this.start = start;
@@ -119,8 +127,32 @@ export class Game {
     }
   }
 
+  effect(name, x, y, speed) {
+    this.effects.push(new Effect(name, x, y, speed));
+  }
+
+  // Move Kip to a warp and snap the camera there.
+  warpTo(target) {
+    const p = this.player;
+    this.effect('sparkle', p.cx, p.cy);
+    p.x = target.x + (target.w - p.w) / 2;
+    p.y = target.bottom - p.h;
+    p.prevX = p.x; p.prevY = p.y;
+    p.vx = 0; p.vy = 0;
+    p.warpLock = target;
+    p.stomping = false; p.hovering = false;
+    this.audio.play('secret');
+    this.flash('#ffffff', 8);
+    this.effect('sparkle', p.cx, p.cy);
+    this.cam = { x: p.cx - VIEW_W / 2, y: p.cy - VIEW_H / 2 };
+    this.clampCamera();
+    this.prevCam = { ...this.cam };
+    this.terrain.warm(p.cx, p.cy);
+  }
+
   explode(x, y, color) {
-    for (let i = 0; i < 22; i++) {
+    this.effect('explosion', x, y);
+    for (let i = 0; i < 12; i++) {
       const a = Math.random() * Math.PI * 2;
       const s = 1 + Math.random() * 3.8;
       this.particles.push(new Particle(x, y, Math.cos(a) * s, Math.sin(a) * s - 1, i % 3 ? color : '#ffffff', 30 + Math.random() * 20, 3, 0.18, i % 4 === 0));
@@ -186,7 +218,7 @@ export class Game {
     // Unsupported breakable blocks stacked above crumble too, so one shot at
     // the base of a wall clears the way instead of leaving a hanging stub.
     let up = ty - 1;
-    while (this.level.breakTile(tx, up)) {
+    while (this.level.at(tx, up) === 'x' && this.level.breakTile(tx, up)) {
       const cy = up * TILE + TILE / 2;
       this.addScore(50, x, cy);
       for (let i = 0; i < 6; i++) {
@@ -196,13 +228,33 @@ export class Game {
     }
   }
 
-  // Break any breakable blocks around a point (stomp / uppercut).
+  // Hit one tile with an attack. Returns true when the tile took the hit
+  // (broke, or a countdown block lost a point), so a shot stops there.
+  hitTile(tx, ty, opts = {}) {
+    const r = this.level.breakTile(tx, ty, opts);
+    if (!r) return false;
+    if (r === 'dent') {
+      this.audio.play('hit');
+      this.effect('hitSpark', tx * TILE + TILE / 2, ty * TILE + TILE / 2);
+      this.shake(2);
+      return true;
+    }
+    this.breakBlock(tx, ty);
+    if (r === 'switch') {
+      for (const [x, y, solid] of this.level.flipSwitches()) this.effect(solid ? 'sparkle' : 'poof', x * TILE + TILE / 2, y * TILE + TILE / 2);
+      this.banner('SWITCH!', 70);
+      this.audio.play('checkpoint');
+    }
+    return true;
+  }
+
+  // Break blocks around a point (stomp / uppercut / super jump).
   breakAround(px, py) {
     let broke = false;
     const tx = Math.floor(px / TILE);
     const ty = Math.floor(py / TILE);
     for (const dx of [-1, 0, 1]) {
-      if (this.level.breakTile(tx + dx, ty)) { this.breakBlock(tx + dx, ty); broke = true; }
+      if (this.hitTile(tx + dx, ty, { stomp: true, speed: true })) broke = true;
     }
     return broke;
   }
@@ -211,6 +263,7 @@ export class Game {
     const p = this.player;
     if (p.dead) return;
     p.dead = true;
+    p.pole = null;
     p.health = 0;
     p.rush = 0;
     p.vy = -8;
@@ -235,7 +288,7 @@ export class Game {
       gems: pct(this.levelGems, t.gems),
       enemies: pct(this.enemiesKilled, t.enemies),
       secrets: pct(this.secretsFound, t.secrets),
-      coins: pct(this.coins - this.levelCoins0, t.coins),
+      coins: pct(this.levelCoins, t.coins),
       seconds: Math.floor(this.levelTime / 71.4),
     };
     const avg = (stats.gems + stats.enemies + stats.secrets) / 3;
@@ -289,8 +342,10 @@ export class Game {
     for (const e of this.enemies) e.update(this);
     for (const s of this.shots) s.update(this);
     for (const k of this.pickups) k.update();
+    this.hintText = null;
     for (const prop of this.props) prop.update(this);
     for (const part of this.particles) part.update();
+    for (const fx of this.effects) fx.update(this);
     for (const d of this.debris) { d.x += d.vx; d.y += d.vy; d.vy += 0.3; d.life--; d.spin += 0.3; }
 
     this.interact(input);
@@ -299,6 +354,7 @@ export class Game {
     this.shots = this.shots.filter((s) => !s.dead);
     this.pickups = this.pickups.filter((k) => !k.taken);
     this.particles = this.particles.filter((q) => q.life > 0);
+    this.effects = this.effects.filter((fx) => !fx.dead);
     this.debris = this.debris.filter((d) => d.life > 0);
     this.popups = this.popups.filter((q) => --q.life > 0);
     this.popups.forEach((q) => { q.y -= 0.6; });
@@ -319,32 +375,55 @@ export class Game {
       }
       // Measured: crates only break when attacked (a shot, stomp or special).
       for (const k of this.pickups) {
-        if (!s.dead && !k.taken && k.kind === 'crate' && overlap(s, k)) { s.dead = true; k.collect(this); }
+        if (!s.dead && !k.taken && k.needsHit && overlap(s, k)) { s.dead = true; k.collect(this); }
       }
     }
-    if (p.dead) return;
+    if (p.dead || p.pole) return;
     for (const e of this.enemies) {
       if (e.dead || !overlap(p, e)) continue;
       const fromAbove = p.vy > 0 && p.prevY + p.h <= e.prevY + 10;
-      if (p.attacking) {
-        e.kill(this);
-        if (p.stomping) p.bounce(input.held('jump'));
-      } else if (fromAbove) {
-        e.kill(this);
-        p.bounce(input.held('jump'));
-        p.y = e.y - p.h;
-        this.audio.play('stomp');
+      if (e.type === 'shell') {
+        this.touchShell(e, fromAbove, input);
+        continue;
+      }
+      if (p.attacking || fromAbove) {
+        if (e.stomped && !p.rush) e.stomped(this);
+        else e.kill(this);
+        if (fromAbove || p.stomping) {
+          p.bounce(input.held('jump'));
+          if (fromAbove) p.y = e.y - p.h;
+          this.audio.play('stomp');
+        }
       } else {
         p.hurt(this, e.x + e.w / 2);
       }
     }
     for (const k of this.pickups) {
       if (k.taken || !overlap(p, k)) continue;
-      if (k.kind !== 'crate') { k.collect(this); continue; }
+      if (!k.needsHit) { k.collect(this); continue; }
       if (!p.attacking) continue;
       k.collect(this);
       // Measured crate bounce: vy = -4 - vy / 2.
       if (p.stomping) { p.bounce(false); p.y = k.y - p.h; }
+    }
+  }
+
+  // Shells: stomp to stop or start one, walk into a still one to kick it. A
+  // sliding shell hurts Kip unless he just kicked it.
+  touchShell(e, fromAbove, input) {
+    const p = this.player;
+    const away = Math.sign(e.cx - p.cx) || p.facing;
+    if (fromAbove) {
+      if (e.moving) e.vx = 0;
+      else e.kick(this, away);
+      p.bounce(input.held('jump'));
+      p.y = e.y - p.h;
+    } else if (p.rush > 0) {
+      e.kill(this);
+    } else if (!e.moving) {
+      e.kick(this, away);
+    } else if (e.kickLock === 0) {
+      p.hurt(this, e.cx);
     }
   }
 
@@ -355,7 +434,9 @@ export class Game {
     const look = Math.max(-CAMERA.maxLookAhead, Math.min(CAMERA.maxLookAhead, p.vx * CAMERA.lookAhead));
     const lookUp = p.anim === 'look' ? -70 : p.anim === 'crouch' ? 60 : 0;
     const tx = p.cx + look - VIEW_W / 2;
-    const ty = p.cy + CAMERA.verticalBias + lookUp - VIEW_H / 2;
+    // Look down a shaft while falling fast.
+    const lookFall = p.vy > 4 ? Math.min(90, (p.vy - 4) * 14) : 0;
+    const ty = p.cy + CAMERA.verticalBias + lookUp + lookFall - VIEW_H / 2;
     this.cam.x += (tx - this.cam.x) * CAMERA.ease;
     this.cam.y += (ty - this.cam.y) * CAMERA.ease * 0.6;
     this.clampCamera();

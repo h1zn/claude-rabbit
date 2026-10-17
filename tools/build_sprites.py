@@ -3,6 +3,8 @@
 usage: python build_sprites.py MAP.json OUT_PREFIX
 MAP: {"sheet": path, "anims": {name: {"frames": [first, last], "speed", "loop"}}}
 Frame numbers are the slicer's reading-order indices (see slice.py contact sheet).
+An animation can also list exact rectangles ("boxes": [[x0, y0, x1, y1], ...]) for
+sprites too small or too close to the sheet border for the slicer to find.
 """
 import json
 import os
@@ -28,7 +30,19 @@ def main():
             if r[0] <= cx < r[2] and r[1] <= cy < r[3]:
                 hits.append((round(cy / 14), x0, i))
         return [i for _, _, i in sorted(hits)]
+    # Hand-placed boxes become extra frames: every non-background pixel inside.
+    rgb_all = np.asarray(img.convert('RGB')).astype(int)
     for a in spec['anims'].values():
+        if 'boxes' not in a:
+            continue
+        a['list'] = []
+        for box in a['boxes']:
+            x0, y0, x1, y1 = box
+            frames.append({'box': tuple(box), 'mask': (np.abs(rgb_all[y0:y1, x0:x1] - np.array(bg[:3])).sum(2) > 0)})
+            a['list'].append(len(frames) - 1)
+    for a in spec['anims'].values():
+        if 'boxes' in a:
+            continue
         a['list'] = in_region(a['region']) if 'region' in a else list(range(a['frames'][0], a['frames'][1] + 1))
         if 'pick' in a:
             a['list'] = [a['list'][k] for k in a['pick'] if k < len(a['list'])]
@@ -50,8 +64,8 @@ def main():
     for n, (i, ax_, ay_) in enumerate(placed):
         f = frames[i]
         x0, y0, x1, y1 = f['box']
-        own = np.isin(lab[y0:y1, x0:x1], f['ids'])
-        rgb = np.asarray(img.crop(f['box']))
+        own = f['mask'] if 'mask' in f else np.isin(lab[y0:y1, x0:x1], f['ids'])
+        rgb = np.asarray(img.convert('RGB').crop(f['box']))
         atlas.paste(Image.fromarray(np.dstack([rgb, (own * 255).astype(np.uint8)]), 'RGBA'), (ax_, ay_))
         a_x, a_y = anchor(own, f['box'])
         meta.append({'x': ax_, 'y': ay_, 'w': x1 - x0, 'h': y1 - y0, 'ax': a_x, 'ay': a_y})

@@ -16,7 +16,7 @@ export const PHYS = {
   airDrag: 31 / 32,               // measured coasting factor
   airAccelScale: 0.6,             // tuned: air control relative to ground
   gravity: 0.30,                  // tuned (see SPEC.md)
-  maxFall: 10.0,                  // tuned
+  maxFall: 12.0,                  // measured: falling speed is capped at 12 px/tick
   jumpBase: -10.0,                // measured (-655360 / 65536)
   jumpRunBonusDivisor: 4,         // measured: vy = jumpBase - |vx| / 4
   // Measured variable-jump damping when the button is released while rising.
@@ -34,6 +34,13 @@ export const PHYS = {
   hurtKnockY: -4.0,                  // measured
   hurtInvulnTicks: 105,              // tuned: 1.5 s
   springLaunch: -16.0,               // measured: red spring sets vy = -16
+  // Measured green/blue springs are -24/-32, but with this clone's tuned
+  // gravity those would throw Kip 30 and 53 tiles, so they are scaled down.
+  springs: { red: -16.0, green: -20.0, blue: -24.0 },
+  springSide: 16.0,                  // measured: sideways red spring sets vx = 16
+  poleHoldTicks: 70,                 // measured: a swinging pole holds Kip up to 70 ticks
+  poleMaxFling: 20.0,                // measured: fling speed is capped at 20 px/tick
+  poleMinFling: 10.0,                // tuned
   uppercutWindup: 16,                // measured: special move freezes 16 ticks
   uppercutEnd: 45,                   // measured: rises while tick <= 45
   stompAccel: 0.9,                   // tuned buttstomp
@@ -41,6 +48,8 @@ export const PHYS = {
   rushTicks: 1400,                   // measured: sugar rush lasts 1400 ticks (20 s)
   rushSpeedScale: 1.3,               // tuned
   foodForRush: 100,                  // measured: every 100th food starts a rush
+  superJumpScale: Math.sqrt(1.6),    // manual: the super jump goes 60% higher
+  superJumpCoil: 10,                 // tuned: ticks crouched before it is ready
   coyoteTicks: 6,                    // tuned: grace after leaving a ledge
   jumpBufferTicks: 6,                // tuned
 };
@@ -62,6 +71,10 @@ export const PLAYER = {
   shotAccel: 0.125,    // measured: shots speed up along their direction
   shotLife: 35,        // measured
   carrotInvuln: 70,    // measured: invulnerability after eating a carrot
+  fastfireStep: 3,     // measured: each Fastfire pickup cuts the fire delay by 3
+  minShotDelay: 6,     // measured
+  shieldTicks: 2100,   // measured: shields last 30 s
+  shieldHitCost: 350,  // manual: each hit takes 5 s off the shield
 };
 
 // Enemy physics, measured (see SPEC.md "World rules").

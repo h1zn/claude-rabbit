@@ -4,10 +4,10 @@ This prototype is an **original** fast-platformer. Its *feel* is based on
 gameplay mechanics measured from a legitimately owned copy of a 1999 platformer
 (Jazz Jackrabbit 2: Christmas Chronicles '99, `Jazz2.exe`) in IDA Pro.
 
-Game mechanics (speeds, timings, rules) are not copyrightable expression. Nothing
-else was taken: **no art, sprites, tiles, sounds, music, levels, text, names or
-code** from the original are used. All assets in this project are made from
-scratch, procedurally, in code. The hero, enemies, world and title are original.
+Mechanics come from IDA and from the game's manual (`new/Jazz_Jackrabbit_2_Manual.pdf`,
+English section pp. 11-18). Sprites and five tilesets are cut from sprite sheets
+the project owner supplied (`new/`), for personal use. Sounds, music, levels and
+code are this project's own.
 
 ## How the numbers were found
 
@@ -32,8 +32,8 @@ step per *game tick*. Values below are converted to pixels per tick.
 | Camera | eases 1/4 of the distance per tick, with a look-ahead in the run direction | camera `sub_43E440` | measured |
 | Gravity | 0.30 px/tick² | not located (applied through pointer-relative code) | **tuned** to give a ~5-tile standing jump |
 | Ground speed caps | 4.0 walk / 8.0 run | caps of 2 / 4 were found only in the free-move branch | **tuned** for the fast feel |
-| Terminal fall speed | 10.0 px/tick | not located | **tuned** |
-| Spring launch | -15.0 px/tick | not located | **tuned** |
+| Terminal fall speed | 12.0 px/tick | player update | measured |
+| Spring launch | red -16; green/blue measured -24/-32, used -20/-24 | `sub_404430` | red measured; green/blue scaled to the tuned gravity |
 
 ## Prototype scope
 
@@ -106,3 +106,21 @@ Only rules and numbers are used here; no art, names or level data.
   way, with its own renderer.
 - Background layer speeds are stored per level in the level files, not in the
   exe, so they are **not** measured; the clone's parallax speeds are its own.
+
+## Level objects and rules (loop 4)
+
+From IDA (the level event handlers) and the manual.
+
+| Thing | Value | Source |
+| --- | --- | --- |
+| Swinging pole | holds the player up to 70 ticks, then flings at up to 20 px/tick | IDA |
+| Warp | can cost coins; when short it shows "x N", the coins still needed | IDA |
+| Coin Warp | warps to a bonus area once you have enough coins | IDA, manual |
+| Exit | reach the exit sign; some exits are guarded by a boss | manual |
+| Gems | end-of-level bonus and extra lives (the clone: one per 100 gems) | manual (the 100 is tuned) |
+| Super jump | from a full crouch, over 60% higher; smashes blocks above | manual |
+| Blast / countdown / speed / butt-stomp blocks | shoot / shoot N times / run through at full speed / butt-stomp | manual |
+| Switch blocks | breaking a switch crate removes solid switch blocks and makes ghost ones solid | manual |
+| Fastfire | each one cuts the fire delay by 3 ticks, down to 6 | IDA |
+| Shields | last 2100 ticks (30 s); each hit takes 5 s off instead of a heart | IDA, manual |
+| Super carrot | full health, 350 ticks of invulnerability | IDA |
