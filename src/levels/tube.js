@@ -30,6 +30,8 @@ export function tubelectric() {
   // Electro-blaster: ammo, a crate and a vault in the first corridor.
   L.ammo(10, 63, 9).ammo(12, 63, 9).ammoCrate(30, 63, 9);
   weaponVault(L, 41, 63, 9, { loot: 'g' });
+  // The Robot drops into the exit room.
+  L.put(110, 30, 'R');
   return L.build({ name: 'Tubelectric', theme: 'tube', music: 'winter' });
 }
 tubelectric.title = 'Tubelectric';

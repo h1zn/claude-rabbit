@@ -4,7 +4,9 @@ usage: python build_sprites.py MAP.json OUT_PREFIX
 MAP: {"sheet": path, "anims": {name: {"frames": [first, last], "speed", "loop"}}}
 Frame numbers are the slicer's reading-order indices (see slice.py contact sheet).
 An animation can also list exact rectangles ("boxes": [[x0, y0, x1, y1], ...]) for
-sprites too small or too close to the sheet border for the slicer to find.
+sprites too small or too close to the sheet border for the slicer to find, or
+give a strip ("cols": [x0, y0, x1, y1], optional "gap") cut into frames at
+empty columns (tools/boxes.py), for sprites made of loose pieces (dust, rings).
 """
 import json
 import os
@@ -13,6 +15,7 @@ import numpy as np
 from PIL import Image
 sys.path.insert(0, os.path.dirname(__file__))
 from slice import slice_sheet, anchor
+from boxes import boxes as column_boxes
 
 def main():
     spec_path, out = sys.argv[1], sys.argv[2]
@@ -32,6 +35,12 @@ def main():
         return [i for _, _, i in sorted(hits)]
     # Hand-placed boxes become extra frames: every non-background pixel inside.
     rgb_all = np.asarray(img.convert('RGB')).astype(int)
+    for a in spec['anims'].values():
+        if 'cols' in a:
+            # Slivers narrower than 4 px are stray pixels, not frames.
+            a['boxes'] = [b for b in column_boxes(sheet, *a['cols'], a.get('gap', 2)) if b[2] - b[0] >= 4]
+            if 'pick' in a:
+                a['boxes'] = [a['boxes'][k] for k in a['pick'] if k < len(a['boxes'])]
     for a in spec['anims'].values():
         if 'boxes' not in a:
             continue

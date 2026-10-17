@@ -1,0 +1,76 @@
+{
+  "sheet": "../new/Bosses/Uterus.png",
+  "minBand": 10,
+  "anims": {
+    "closed": {
+      "cols": [
+        5,
+        100,
+        525,
+        168
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "opening": {
+      "cols": [
+        5,
+        170,
+        525,
+        250
+      ],
+      "speed": 4,
+      "loop": false
+    },
+    "open": {
+      "cols": [
+        5,
+        260,
+        525,
+        345
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "closing": {
+      "cols": [
+        5,
+        355,
+        525,
+        445
+      ],
+      "speed": 4,
+      "loop": false
+    },
+    "shield": {
+      "cols": [
+        135,
+        455,
+        395,
+        485
+      ],
+      "pick": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "speed": 4,
+      "loop": true
+    },
+    "crab": {
+      "cols": [
+        100,
+        490,
+        445,
+        530
+      ],
+      "speed": 5,
+      "loop": true
+    }
+  }
+}

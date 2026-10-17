@@ -1,6 +1,7 @@
 // Game world: level setup, entity updates, interactions, objectives, camera.
 
 import { Backdrop, BACKDROP_SKY, BACKDROPS } from './backdrop.js';
+import { BOSS_CHARS } from './bosses.js';
 import { THEME_TILESET } from './tilesets.js';
 import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import {
@@ -74,7 +75,7 @@ export class Game {
       enemies: [], enemyShots: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
       platforms: (this.level.platforms || []).map((o) => new Platform(o)),
       levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null,
-      combo: 0, comboTimer: 0, comboMult: 1,
+      combo: 0, comboTimer: 0, comboMult: 1, activeBoss: null, bossCall: false, bossEnd: 0,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,
     });
     let start = { x: 64, y: 64 };
@@ -82,8 +83,12 @@ export class Game {
     for (const e of this.level.entities) {
       const px = e.tx * TILE;
       const py = e.ty * TILE;
-      const enemy = makeEnemy(e.ch, px, py);
-      if (enemy) { this.enemies.push(enemy); totals.enemies++; continue; }
+      const enemy = makeEnemy(e.ch, px, py) || (BOSS_CHARS[e.ch] && new BOSS_CHARS[e.ch](px, py));
+      if (enemy) {
+        // In an original level, only a final boss (no other exit) locks the way out.
+        if (enemy.boss && this.level.jj2 && !this.level.bossEnds) enemy.guard = false;
+        this.enemies.push(enemy); totals.enemies++; continue;
+      }
       if (SPRING_CHARS.includes(e.ch)) { this.props.push(new Spring(e.tx, e.ty, e.ch)); continue; }
       switch (e.ch) {
         case 'P': start = { x: px + (TILE - PLAYER.w) / 2, y: py + TILE - playerH }; break;
@@ -145,6 +150,22 @@ export class Game {
 
   // Undo a level's progress before restarting it.
   restoreStart() { if (this.startStats) Object.assign(this, this.startStats); }
+
+  // A boss still standing between the player and the exit.
+  bossGuarding() { return this.enemies.some((e) => e.guard && !e.dead); }
+
+  bossDefeated(boss) {
+    if (this.activeBoss === boss) this.activeBoss = null;
+    this.explode(boss.cx, boss.y + boss.h / 2, '#ffd54a');
+    this.shake(14);
+    this.flash('#ffffff', 6);
+    this.audio.play('fanfare');
+    // An original level that ends with its boss: beating it ends the level
+    // (the original's ExitType::Boss), however many others are about.
+    if (this.level.bossEnds) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); this.bossEnd = 160; return; }
+    if (this.bossGuarding()) return;
+    this.banner(`${boss.name.replace('!', '')} DEFEATED! EXIT OPEN!`, 140);
+  }
 
   // ---------------------------------------------------------------- effects and helpers
 
@@ -409,6 +430,7 @@ export class Game {
     }
 
     this.levelTime++;
+    if (this.bossEnd > 0 && --this.bossEnd === 0) { this.completeLevel(); return; }
     if (this.comboTimer > 0 && --this.comboTimer === 0) { this.combo = 0; this.comboMult = 1; }
     if (this.bannerTime > 0) this.bannerTime--;
     if (this.shakeTime > 0) this.shakeTime--;
@@ -430,6 +452,10 @@ export class Game {
       p.spawn(this.respawn.x, this.respawn.y);
       p.health = PLAYER.maxHealth;
       p.invuln = 100;
+      // Bosses start their fight over.
+      for (const e of this.enemies) if (e.boss && !e.dead) e.reset();
+      this.enemyShots = this.enemyShots.filter((b) => !b.solid);
+      this.activeBoss = null;
       this.audio.startMusic(this.level.meta.music);
     }
 
@@ -484,7 +510,7 @@ export class Game {
     }
     for (const s of this.shots) {
       for (const b of this.enemyShots) {
-        if (!s.dead && !b.dead && touches(s, b)) { s.dead = true; b.kind === 'bomb' ? b.explode(this) : b.pop(this); this.addScore(50, b.x, b.y); }
+        if (!s.dead && !b.dead && !b.solid && touches(s, b)) { s.dead = true; b.kind === 'bomb' ? b.explode(this) : b.pop(this); this.addScore(50, b.x, b.y); }
       }
     }
     if (p.dead || p.pole) return;
@@ -496,6 +522,7 @@ export class Game {
     for (const e of this.enemies) {
       if (e.dead || !overlap(p, e)) continue;
       const fromAbove = p.vy > 0 && p.prevY + p.h <= e.prevY + 10;
+      if (e.touch) { e.touch(this, p, fromAbove, input); continue; }
       // A frozen enemy shatters at a touch.
       if (e.frozen > 0) { e.kill(this); this.audio.play('break'); continue; }
       if (e.type === 'shell') {

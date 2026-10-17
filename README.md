@@ -104,6 +104,14 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 - **Pickups**: silver/gold coins, 4 gem colours, 38 foods, carrot, super carrot,
   1-up, Fastfire (fire delay -3, down to 6), fire-shield monitor (30 s, each hit
   costs 5 s), ammo, ammo crates, power-up monitors.
+- **Bosses** guard the exits of five levels; the exit stays locked until the
+  boss is beaten, and dying starts the fight over. The Queen (Dungeon Escape:
+  she can't be hurt; shoot her while she screams to push her back, then off
+  her ledge; her stomps drop bricks), Schwartzenguard (Carrotus Town: throws
+  his flailerang and waits for it to come back), Bilsy (Lava Forge: vanishes
+  and throws homing fireballs), the Robot (Tubelectric: copters in, fires
+  spike balls) and Uterus (Crystal Caverns: only open, shieldless, can it be
+  hurt; spawns crabs). Behaviour follows Jazz2 Resurrection's bosses.
 - **Enemies**: turtle (stomp it and kick the shell into others), lizard
   (lunges), demon (fast), frog (hops), bat (sleeps until you come near),
   dragonfly (hovers above you, then dives), monkey (throws bananas at you) and
@@ -160,9 +168,11 @@ Drop another pack folder into `Levels/` and it appears in the episode select
 when you run `serve.py`. Weapons, ammo, ammo crates, power-up monitors,
 bomb crates, TNT and weapon blocks work as in the original; a weapon block
 whose gun the level never hands out (the original let you bring ammo from
-earlier levels) breaks with any shot, so no level is left impassable. Not
-supported yet: bosses (their exit waits where the boss stands), the frog/bird
-morphs, and JJ2+ scripts.
+earlier levels) breaks with any shot, so no level is left impassable. The
+Queen, Schwartzenguard (Tuf Boss), Bilsy, the Robot and Uterus fight as in the
+original; a level that ends with its boss ends when you beat it. Not supported
+yet: the other bosses (Bubba, Devan, Bolly, Tweedle; they stay ordinary
+enemies), the frog/bird morphs, and JJ2+ scripts.
 
 `node tools/check_levels.mjs` checks every level: it searches the spots Kip
 can reach (jumps, super jumps, springs, poles, warps) and lists anything left
@@ -199,8 +209,7 @@ SPEC.md                 the measured mechanics and where they came from
 
 ## Ideas for the next pass
 
-- Bosses guarding some exits (manual: the Queen, Schwartzenguard).
-- More of JJ2 in the classic levels: bosses and the frog/bird morphs.
+- More of JJ2 in the classic levels: the remaining bosses and the frog/bird morphs.
 - Water, vines and moving platforms in our own levels too.
 - A save file for high scores.
 - Gamepad support and touch controls.

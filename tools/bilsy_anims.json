@@ -1,0 +1,66 @@
+{
+  "sheet": "../new/Bosses/Bilsy.png",
+  "minBand": 10,
+  "anims": {
+    "idle": {
+      "cols": [
+        15,
+        92,
+        368,
+        178
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "vanish": {
+      "cols": [
+        368,
+        92,
+        718,
+        178
+      ],
+      "speed": 4,
+      "loop": false
+    },
+    "dust": {
+      "cols": [
+        15,
+        182,
+        382,
+        262
+      ],
+      "speed": 4,
+      "loop": false
+    },
+    "throw": {
+      "cols": [
+        20,
+        282,
+        718,
+        378
+      ],
+      "speed": 3,
+      "loop": false
+    },
+    "throw2": {
+      "cols": [
+        5,
+        378,
+        464,
+        505
+      ],
+      "speed": 3,
+      "loop": false
+    },
+    "fireball": {
+      "cols": [
+        478,
+        380,
+        625,
+        408
+      ],
+      "speed": 3,
+      "loop": true
+    }
+  }
+}

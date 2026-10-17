@@ -36,6 +36,8 @@ export function crystalCaverns() {
   // RF missiles: ammo, a power-up for three at once, and a vault.
   L.powerup(6, 9, 5).ammo(8, 9, 5).ammo(10, 9, 5);
   weaponVault(L, 12, 9, 5, { w: 5, loot: 'b' });
+  // Uterus floats over the exit room.
+  L.put(55, 16, 'O');
   return L.build({ name: 'Crystal Caverns', theme: 'crystal', music: 'crystal', dark: true });
 }
 crystalCaverns.title = 'Crystal Caverns';

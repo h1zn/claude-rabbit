@@ -526,6 +526,30 @@
       ],
       "speed": 6,
       "loop": true
+    },
+    "mace": {
+      "boxes": [
+        [
+          110,
+          479,
+          137,
+          502
+        ]
+      ],
+      "speed": 1,
+      "loop": true
+    },
+    "maceLink": {
+      "boxes": [
+        [
+          97,
+          486,
+          106,
+          495
+        ]
+      ],
+      "speed": 1,
+      "loop": true
     }
   }
 }

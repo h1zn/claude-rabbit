@@ -180,6 +180,7 @@ export class Bullet {
   strike(game, e) {
     if (this.weapon === TNT || this.hit.has(e)) return;
     if (this.weapon === 3) {
+      if (e.freezable === false) { e.damage(game, 1); this.dead = true; return; }
       e.frozen = this.powered ? 350 : FREEZE;
       e.flash = 0;
       game.audio.play('freeze');
@@ -190,7 +191,7 @@ export class Bullet {
       return;
     } else {
       // A frozen enemy shatters at the first real hit.
-      e.damage(game, e.frozen > 0 ? 99 : this.damage);
+      e.damage(game, e.frozen > 0 && !e.boss ? 99 : this.damage);
       game.spark(this.cx, this.cy, '#ffffff');
     }
     if (this.weapon === 9) { this.hit.add(e); return; }

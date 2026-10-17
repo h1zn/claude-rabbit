@@ -1,0 +1,76 @@
+{
+  "sheet": "../new/Bosses/queen.png",
+  "minBand": 10,
+  "anims": {
+    "idle": {
+      "cols": [
+        100,
+        8,
+        630,
+        68
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "scream": {
+      "cols": [
+        100,
+        72,
+        632,
+        128
+      ],
+      "speed": 5,
+      "loop": false
+    },
+    "stomp": {
+      "cols": [
+        115,
+        134,
+        612,
+        202
+      ],
+      "speed": 5,
+      "loop": false
+    },
+    "backstep": {
+      "cols": [
+        138,
+        204,
+        605,
+        266
+      ],
+      "speed": 5,
+      "loop": false
+    },
+    "brick": {
+      "cols": [
+        64,
+        212,
+        102,
+        238
+      ],
+      "speed": 1,
+      "loop": true
+    },
+    "teeter": {
+      "cols": [
+        8,
+        268,
+        736,
+        337
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "fall": {
+      "cols": [
+        8,
+        344,
+        736,
+        409
+      ],
+      "speed": 5,
+      "loop": false
+    }
+  }
+}

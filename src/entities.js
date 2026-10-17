@@ -12,7 +12,7 @@ export function overlap(a, b) {
 
 // ---------------------------------------------------------------- enemies
 
-class Enemy {
+export class Enemy {
   constructor(type, x, y, w, h, hp, score) {
     Object.assign(this, { type, x, y, w, h, hp, score });
     this.prevX = x; this.prevY = y;
@@ -37,7 +37,7 @@ class Enemy {
   kill(game) {
     if (this.dead) return;
     this.dead = true;
-    game.enemiesKilled++;
+    if (!this.counted) game.enemiesKilled++;   // spawned mid-level: not in the tally
     game.audio.play('kill');
     game.explode(this.cx, this.y + this.h / 2, this.color || '#ffd54a');
     game.addScore(this.score * game.bump(), this.cx, this.y);
@@ -118,7 +118,9 @@ export class Shell extends Enemy {
     if (hit.left || hit.right) { this.vx = -this.vx; game.audio.play('hit'); }
     if (this.vx) {
       for (const e of game.enemies) {
-        if (e !== this && !e.dead && e.type !== 'shell' && overlap(this, e)) e.kill(game);
+        if (e === this || e.dead || e.type === 'shell' || !overlap(this, e)) continue;
+        // Bosses take a knock and send the shell back.
+        if (e.boss) { e.damage(game, 3); this.vx = -this.vx; this.x += this.vx * 2; } else e.kill(game);
       }
     }
   }
@@ -737,6 +739,9 @@ export class Sign {
         this.speed = 0.6 + Math.abs(game.player.vx) * 0.18;
         game.party.win(game);
       } else if (game.levelTime % 60 === 0) game.banner('NEED 100 GEMS!', 50);
+    } else if (!game.party && game.state === 'play' && !game.player.dead && overlap(this, game.player) && game.bossGuarding()) {
+      // A boss guards the exit.
+      if (game.levelTime % 60 === 0) game.banner('DEFEAT THE BOSS FIRST!', 50);
     } else if (!game.party && game.state === 'play' && !game.player.dead && overlap(this, game.player)) {
       // Measured: the sign spins faster the faster Kip runs into it; 1000 points.
       this.hit = 1;

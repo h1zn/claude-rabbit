@@ -108,6 +108,8 @@ export function lavaForge() {
   L.ammo(8, 11, 6).ammo(10, 11, 6).ammoCrate(15, 11, 6);
   weaponVault(L, 42, 11, 6, { loot: 'g' });
   L.hint(36, 11, 'The TOASTER (6) burns through this block.\nFastfire makes its flame longer.');
+  // Bilsy haunts the last chamber, between the countdown wall and the exit.
+  L.put(32, 81, 'B');
   return L.build({ name: 'Lava Forge', theme: 'forge', music: 'castle', horizon: 12, dark: { color: '22,4,2', amount: 0.55 } });
 }
 lavaForge.title = 'Lava Forge';

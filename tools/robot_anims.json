@@ -1,0 +1,66 @@
+{
+  "sheet": "../new/Bosses/Robot.png",
+  "minBand": 10,
+  "anims": {
+    "copter": {
+      "region": [
+        3,
+        3,
+        375,
+        74
+      ],
+      "speed": 3,
+      "loop": true
+    },
+    "land": {
+      "cols": [
+        8,
+        76,
+        368,
+        137
+      ],
+      "speed": 4,
+      "loop": false
+    },
+    "run": {
+      "cols": [
+        8,
+        138,
+        368,
+        200
+      ],
+      "speed": 4,
+      "loop": true
+    },
+    "arm": {
+      "cols": [
+        18,
+        200,
+        348,
+        272
+      ],
+      "speed": 3,
+      "loop": false
+    },
+    "shoot": {
+      "cols": [
+        12,
+        282,
+        312,
+        362
+      ],
+      "speed": 3,
+      "loop": false
+    },
+    "spikeball": {
+      "cols": [
+        316,
+        270,
+        348,
+        302
+      ],
+      "speed": 1,
+      "loop": true
+    }
+  }
+}

@@ -8,6 +8,10 @@ import { TILE } from '../config.js';
 import { Level } from '../level.js';
 import { cleanText, decodeEvent, eventFields, tileMask } from './files.js';
 
+// JJ2 boss events -> our boss characters (src/bosses.js); other bosses stay
+// ordinary enemies.
+const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O' };
+
 // Event ids (JJ2 numbering).
 export const EV = {
   ONE_WAY: 1, HURT: 2, VINE: 3, HOOK: 4, SLIDE: 5, H_POLE: 6, V_POLE: 7, FLY_OFF: 8,
@@ -17,7 +21,7 @@ export const EV = {
   EOL_SIGN: 81, SAVE_POINT: 83, BRIDGE: 153, LIGHT_STEADY: 148, LIGHT_PULSE: 149, LIGHT_FLICKER: 150,
   DESTRUCT: 185, DESTRUCT_BOMB: 186, COLLAPSE: 187, BUTTSTOMP: 188, GEMSTOMP: 189,
   TUBE: 206, TEXT: 207, SET_WATER: 208, GENERATOR: 216, WARP_ORIGIN: 230, WARP_TARGET: 240, GEM_RING: 192,
-  LAVA: 122, TRIGGER_CRATE: 95, WATER_BLOCK: 233, TRIGGER_AREA: 234, TRIGGER_ZONE: 246,
+  LAVA: 122, TRIGGER_CRATE: 95, ACTIVATE_BOSS: 28, WATER_BLOCK: 233, TRIGGER_AREA: 234, TRIGGER_ZONE: 246,
 };
 
 // Events that become an entity character of this game.
@@ -292,7 +296,7 @@ export class JJ2Level extends Level {
             break;
           case BOMB_CRATE: this.objects.push({ type: 'bombCrate', tx, ty }); armed.add('blast'); break;
           case BOMB: this.objects.push({ type: 'bomb', tx, ty }); armed.add('blast'); break;
-          case EV.TRIGGER_ZONE: case EV.WATER_BLOCK:
+          case EV.TRIGGER_ZONE: case EV.WATER_BLOCK: case EV.ACTIVATE_BOSS:
             this.areas[i] = id; this.areaParams[i] = ev.params;
             break;
           case EV.LIGHT_STEADY: case EV.LIGHT_PULSE: case EV.LIGHT_FLICKER:
@@ -304,7 +308,7 @@ export class JJ2Level extends Level {
             this.areas[i] = id; this.areaParams[i] = ev.params;
             break;
           default:
-            if (BOSSES.has(id)) { bosses.push([tx, ty]); put(tx, ty, 'n'); break; }
+            if (BOSSES.has(id)) { bosses.push([tx, ty]); put(tx, ty, BOSS_CHAR[id] || 'n'); break; }
             if (CHAR[id]) put(tx, ty, CHAR[id]);
         }
         this.tiles[ty][tx] = ch;
@@ -340,7 +344,9 @@ export class JJ2Level extends Level {
     const start = (starts[EV.JAZZ_START] || starts[EV.SPAZ_START] || starts[EV.LORI_START] || starts[EV.MP_START] || [[2, 2]]);
     this.starts = starts[EV.MP_START] || start;
     put(start[0][0], start[0][1], 'P');
-    // A level that ends with a boss fight: the exit waits where the boss was.
+    // A level that ends with a boss fight: beating the boss ends it (the exit
+    // also waits where the boss was).
+    this.bossEnds = !exits && bosses.length > 0;
     if (!exits && !party) {
       const [bx, by] = bosses[0] || start[start.length - 1];
       put(bx, by, 'E');

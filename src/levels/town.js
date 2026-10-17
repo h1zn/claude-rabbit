@@ -97,6 +97,8 @@ export function carrotusTown() {
   // A sewer vault that only a missile opens.
   weaponVault(L, 35, 46, 4, { loot: 'b' });
   L.hint(26, 46, 'This vault opens only to MISSILES.\nSelect them with C or 4.');
+  // Schwartzenguard patrols the east end of the street.
+  L.put(180, 35, 'V');
   return L.build({ name: 'Carrotus Town', theme: 'town', music: 'carrotus', horizon: STREET });
 }
 carrotusTown.title = 'Carrotus Town';

@@ -119,6 +119,11 @@ export function dungeonEscape() {
   L.put(110, 7, '1').put(111, 7, '@').put(112, 7, '@');
 
   for (let y = 10; y < 74; y += 16) L.deco('candles', 70, y + 2);
+  // The Queen guards the way out (manual: she threw you into her dungeon).
+  // Push her back into the pit behind her; the spring below throws her away
+  // (and brings you back up if you fall in).
+  L.carve(77, 10, 4, 2).put(78, 17, 'S').put(75, 9, 'Z');
+  L.hint(60, 9, 'THE QUEEN blocks the exit! Shoot her while she\nSCREAMS to push her back, then off the ledge.');
   return L.build({ name: 'Dungeon Escape', theme: 'castle', music: 'castle' });
 }
 dungeonEscape.title = 'Dungeon Escape';

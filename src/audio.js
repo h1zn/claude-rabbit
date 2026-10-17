@@ -307,6 +307,11 @@ export class Audio {
         this.noise({ dur: 0.03, vol: 0.07, filter: 5000, type: 'highpass' });
         break;
       case 'spread': this.tone({ wave: 'sawtooth', from: 1000, to: 220, dur: 0.12, vol: 0.07 }); break;
+      case 'scream':
+        this.tone({ wave: 'sawtooth', from: 900, to: 1400, dur: 0.5, vol: 0.12 });
+        this.tone({ wave: 'square', from: 1300, to: 700, dur: 0.6, vol: 0.06, delay: 0.1 });
+        this.noise({ dur: 0.6, vol: 0.1, filter: 2500, type: 'bandpass' });
+        break;
       case 'bounce': this.tone({ wave: 'sine', from: 260, to: 620, dur: 0.07, vol: 0.09 }); break;
       case 'freeze':
         this.tone({ wave: 'triangle', from: 2400, to: 1200, dur: 0.14, vol: 0.06 });

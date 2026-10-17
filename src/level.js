@@ -22,12 +22,14 @@ import { TILE } from './config.js';
 //   o food  + carrot  % full carrot  1 extra life  A ammo crate (weapon picked by position)
 //   F fastfire  Q fire-shield monitor (shoot or stomp it open)
 //   w turtle  k lizard  n demon  h frog  f bat  d dragonfly  J monkey (throws)  G bomb lizard
+//   Bosses (they lock the exit until beaten): Z the Queen  V Schwartzenguard
+//   B Bilsy  R Robot  O Uterus
 // Warps, hint signs and weapon pickups carry data, so they are objects
 // (Builder.warp/hint/ammo/ammoCrate/powerup/bomb).
 const SOLID = new Set(['#', '=', 'x', 'm', 'c', 'p', 'Y', 'u', 'W']);
 // Blocks drawn from the shared block sheet instead of the terrain.
 export const BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u', 'i', 'W']);
-const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQwknhfdJG'.split(''));
+const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQwknhfdJGZVBRO'.split(''));
 
 // Surface height (pixels from the tile's top) at local x in [0, TILE].
 export const SLOPES = {

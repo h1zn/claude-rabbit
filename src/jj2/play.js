@@ -11,6 +11,8 @@ export function jj2Tick(game) {
   if (!p.dead) {
     const id = level.areaAt(p.cx, p.cy);
     if (id !== EV.TRIGGER_ZONE) level.zoneKey = -1;
+    // Activate-boss areas wake the boss (src/bosses.js).
+    if (id === EV.ACTIVATE_BOSS) game.bossCall = true;
     const params = level.areaParam(p.cx, p.cy);
     if (id === EV.LIGHT_SET) {
       const [intensity] = eventFields(params, [7]);

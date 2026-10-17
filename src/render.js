@@ -35,6 +35,7 @@ export class Renderer {
   constructor(ctx, art) {
     this.ctx = ctx;
     this.art = art;
+    this.iced = iced;
     ctx.imageSmoothingEnabled = false;
   }
 
@@ -382,6 +383,7 @@ export class Renderer {
   enemies(game, alpha) {
     for (const e of game.enemies) {
       if (e.flash > 0 && e.flash % 2) continue;
+      if (e.draw) { e.draw(this, alpha); continue; }
       if (e.onGround) this.footShadow(lerp(e.prevX, e.x, alpha) + e.w / 2, e.y + e.h, e.w * 0.9);
       let f = e.sprite(this.art);
       // Frozen: ice blue, blinking as it is about to thaw.
@@ -397,6 +399,7 @@ export class Renderer {
 
   enemyShots(game, alpha) {
     for (const b of game.enemyShots) {
+      if (b.draw) { b.draw(this, alpha); continue; }
       const f = b.sprite(this.art);
       const x = lerp(b.prevX, b.x, alpha) + 8; const y = lerp(b.prevY, b.y, alpha) + 8;
       if (b.kind === 'banana') {
@@ -704,6 +707,15 @@ export class Renderer {
       lines.forEach((l, i) => arcadeText(ctx, l, VIEW_W / 2, VIEW_H - 48 - h + i * 16, { size: 12, align: 'center', shadow: false, top: '#ffffff', bottom: '#cfe6ff' }));
     }
     if (game.party) this.partyHud(game);
+    // Boss health, top centre, while a boss fight is on.
+    const boss = game.activeBoss;
+    if (boss && !boss.dead && boss.maxHp > 1) {
+      const w = 200; const x = VIEW_W / 2 - w / 2; const y = 26;
+      ctx.fillStyle = 'rgba(10,4,26,0.8)'; ctx.fillRect(x - 3, y - 3, w + 6, 12);
+      const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, '#ff3a5a'); g.addColorStop(1, '#ffb02e');
+      ctx.fillStyle = g; ctx.fillRect(x, y, Math.round((w * Math.max(0, boss.hp)) / boss.maxHp), 6);
+      arcadeText(ctx, boss.name.replace('!', ''), VIEW_W / 2, y + 10, { size: 10, align: 'center', top: '#ffffff', bottom: '#ffb0c0' });
+    }
     // Level banner.
     if (game.bannerTime > 0 && game.state === 'play') {
       const a = Math.min(1, game.bannerTime / 30);
