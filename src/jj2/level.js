@@ -477,9 +477,9 @@ export class JJ2Level extends Level {
 
   // Pixel-stepped movement against the masks. Walls block the body above its
   // feet; the feet climb slopes and lips up to `stepH` px per pixel moved.
-  move(body, dx, dy, { dropThrough = false, climb = false } = {}) {
+  move(body, dx, dy, { dropThrough = false, climb = false, land = 0 } = {}) {
     const result = { left: false, right: false, top: false, bottom: false, slope: false };
-    const stepH = climb ? 10 : 3;
+    const stepH = climb ? 10 : Math.max(3, land);
     const enemy = !!body.type && climb;   // stop-enemy areas turn walkers only
     // Feet already inside a one-way tile (dropping through it, or after
     // jumping up into it) don't land on it until they are out. Checked before
@@ -494,6 +494,14 @@ export class JJ2Level extends Level {
       const edge = dir > 0 ? nx + body.w - 0.001 : nx;
       let blocked = !this.columnClear(edge, body.y, body.y + body.h - stepH);
       if (!blocked && enemy && this.areaAt(edge, body.y + body.h - 4) === EV.STOP_ENEMY) blocked = true;
+      if (!blocked && land && !climb) {
+        // Landing allowance: falling onto a ledge's edge lifts the body
+        // over it, as long as the leading edge clears within `land` px.
+        let u = 0;
+        while (u <= land && !this.columnClear(edge, body.y - u, body.y + body.h - u)) u++;
+        if (u > land || (u > 0 && !this.headClear(body, body.y - u))) blocked = true;
+        else { body.x = nx; body.y -= u; left -= step; continue; }
+      }
       if (!blocked) {
         const ox = body.x; const oy = body.y;
         body.x = nx;

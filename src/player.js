@@ -56,7 +56,7 @@ export class Player {
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
       hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
-      dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0,
+      dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0,
     });
   }
 
@@ -74,7 +74,7 @@ export class Player {
     this.prevX = this.x;
     this.prevY = this.y;
     this.animTime++;
-    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube', 'weaponShown']) if (this[k] > 0) this[k]--;
+    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube', 'weaponShown', 'djWindow', 'rfBlast']) if (this[k] > 0) this[k]--;
     if (this.rush > 0 && --this.rush === 0) game.endRush();
     if (this.shield > 0) this.shield--;
 
@@ -127,7 +127,10 @@ export class Player {
     if (this.hovering && Math.abs(this.vx) > PHYS.walkMax) this.vx = approach(this.vx, Math.sign(this.vx) * PHYS.walkMax, PHYS.dashDecel);
     // ---- horizontal: one table for ground and air (original). Input
     // accelerates toward the cap; speed above it (springs, poles) bleeds off.
-    if (dir) {
+    if (this.rfBlast > 0) {
+      // Thrown by an RF blast: a flat speed held for its 30 ticks.
+      this.vx = this.rfDir * PHYS.rfBlastSpeed;
+    } else if (dir) {
       this.vx = accelerate(this.vx, dir, accel, max, PHYS.walkDecel);
     } else if (this.knock === 0 && this.springLock === 0) {
       this.vx = approach(this.vx, 0, dashing ? PHYS.dashDecel : PHYS.walkDecel);
@@ -175,6 +178,10 @@ export class Player {
     }
 
     // ---- jump, drop-through, hover and buttstomp
+    // Original: Spaz's double jump is open for 30 ticks after jump is let go.
+    if (input.released('jump') && !this.onGround) this.djWindow = PHYS.doubleJumpWindow;
+    if (this.springDj && this.vy >= 0) { this.springDj = false; this.djWindow = PHYS.doubleJumpWindow; }
+    if (this.onGround) this.springDj = false;
     if (controlled && input.pressed('jump')) this.jumpBuffer = PHYS.jumpBufferTicks;
     else if (this.jumpBuffer > 0) this.jumpBuffer--;
     const onPlatform = this.onGround && level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE));
@@ -198,10 +205,11 @@ export class Player {
         audio.play('jump');
         game.dust(this.cx, this.y + this.h, 4);
       } else if (this.character === 'spaz' && controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && !this.launched) {
-        // Spaz: one extra jump in the air instead of the copter ears.
-        if (!this.doubleJumped) {
+        // Spaz: one extra jump in the air instead of the copter ears
+        // (measured: a straight 8 px/tick launch, within the window).
+        if (!this.doubleJumped && this.djWindow > 0) {
           this.doubleJumped = true;
-          this.vy = PHYS.jumpBase * 0.85;
+          this.vy = PHYS.doubleJump;
           this.jumping = true; this.jumpCut = false; this.launched = true;
           this.jumpBuffer = 0;
           audio.play('jump');
@@ -252,7 +260,10 @@ export class Player {
       this.vy = Math.max(this.vy - 0.5, -8);
       this.stomping = false;
     } else if (this.stomping) {
-      this.vx = 0;
+      // Measured: a stomp drops its speed, then drifts at a flat rate the way
+      // you hold (doubled with Run), through the pause and the descent.
+      const drift = (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0);
+      this.vx = drift * PHYS.stompDrift * (input.held('run') ? 2 : 1);
       this.vy = Math.min(this.vy + PHYS.stompAccel, PHYS.stompFall);
     } else if (this.hovering) {
       this.hoverLeft--;
@@ -464,7 +475,10 @@ export class Player {
     const cap = PHYS.moveCap * (this.rush > 0 ? PHYS.rushSpeedScale : 1);
     const dx = Math.max(-cap, Math.min(cap, this.vx));
     const dy = Math.max(-PHYS.moveCap, this.vy);
-    const hit = level.move(this, dx, dy, { dropThrough: this.dropThrough > 0, climb: grounded });
+    // Original landing allowance: coming down onto a ledge up to 20 px above
+    // the feet still lands on top of it (a real descent only, not the apex).
+    const land = !grounded && this.vy > 0.5 ? PHYS.landingTolerance[level.jj2 ? 'jj2' : 'ours'] : 0;
+    const hit = level.move(this, dx, dy, { dropThrough: this.dropThrough > 0, climb: grounded, land });
     if (hit.left || hit.right) {
       // Speed blocks only give way to a full-speed run (or a sugar rush).
       const fast = Math.abs(vx) >= PHYS.moveCap * 0.95 || this.rush > 0;
@@ -550,6 +564,25 @@ export class Player {
     game.shake(6);
     game.flash('#ff2a4a', 6);
     if (this.health <= 0) game.killPlayer();
+  }
+
+  // Measured: a buttstomp leaves an enemy at a flat 13 px/tick, its rise
+  // decaying at the released rate whatever the jump key does.
+  stompBounce() {
+    this.vy = PHYS.stompEnemyBounce;
+    this.jumping = true;
+    this.jumpCut = true;
+    this.stomping = false;
+    this.hoverLeft = PHYS.hoverTicks;
+  }
+
+  // An RF blast within 32 px throws the player away (measured: 8 px/tick for
+  // 30 ticks; in the air also up at 12, on the ground a little, growing with range).
+  blast(dir, dist) {
+    this.rfDir = dir; this.rfBlast = PHYS.rfBlastTicks;
+    this.vy = this.onGround ? -(0.646 + 0.1732 * dist) : PHYS.rfBlastRise;
+    this.onGround = false;
+    this.jumping = true; this.jumpCut = true; this.stomping = false;
   }
 
   // Measured stomp bounce: vy = -8 - vy/2 with jump held, -4 - vy/2 without.

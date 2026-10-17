@@ -213,4 +213,3 @@ SPEC.md                 the measured mechanics and where they came from
 - Water, vines and moving platforms in our own levels too.
 - A save file for high scores.
 - Gamepad support and touch controls.
-- Tune gravity and terminal speed further against the original's feel.

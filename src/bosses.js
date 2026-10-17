@@ -81,7 +81,7 @@ class Boss extends Enemy {
     if (this.frozen > 0) return;
     if (fromAbove || p.attacking) {
       this.damage(game, p.stomping || p.special > 0 ? 4 : 2);
-      if (fromAbove || p.stomping) { p.bounce(input.held('jump')); if (fromAbove) p.y = this.y - p.h; game.audio.play('stomp'); }
+      if (p.stomping) { p.stompBounce(); p.y = Math.min(p.y, this.y - p.h); game.audio.play('stomp'); } else if (fromAbove) { p.bounce(input.held('jump')); p.y = this.y - p.h; game.audio.play('stomp'); }
       else p.vx = -p.vx * 0.5;
       return;
     }

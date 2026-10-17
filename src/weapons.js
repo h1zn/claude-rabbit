@@ -222,7 +222,6 @@ export function fire(game, p) {
       // V shape; powered RF fires three at once.
       shot(dir * 3, -0.5, -2); shot(dir * 3, 0.5, 2);
       if (powered) shot(dir * 3.4, 0);
-      p.vx -= dir * 0.6;
       break;
     case 6: {
       const flame = new Bullet(6, powered, x, y - 2, dir * (3.5 + Math.random() * 1.5) + p.vx * 0.5, (Math.random() - 0.5) * 0.8);

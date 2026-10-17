@@ -269,6 +269,10 @@ export class Game {
       if (this.party && inside(this.player)) this.party.hit(this, x);
       return;
     }
+    // An RF missile going off right by the player throws them away from it.
+    const p = this.player;
+    const d = Math.hypot(p.cx - x, p.cy - y);
+    if (weapon === 5 && d <= 36 && !p.dead) p.blast(p.cx < x ? -1 : 1, d);
     for (const e of this.enemies) if (!e.dead && inside(e)) e.damage(this, damage);
     for (const b of this.enemyShots) if (!b.dead && inside(b)) b.kind === 'bomb' ? b.explode(this) : b.pop(this);
     for (const s of this.shots) if (s.weapon === TNT && inside(s)) s.detonate();
@@ -532,7 +536,10 @@ export class Game {
       if (p.attacking || fromAbove) {
         if (e.stomped && !p.rush) e.stomped(this);
         else e.kill(this);
-        if (fromAbove || p.stomping) {
+        if (p.stomping) {
+          p.stompBounce();
+          this.audio.play('stomp');
+        } else if (fromAbove) {
           p.bounce(input.held('jump'));
           if (fromAbove) p.y = e.y - p.h;
           this.audio.play('stomp');

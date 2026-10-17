@@ -51,6 +51,18 @@ export const PHYS = {
   superJumpScale: 1.39,              // manual: 60% higher (with the 8 px/tick rise cap)
   superJumpCoil: 10,                 // tuned: ticks crouched before it is ready
   coyoteTicks: 6,                    // tuned: grace after leaving a ledge
+  // Measured 20 px on the original's wider body. Ours leaves ledges at a
+  // different point (JJ2 levels: feet centre; our levels: whole body), so
+  // 24 / 22 px reproduce the original's gaps: a 2-tile walk-off and a 5-tile
+  // dash land, a 3-tile walk-off and a 6-tile dash fall short.
+  landingTolerance: { jj2: 24, ours: 22 },
+  stompEnemyBounce: -13.0,           // measured: a buttstomp leaves an enemy at a flat 13 px/tick
+  stompDrift: 12000 / 65536,         // measured: sideways drift during a buttstomp (doubled with Run)
+  doubleJump: -8.0,                  // measured: Spaz's double jump launch
+  doubleJumpWindow: 30,              // measured: ticks after releasing jump that it stays available
+  rfBlastSpeed: 8.0,                 // measured: an RF blast within 32 px throws the player at 8 px/tick...
+  rfBlastTicks: 30,                  // ...held for 30 ticks
+  rfBlastRise: -12.0,                // measured: rise when blasted in the air
   jumpBufferTicks: 6,                // tuned
 };
 

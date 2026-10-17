@@ -672,6 +672,8 @@ export class Spring {
       p.vy = PHYS.springs[this.color];
       p.jumping = false; p.jumpCut = false; p.onGround = false; p.stomping = false;
       p.hoverLeft = PHYS.hoverTicks;
+      // Measured: a spring hands Spaz's double jump back, for when its rise is over.
+      p.doubleJumped = false; p.springDj = true;
       p.springLock = 0;
       this.launch(game, p.cx, this.y + 6);
     }

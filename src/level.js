@@ -378,9 +378,9 @@ export class Level {
   // (`climb`) may step over lips where slopes meet blocks: on a 45° slope the
   // leading edge is half a body-width plus this step's travel above the feet.
   // The allowance stays below a full tile, so real walls still block.
-  move(body, dx, dy, { dropThrough = false, climb = false } = {}) {
+  move(body, dx, dy, { dropThrough = false, climb = false, land = 0 } = {}) {
     const result = { left: false, right: false, top: false, bottom: false, slope: false };
-    const stepUp = climb ? Math.min(TILE - 4, 6 + Math.abs(dx) + body.w / 2) : 0;
+    const stepUp = climb ? Math.min(TILE - 4, 6 + Math.abs(dx) + body.w / 2) : land;
     // Horizontal: only full solids block (slopes are walkable).
     body.x += dx;
     const y0 = Math.floor(body.y / TILE);
