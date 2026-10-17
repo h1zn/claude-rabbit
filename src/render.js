@@ -45,17 +45,24 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.imageSmoothingEnabled = false;
     const cam = this.camera(game, alpha);
-    game.sky.draw(ctx, cam.x, cam.y, game.time);
-    // No weather inside caves and buildings (cells with a back wall).
     const p = game.player;
-    const indoors = !!game.level.back[Math.floor(p.cy / TILE)]?.[Math.floor(p.cx / TILE)];
-    if (!indoors) game.weather.draw(ctx, false, game.time);
-
-    // Scenery goes after the terrain so cave back walls don't hide it.
-    game.terrain.draw(ctx, cam.x, cam.y, VIEW_W, VIEW_H);
+    const view = game.view;
+    let indoors = true;
+    if (view) {
+      // Original JJ2 level: its background layers and the sprite layer.
+      view.drawBack(ctx, cam, game.time);
+    } else {
+      game.sky.draw(ctx, cam.x, cam.y, game.time);
+      // No weather inside caves and buildings (cells with a back wall).
+      indoors = !!game.level.back[Math.floor(p.cy / TILE)]?.[Math.floor(p.cx / TILE)];
+      if (!indoors) game.weather.draw(ctx, false, game.time);
+      // Scenery goes after the terrain so cave back walls don't hide it.
+      game.terrain.draw(ctx, cam.x, cam.y, VIEW_W, VIEW_H);
+    }
 
     ctx.save();
     ctx.translate(-cam.x, -cam.y);
+    if (view) view.drawBridges(ctx, game.time);
     this.decor(game, cam, false);
     this.blocks(game, cam);
     this.props(game);
@@ -72,6 +79,10 @@ export class Renderer {
     this.decor(game, cam, true);
     ctx.restore();
 
+    if (view) {
+      view.drawFront(ctx, cam, game.time);
+      view.drawWater(ctx, cam, game.time);
+    }
     if (!indoors) game.weather.draw(ctx, true, game.time);
     if (game.level.meta.dark) this.lighting(game, cam, alpha);
     this.vignette();
@@ -124,6 +135,11 @@ export class Renderer {
       if (prop.kind === 'sign' || prop.kind === 'warp' || (prop.kind === 'checkpoint' && prop.active)) light(prop.x + prop.w / 2, prop.y + 20, 90, 0.8, '255,230,150');
     }
     for (const fx of game.effects) light(fx.x, fx.y, 70, 0.8, fx.anim === 'explosion' ? '255,120,40' : '200,230,255');
+    // JJ2 level lights: steady, pulsing and flickering.
+    for (const L of game.level.lights || []) {
+      const k = L.kind === 149 ? 0.75 + Math.sin(game.time / 12) * 0.25 : L.kind === 150 ? (Math.random() < 0.15 ? 0.5 : 1) : 1;
+      light(L.x, L.y, 96 * k, 0.85, '255,236,180');
+    }
     const DECOR = { crystals: '120,230,255', mushroom: '200,120,255', glowshroom: '120,255,200', torch: '255,160,60' };
     for (const dec of game.level.decor) {
       const c = DECOR[dec.kind];
@@ -210,6 +226,7 @@ export class Renderer {
 
   blocks(game, cam) {
     const level = game.level;
+    if (level.jj2) return;      // JJ2 levels draw blocks in their own tiles
     const ctx = this.ctx;
     const tx0 = Math.max(0, Math.floor(cam.x / TILE)); const tx1 = Math.min(level.w - 1, Math.floor((cam.x + VIEW_W) / TILE));
     const ty0 = Math.max(0, Math.floor(cam.y / TILE)); const ty1 = Math.min(level.h - 1, Math.floor((cam.y + VIEW_H) / TILE));
@@ -231,6 +248,7 @@ export class Renderer {
   props(game) {
     const ctx = this.ctx;
     for (const prop of game.props) {
+      if (prop.hidden && !(prop.kind === 'warp' && prop.cost > 0)) continue;
       if (prop.kind === 'spring') {
         const f = prop.sprite(this.art);
         if (!prop.dir) this.sprite(f, prop.x + TILE / 2, prop.y + prop.h, true);
@@ -387,8 +405,9 @@ export class Renderer {
     const speed = Math.abs(p.vx);
     if (p.dead) return 'dead';
     if (p.celebrate) return 'victory';
-    if (p.pole) return 'spring';
+    if (p.pole || p.hang) return 'spring';
     if (p.knock > 0) return 'hurt';
+    if (p.swimming && !p.onGround) return Math.abs(p.vx) > 0.6 ? 'jumpFwd' : 'fall';
     if (p.special > 0) return p.special < PHYS.uppercutWindup ? 'uppercutWindup' : 'uppercut';
     if (p.stomping) return 'stomp';
     if (p.hovering) return p.shootPose > 0 ? 'hoverShoot' : 'hover';
@@ -417,8 +436,8 @@ export class Renderer {
     const speed = name === 'walk' || name === 'run' ? Math.max(2, 7 - Math.abs(p.vx) * 0.6) : anim.speed;
     const f = frameAt(anim, t, speed);
     const right = p.facing > 0;
-    const x = Math.round(lerp(p.prevX, p.x, alpha) + PLAYER.w / 2 - (right ? f.ax : f.w - f.ax));
-    const y = Math.round(lerp(p.prevY, p.y, alpha) + PLAYER.h - f.ay + 2);
+    const x = Math.round(lerp(p.prevX, p.x, alpha) + p.w / 2 - (right ? f.ax : f.w - f.ax));
+    const y = Math.round(lerp(p.prevY, p.y, alpha) + p.h - f.ay + 2);
     if (p.onGround && !p.pole) this.footShadow(lerp(p.prevX, p.x, alpha) + p.w / 2, p.y + p.h, 22);
     if (p.rush > 0) this.glow(x + f.w / 2, y + f.h / 2, 34, `hsla(${(game.time * 12) % 360},100%,60%,0.45)`);
     if (p.special > 0 && p.special >= PHYS.uppercutWindup) this.glow(x + f.w / 2, y + 12, 22, 'rgba(255,214,90,0.5)');
@@ -463,8 +482,8 @@ export class Renderer {
     const anim = this.art.heroRed.anims[name];
     const f = frameAt(anim, game.time, anim.speed);
     const right = r.facing > 0;
-    const x = Math.round(lerp(r.prevX, r.x, alpha) + PLAYER.w / 2 - (right ? f.ax : f.w - f.ax));
-    const y = Math.round(lerp(r.prevY, r.y, alpha) + PLAYER.h - f.ay + 2);
+    const x = Math.round(lerp(r.prevX, r.x, alpha) + r.w / 2 - (right ? f.ax : f.w - f.ax));
+    const y = Math.round(lerp(r.prevY, r.y, alpha) + r.h - f.ay + 2);
     this.glow(x + f.w / 2, y + f.h / 2, 30, 'rgba(255,60,60,0.25)');
     this.ctx.drawImage(right ? f.right : f.left, x, y);
     arcadeText(this.ctx, `${r.gems}`, x + f.w / 2, y - 14, { size: 10, align: 'center', shadow: false, top: '#ffffff', bottom: '#ff8a8a' });

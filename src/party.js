@@ -17,7 +17,7 @@ export const PARTY_GOAL = 100;
 export const PARTY_RESPAWN = 700;   // ticks (10 s)
 export const PARTY_DROP = 5;        // gem value dropped per hit
 // Levels with plenty of gems and room to chase (indices into LEVELS).
-export const PARTY_LEVELS = [0, 2, 5, 6];
+export const PARTY_LEVELS = ['jj2:overgrown:0', 0, 2, 5, 6];
 
 // The relay connection. Messages are queued and handled on the game tick.
 export class Net {
@@ -93,7 +93,7 @@ class RivalShot {
     this.vx += Math.sign(this.vx) * PLAYER.shotAccel;
     this.x += this.vx; this.y += this.vy;
     if (--this.life <= 0) this.dead = true;
-    if (game.level.solid(Math.floor((this.x + 7) / TILE), Math.floor((this.y + 4) / TILE))) this.dead = true;
+    if (game.level.solidAt(this.x + 7, this.y + 4)) this.dead = true;
   }
 }
 
@@ -117,6 +117,15 @@ export class Party {
     game.totals.enemies = 0;
     game.pickups.forEach((k, i) => { k.id = `p${i}`; });
     game.lives = 99;
+    const p = game.player;
+    this.rival.h = p.h;
+    // Battle levels have several start spots: the guest takes another one.
+    const starts = game.level.starts;
+    if (!this.host && starts && starts.length > 1) {
+      const [tx, ty] = starts[1];
+      p.spawn(tx * TILE + (TILE - p.w) / 2, ty * TILE + TILE - p.h);
+      game.respawn = { x: p.x, y: p.y };
+    }
   }
 
   tick(game) {

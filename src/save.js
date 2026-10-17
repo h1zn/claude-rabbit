@@ -49,5 +49,6 @@ export function recordLevel(save, index, stats, score) {
 }
 
 export function totalStars(save) {
-  return Object.values(save.levels).reduce((n, l) => n + l.stars.filter(Boolean).length, 0);
+  // Built-in levels only (classic JJ2 levels keep their stars separately).
+  return Object.entries(save.levels).filter(([k]) => /^\d+$/.test(k)).reduce((n, [, l]) => n + l.stars.filter(Boolean).length, 0);
 }

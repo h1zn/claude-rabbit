@@ -5,7 +5,9 @@
 import { arcadeText, textWidth } from './art.js';
 import { Backdrop, BACKDROP_SKY, BACKDROPS } from './backdrop.js';
 import { TILE, VIEW_H, VIEW_W } from './config.js';
-import { LEVELS } from './levels.js';
+import { allJJ2, PACKS } from './jj2/catalog.js';
+import { preview } from './jj2/preview.js';
+import { LEVELS, levelDef } from './levels.js';
 import { PARTY_LEVELS } from './party.js';
 import { MISSIONS, totalStars } from './save.js';
 import { Sky, Weather } from './sky.js';
@@ -13,7 +15,8 @@ import { TerrainRenderer } from './terrain.js';
 import { THEME_TILESET } from './tilesets.js';
 
 const TITLE = "KIP'S GEM RUSH";
-const MAIN = ['PLAY', 'LEVELS', 'PARTY', 'HOW TO PLAY', 'OPTIONS'];
+const MAIN = ['PLAY', 'LEVELS', 'CLASSIC JJ2', 'PARTY', 'HOW TO PLAY', 'OPTIONS'];
+const SUBS = [null, 'levels', 'jj2', 'party', 'help', 'options'];
 // Thumbnail colours per theme: sky, ground, back wall.
 const THUMB = {
   meadow: ['#5aa8f0', '#e0b860', '#6a4a28'], castle: ['#1e120c', '#c88a50', '#4a2a1a'], town: ['#9a8aff', '#c070b0', '#3a2a4a'],
@@ -29,7 +32,9 @@ export class Screens {
     this.sky = new Sky('winter');
     this.weather = new Weather('snow', 110);
     this.menu = 0;
-    this.sub = null;        // null | levels | help | options | party | host | join
+    this.sub = null;        // null | levels | jj2 | help | options | party | host | join
+    this.jj2 = allJJ2();
+    this.jj2Index = 0;
     this.pauseIndex = 0;
     this.thumbs = [];
     this.codeBuf = '';
@@ -237,8 +242,8 @@ export class Screens {
     const stars = totalStars(save);
     const max = LEVELS.length * 3;
     if (this.sub === null) {
-      this.panel(VIEW_W / 2 - 120, 118, 240, 150);
-      this.menuList(MAIN, this.menu, 130, t);
+      this.panel(VIEW_W / 2 - 120, 114, 240, 166);
+      this.menuList(MAIN, this.menu, 124, t);
       this.star(VIEW_W - 92, 16, 9, true);
       arcadeText(ctx, `${stars}/${max}`, VIEW_W - 78, 8, { size: 15, top: '#ffffff', bottom: '#ffd54a' });
       const run = this.art.kip.run;
@@ -246,6 +251,7 @@ export class Screens {
       const rf = run[Math.floor(t / 3) % run.length];
       ctx.drawImage(rf.right, kx - rf.ax, VIEW_H - 22 - rf.ay);
     } else if (this.sub === 'levels') this.levelGrid(t, save);
+    else if (this.sub === 'jj2') this.jj2List(t, save);
     else if (this.sub === 'help') this.help(t);
     else if (this.sub === 'options') this.options(t, save);
     else this.lobbyScreen(t);
@@ -311,6 +317,55 @@ export class Screens {
     });
     const sel = this.menu === LEVELS.length;
     arcadeText(ctx, 'BACK', VIEW_W / 2, VIEW_H - 32, { size: sel ? 16 : 13, align: 'center', top: sel ? '#ffffff' : '#b8a8d8', bottom: sel ? '#ffb02e' : '#7a6aa0' });
+  }
+
+  // Original JJ2 levels from Levels/, grouped by pack, with a map preview.
+  jj2List(t, save) {
+    const ctx = this.ctx;
+    this.dim(0.55);
+    this.panel(24, 70, VIEW_W - 48, 252, 0.88);
+    arcadeText(ctx, 'CLASSIC JJ2 LEVELS', VIEW_W / 2, 78, { size: 16, align: 'center' });
+    let y = 104;
+    let n = 0;
+    for (const pack of PACKS) {
+      arcadeText(ctx, pack.title.toUpperCase(), 40, y, { size: 11, shadow: false, top: '#bff8ff', bottom: '#22b8e8' });
+      y += 15;
+      for (let i = 0; i < pack.levels.length; i++, n++) {
+        const def = this.jj2[n];
+        const on = n === this.jj2Index;
+        const rec = save.levels[def.key];
+        arcadeText(ctx, `${on ? '> ' : '  '}${def.title}`, 48, y, { size: 11, shadow: false, top: on ? '#ffffff' : '#c8b8f0', bottom: on ? '#ffd54a' : '#9a8ab0' });
+        if (rec) for (let s = 0; s < 3; s++) this.star(262 + s * 12, y + 6, 5, rec.stars[s]);
+        y += 14;
+      }
+      y += 4;
+    }
+    const sel = this.jj2Index === this.jj2.length;
+    arcadeText(ctx, `${sel ? '> ' : '  '}BACK`, 48, y + 2, { size: 11, shadow: false, top: sel ? '#ffffff' : '#c8b8f0', bottom: sel ? '#ffb02e' : '#9a8ab0' });
+    // Preview of the selected level (loaded on demand).
+    // Load every level once, so the list shows real titles.
+    for (const d of this.jj2) {
+      if (d.loaded() || d.loading || d.error) continue;
+      d.loading = true;
+      d.prepare().catch((e) => { d.error = e.message; }).finally(() => { d.loading = false; });
+    }
+    const def = this.jj2[this.jj2Index];
+    const bx = 326; const by = 100; const bw = 276; const bh = 150;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(bx, by, bw, bh);
+    if (def) {
+      const got = def.loaded();
+      if (got) {
+        const map = preview(got.file, got.ts);
+        const k = Math.min(bw / map.width, bh / map.height);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(map, bx + (bw - map.width * k) / 2, by + (bh - map.height * k) / 2, map.width * k, map.height * k);
+        arcadeText(ctx, `${got.file.layers[3].w} x ${got.file.layers[3].h} tiles - ${got.ts.name}`, bx + bw / 2, by + bh + 6, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' });
+      } else {
+        arcadeText(ctx, def.error ? 'CAN\'T LOAD' : 'LOADING...', bx + bw / 2, by + bh / 2 - 8, { size: 12, align: 'center' });
+      }
+      wrap(def.error || def.pack.blurb, 46).forEach((line, i) => arcadeText(ctx, line, bx + bw / 2, by + bh + 22 + i * 12, { size: 9, align: 'center', shadow: false, top: def.error ? '#ffd0d8' : '#ffffff', bottom: def.error ? '#ff8a8a' : '#cfe6ff' }));
+    }
   }
 
   help(t) {
@@ -380,7 +435,7 @@ export class Screens {
       arcadeText(ctx, 'ROOM CODE', VIEW_W / 2, 130, { size: 12, align: 'center' });
       arcadeText(ctx, L.code, VIEW_W / 2, 146, { size: 34, align: 'center', top: '#ffffff', bottom: '#5ae08a' });
       (L.urls || []).slice(0, 2).forEach((u, i) => arcadeText(ctx, `Friend opens ${u}`, VIEW_W / 2, 190 + i * 13, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' }));
-      const lv = LEVELS[PARTY_LEVELS[this.partyLevel]];
+      const lv = levelDef(PARTY_LEVELS[this.partyLevel]);
       arcadeText(ctx, `< ${lv.title} >`, VIEW_W / 2, 224, { size: 14, align: 'center', top: '#ffffff', bottom: '#ffd54a' });
       if (L.peer) this.blink(t, 'Player 2 is here! Press ENTER to start', 256, 12);
       else arcadeText(ctx, 'Waiting for player 2' + '.'.repeat(1 + Math.floor(t / 20) % 3), VIEW_W / 2, 256, { size: 12, align: 'center' });
@@ -411,9 +466,21 @@ export class Screens {
         if (!choose) return null;
         this.audio.play('select');
         if (this.menu === 0) return 'play';
-        this.sub = [null, 'levels', 'party', 'help', 'options'][this.menu];
+        this.sub = SUBS[this.menu];
         this.menu = 0;
         return null;
+      case 'jj2': {
+        const n = this.jj2.length;
+        const step = (d) => { this.jj2Index = (this.jj2Index + d + n + 1) % (n + 1); this.audio.play('menu'); };
+        if (input.pressed('up')) step(-1);
+        if (input.pressed('down')) step(1);
+        if (back || (choose && this.jj2Index === n)) { this.sub = null; this.menu = 2; return null; }
+        if (!choose) return null;
+        const def = this.jj2[this.jj2Index];
+        if (def.error) { this.audio.play('denied'); return null; }
+        this.audio.play('select');
+        return `level:${def.key}`;
+      }
       case 'levels': {
         const n = LEVELS.length;
         if (input.pressed('left')) move(-1, n + 1);
@@ -427,7 +494,7 @@ export class Screens {
         return null;
       }
       case 'help':
-        if (choose || back) { this.sub = null; this.menu = 3; this.audio.play('select'); }
+        if (choose || back) { this.sub = null; this.menu = 4; this.audio.play('select'); }
         return null;
       case 'options':
         if (input.pressed('up')) { move(-1, 4); this.resetArmed = false; }
@@ -437,7 +504,7 @@ export class Screens {
           const d = (input.pressed('right') ? 0.1 : 0) - (input.pressed('left') ? 0.1 : 0);
           if (d) { save.options[key] = Math.round(Math.max(0, Math.min(1, save.options[key] + d)) * 10) / 10; this.audio.play('menu'); return 'options'; }
         }
-        if (back || (choose && this.menu === 3)) { this.sub = null; this.menu = 4; this.resetArmed = false; return 'options'; }
+        if (back || (choose && this.menu === 3)) { this.sub = null; this.menu = 5; this.resetArmed = false; return 'options'; }
         if (choose && this.menu === 2) {
           if (this.resetArmed) { this.resetArmed = false; this.audio.play('denied'); return 'reset'; }
           this.resetArmed = true; this.audio.play('menu');
@@ -446,7 +513,7 @@ export class Screens {
       case 'party':
         if (input.pressed('up')) move(-1, 3);
         if (input.pressed('down')) move(1, 3);
-        if (back || (choose && this.menu === 2)) { this.sub = null; this.menu = 2; return null; }
+        if (back || (choose && this.menu === 2)) { this.sub = null; this.menu = 3; return null; }
         if (!choose) return null;
         this.audio.play('select');
         this.lobby = { status: 'connecting' };
@@ -477,7 +544,10 @@ export class Screens {
     this.starfield(t, 0.4);
     const meta = game.cardMeta;
     const slide = Math.max(0, 40 - t) * 8;
-    arcadeText(ctx, `LEVEL ${game.cardIndex + 1}`, VIEW_W / 2 - slide, 70, { size: 16, align: 'center', top: '#bff8ff', bottom: '#22b8e8' });
+    const label = typeof game.cardIndex === 'number' ? `LEVEL ${game.cardIndex + 1}` : meta.label || 'CLASSIC JJ2';
+    arcadeText(ctx, label, VIEW_W / 2 - slide, 70, { size: 16, align: 'center', top: '#bff8ff', bottom: '#22b8e8' });
+    if (meta.error) arcadeText(ctx, `${meta.error} - press ENTER`, VIEW_W / 2, 296, { size: 11, align: 'center', top: '#ffd0d8', bottom: '#ff8a8a' });
+    else if (meta.loading && t > 60) arcadeText(ctx, 'LOADING' + '.'.repeat(1 + Math.floor(t / 15) % 3), VIEW_W / 2, 296, { size: 11, align: 'center' });
     arcadeText(ctx, meta.title.toUpperCase(), VIEW_W / 2 + slide, 94, { size: 32, align: 'center' });
     arcadeText(ctx, meta.tip, VIEW_W / 2, 140, { size: 11, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0', alpha: Math.min(1, t / 40) });
     const rec = save && save.levels[game.cardIndex];
@@ -583,4 +653,15 @@ export class Screens {
     credits.forEach((c, i) => arcadeText(ctx, c, VIEW_W / 2, 250 + i * 18, { size: 10, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' }));
     if (t > 120) this.blink(t, 'Press ENTER', VIEW_H - 26, 12);
   }
+}
+
+// Split text into lines of at most `n` characters.
+function wrap(text, n) {
+  const out = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    if (line && line.length + word.length + 1 > n) { out.push(line); line = word; } else line = line ? `${line} ${word}` : word;
+  }
+  if (line) out.push(line);
+  return out;
 }

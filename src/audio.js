@@ -115,6 +115,8 @@ export const TRACKS = {
   beach: { file: '7. Beach Bunny.mp3' },
   jungle: { file: 'C. Jungle Fevah.mp3' },
 };
+// Music that comes with a level pack (an .ogg or .mp3 next to the level).
+export function addTrack(name, url) { if (!TRACKS[name]) TRACKS[name] = { url }; }
 const TRACK_VOLUME = 0.42;   // background level, well under the effects
 const FADE = 1.2;            // seconds for fades between tracks
 
@@ -380,7 +382,7 @@ export class Audio {
   trackNode(name) {
     if (!this.tracks[name]) {
       const def = TRACKS[name];
-      const el = new window.Audio(`Soundtracks/${encodeURIComponent(def.file)}`);
+      const el = new window.Audio(def.url || `Soundtracks/${encodeURIComponent(def.file)}`);
       el.loop = def.loop !== false;
       el.preload = 'auto';
       const gain = this.ctx.createGain();

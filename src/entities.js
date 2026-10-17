@@ -417,7 +417,7 @@ export class EnemyShot {
       this.vx += (this.vx / s) * ENEMY.shotAccel;
       this.vy += (this.vy / s) * ENEMY.shotAccel;
       this.x += this.vx; this.y += this.vy;
-      if (level.solid(Math.floor((this.x + 8) / TILE), Math.floor((this.y + 8) / TILE))) this.pop(game);
+      if (level.solidAt(this.x + 8, this.y + 8)) this.pop(game);
     } else {
       this.vy = Math.min(this.vy + ENEMY.gravity, 6);
       const hit = level.move(this, this.vx, this.vy, {});
@@ -665,9 +665,12 @@ export class Checkpoint {
 
 // The goal sign: touch it and it spins, then the level is clear.
 export class Sign {
-  constructor(tx, ty) {
+  // `hidden`: an invisible end-of-level area (one tile), as JJ2 levels use.
+  constructor(tx, ty, hidden = false) {
     this.kind = 'sign';
+    this.hidden = hidden;
     this.x = tx * TILE - 4; this.y = ty * TILE + TILE - 52; this.w = 40; this.h = 52;
+    if (hidden) { this.x = tx * TILE; this.y = ty * TILE; this.w = TILE; this.h = TILE; }
     this.angle = 0; this.speed = 0.04; this.hit = 0;
   }
 
@@ -766,9 +769,11 @@ export class Warp {
 // then flung out at up to 20 px/tick. Horizontal poles throw him sideways,
 // vertical poles throw him up. Jump lets go early.
 export class Pole {
-  constructor(tx, ty, vertical) {
+  // `hidden`: the level's own tiles already show the pole.
+  constructor(tx, ty, vertical, hidden = false) {
     this.kind = 'pole';
     this.vertical = vertical;
+    this.hidden = hidden;
     this.px = tx * TILE + TILE / 2; this.py = ty * TILE + TILE / 2;
     this.x = this.px - 14; this.y = this.py - 14; this.w = 28; this.h = 28;
   }
@@ -787,6 +792,8 @@ export class Hint {
     this.kind = 'hint';
     Object.assign(this, o);
     this.x = o.tx * TILE - TILE; this.y = o.ty * TILE - TILE; this.w = TILE * 3; this.h = TILE * 2;
+    // Hidden hints are JJ2 text areas: just their tile.
+    if (o.hidden) { this.x = o.tx * TILE; this.y = o.ty * TILE; this.w = TILE; this.h = TILE; }
   }
 
   update(game) {
@@ -811,7 +818,7 @@ export class Shot {
     const ty = Math.floor((this.y + this.h / 2) / TILE);
     if (game.hitTile(tx, ty)) {
       this.dead = true;
-    } else if (game.level.groundish(tx, ty)) {
+    } else if (game.level.shotHits(this.x + this.w / 2, this.y + this.h / 2)) {
       this.dead = true;
       game.effect('hitSpark', this.x + this.w / 2, this.y + this.h / 2);
     }

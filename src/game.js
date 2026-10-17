@@ -6,7 +6,9 @@ import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import {
   Checkpoint, Effect, Hint, makeEnemy, overlap, Particle, Pickup, Pole, SecretZone, Shot, Sign, Spring, SPRING_CHARS, Warp,
 } from './entities.js';
-import { LEVELS } from './levels.js';
+import { jj2Tick } from './jj2/play.js';
+import { JJ2View } from './jj2/view.js';
+import { LEVELS, levelDef } from './levels.js';
 import { PARTY_GOAL, PARTY_RESPAWN } from './party.js';
 import { Player } from './player.js';
 import { Sky, Weather } from './sky.js';
@@ -48,12 +50,21 @@ export class Game {
 
   loadLevel(index, freshPlayer = false) {
     this.levelIndex = index;
-    this.level = LEVELS[index]();
+    this.level = levelDef(index)(this.party ? { party: true } : {});
     const theme = this.level.meta.theme;
-    this.terrain = new TerrainRenderer(this.level, theme, this.art);
-    const tsName = THEME_TILESET[theme];
-    this.sky = tsName && BACKDROPS[tsName] ? new Backdrop(this.art.tilesets[tsName].pixels, tsName, this.level, BACKDROP_SKY[tsName] && new Sky(BACKDROP_SKY[tsName])) : new Sky(theme);
+    if (this.level.jj2) {
+      // An original JJ2 level draws its own layers.
+      this.view = new JJ2View(this.level);
+      this.terrain = null;
+      this.sky = null;
+    } else {
+      this.view = null;
+      this.terrain = new TerrainRenderer(this.level, theme, this.art);
+      const tsName = THEME_TILESET[theme];
+      this.sky = tsName && BACKDROPS[tsName] ? new Backdrop(this.art.tilesets[tsName].pixels, tsName, this.level, BACKDROP_SKY[tsName] && new Sky(BACKDROP_SKY[tsName])) : new Sky(theme);
+    }
     this.weather = new Weather(WEATHER[theme]);
+    const playerH = this.level.meta.playerH || PLAYER.h;
     Object.assign(this, {
       enemies: [], enemyShots: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
       levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null,
@@ -69,7 +80,7 @@ export class Game {
       if (enemy) { this.enemies.push(enemy); totals.enemies++; continue; }
       if (SPRING_CHARS.includes(e.ch)) { this.props.push(new Spring(e.tx, e.ty, e.ch)); continue; }
       switch (e.ch) {
-        case 'P': start = { x: px + (TILE - PLAYER.w) / 2, y: py + TILE - PLAYER.h }; break;
+        case 'P': start = { x: px + (TILE - PLAYER.w) / 2, y: py + TILE - playerH }; break;
         case 'H': this.props.push(new Pole(e.tx, e.ty, false)); break;
         case 'I': this.props.push(new Pole(e.tx, e.ty, true)); break;
         case 'C': this.props.push(new Checkpoint(e.tx, e.ty)); break;
@@ -88,17 +99,27 @@ export class Game {
     for (const o of this.level.objects) {
       if (o.type === 'warp') { const w = new Warp(o); this.warps.push(w); this.props.push(w); }
       if (o.type === 'hint') this.props.push(new Hint(o));
+      if (o.type === 'exit') this.props.push(new Sign(o.tx, o.ty, true));
+      if (o.type === 'pole') this.props.push(new Pole(o.tx, o.ty, o.vertical, true));
+    }
+    // Pickups placed off the grid (JJ2 gem rings and barrels).
+    for (const e of this.level.extraPickups || []) {
+      const k = Pickup.fromChar(e.ch, 0, 0);
+      k.x = e.x - k.w / 2; k.y = e.y - k.h / 2;
+      this.pickups.push(k);
+      if (k.kind === 'gem') totals.gems += k.value;
     }
     this.totals = totals;
     this.start = start;
     this.respawn = { ...start };
     if (freshPlayer || !this.player) this.player = new Player(start.x, start.y);
     else this.player.spawn(start.x, start.y);
+    this.player.h = playerH;
     this.player.health = Math.max(this.player.health, 3);
     this.cam = { x: this.player.cx - VIEW_W / 2, y: this.player.cy - VIEW_H / 2 };
     this.clampCamera();
     this.prevCam = { ...this.cam };
-    this.terrain.warm(this.player.cx, this.player.cy);
+    if (this.terrain) this.terrain.warm(this.player.cx, this.player.cy);
     this.state = 'play';
     if (this.party) this.party.begin(this);
     this.banner(this.party ? `FIRST TO ${PARTY_GOAL} GEMS + EXIT WINS!` : this.level.meta.name.toUpperCase(), 160);
@@ -169,7 +190,7 @@ export class Game {
     this.cam = { x: p.cx - VIEW_W / 2, y: p.cy - VIEW_H / 2 };
     this.clampCamera();
     this.prevCam = { ...this.cam };
-    this.terrain.warm(p.cx, p.cy);
+    if (this.terrain) this.terrain.warm(p.cx, p.cy);
   }
 
   explode(x, y, color) {
@@ -191,7 +212,7 @@ export class Game {
   fire(player, spread) {
     const dir = player.facing;
     const x = dir > 0 ? player.x + player.w + 8 : player.x - 22;
-    const y = player.y + 20;
+    const y = player.y + player.h - 18;
     // Measured: blaster speed plus the player's own speed in the firing direction.
     const speed = PLAYER.shotSpeed + Math.max(0, Math.min(PHYS.moveCap, player.vx * dir));
     const made = spread ? [-1.6, 0, 1.6].map((vy) => new Shot(x, y, dir * speed, vy, true)) : [new Shot(x, y, dir * speed, 0, false)];
@@ -327,7 +348,7 @@ export class Game {
     };
     this.stats = stats;
     this.score += stats.bonus.time + stats.bonus.gems + stats.bonus.perfect;
-    this.unlocked = Math.max(this.unlocked, Math.min(LEVELS.length, this.levelIndex + 2));
+    if (typeof this.levelIndex === 'number') this.unlocked = Math.max(this.unlocked, Math.min(LEVELS.length, this.levelIndex + 2));
   }
 
   // ---------------------------------------------------------------- tick
@@ -390,6 +411,7 @@ export class Game {
     this.popups = this.popups.filter((q) => --q.life > 0);
     this.popups.forEach((q) => { q.y -= 0.6; });
 
+    if (this.level.jj2) jj2Tick(this);
     this.updateCamera();
     this.weather.update(this.cam.x, this.cam.y, this.time);
   }

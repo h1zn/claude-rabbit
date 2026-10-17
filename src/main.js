@@ -8,7 +8,7 @@ import { Audio } from './audio.js';
 import { MAX_CATCHUP_TICKS, TICK_MS, VIEW_H, VIEW_W } from './config.js';
 import { Game } from './game.js';
 import { Input } from './input.js';
-import { LEVELS } from './levels.js';
+import { LEVELS, levelDef } from './levels.js';
 import { Net, Party } from './party.js';
 import { Renderer } from './render.js';
 import { loadSave, recordLevel, writeSave } from './save.js';
@@ -37,7 +37,11 @@ let net = null;            // party connection while in the lobby or a hunt
 window.kip = {
   game, input, audio, screens,
   go: (s) => go(s),
-  play: (index = 0) => { game.party = null; game.newGame(index); irisTime = 99; go('play'); },
+  play: async (index = 0) => {
+    const def = levelDef(index);
+    if (def.prepare) await def.prepare();
+    game.party = null; game.newGame(index); irisTime = 99; go('play');
+  },
 };
 
 function go(next) {
@@ -66,14 +70,27 @@ function unlock() {
 window.addEventListener('keydown', unlock);
 canvas.addEventListener('pointerdown', unlock);
 
+// The level card shows while an original JJ2 level's files load.
 function showCard(index, fresh) {
-  pendingLevel = { index, fresh };
+  const def = levelDef(index);
+  pendingLevel = { index, fresh, ready: !def.prepare };
   game.cardIndex = index;
-  game.cardMeta = { title: LEVELS[index].title, tip: LEVELS[index].tip };
+  game.cardMeta = { title: def.title, tip: def.tip, label: def.pack && def.pack.title.toUpperCase(), loading: !!def.prepare };
+  if (def.prepare) {
+    const pending = pendingLevel;
+    def.prepare().then(() => {
+      pending.ready = true;
+      game.cardMeta.loading = false;
+      game.cardMeta.title = def.title;
+    }).catch((e) => { game.cardMeta.error = e.message; game.cardMeta.loading = false; });
+  }
   audio.stopMusic();
   audio.play('card');
   go('card');
 }
+
+// Index from a menu action: built-in levels are numbers, JJ2 levels keys.
+const levelKey = (k) => (/^\d+$/.test(k) ? Number(k) : k);
 
 function startPendingLevel() {
   const { index, fresh } = pendingLevel;
@@ -101,7 +118,12 @@ async function joinParty(code) {
   net.send({ t: 'join', code });
 }
 
-function startParty(index, role) {
+async function startParty(index, role) {
+  const def = levelDef(index);
+  if (def.prepare) {
+    screens.lobby.status = 'loading';
+    try { await def.prepare(); } catch (e) { screens.lobby = { status: 'error', error: e.message }; return; }
+  }
   game.newParty(index, new Party(net, role));
   irisTime = 0;
   go('play');
@@ -136,21 +158,22 @@ function tick() {
       if (scene !== 'title') break;
       const action = screens.titleInput(input, save) || '';
       if (action === 'play') showCard(Math.min(save.unlocked, LEVELS.length) - 1, true);
-      else if (action.startsWith('level:')) showCard(Number(action.slice(6)), true);
+      else if (action.startsWith('level:')) showCard(levelKey(action.slice(6)), true);
       else if (action === 'options') { audio.setVolumes(save.options.music, save.options.sfx); writeSave(save); }
       else if (action === 'reset') { save = { ...loadSave(), unlocked: 1, levels: {} }; writeSave(save); game.unlocked = 1; }
       else if (action === 'host') hostParty();
       else if (action.startsWith('join:')) joinParty(action.slice(5));
       else if (action === 'leave') { if (net) net.close(); net = null; }
       else if (action.startsWith('party-start:')) {
-        const index = Number(action.slice(12));
+        const index = levelKey(action.slice(12));
         net.send({ t: 'start', level: index });
         startParty(index, 'host');
       }
       break;
     }
     case 'card':
-      if (sceneTime > 170 || (sceneTime > 50 && input.pressed('start'))) startPendingLevel();
+      if (game.cardMeta.error) { if (sceneTime > 30 && (input.pressed('start') || input.pressed('pause'))) toMenu(); break; }
+      if (pendingLevel.ready && (sceneTime > 170 || (sceneTime > 50 && input.pressed('start')))) startPendingLevel();
       break;
     case 'play':
       irisTime++;
@@ -175,7 +198,9 @@ function tick() {
       }
       if (game.state === 'clear' && game.clearTime > 280 && input.pressed('start')) {
         game.result = null;
-        if (game.levelIndex + 1 < LEVELS.length) showCard(game.levelIndex + 1, false);
+        const def = levelDef(game.levelIndex);
+        if (def.jj2) { if (def.next) showCard(def.next, false); else toMenu(); }
+        else if (game.levelIndex + 1 < LEVELS.length) showCard(game.levelIndex + 1, false);
         else game.nextLevel();
       } else if (game.state === 'gameover' || game.state === 'win') {
         game.overTime = (game.overTime || 0) + 1;

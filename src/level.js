@@ -304,6 +304,9 @@ export class Level {
   lava(tx, ty) { return this.at(tx, ty) === '~'; }
   // Anything you can stand on: used for ledge checks and tile art.
   groundish(tx, ty) { return this.solid(tx, ty) || this.slope(tx, ty); }
+  // Point tests for projectiles: player shots stop on any ground, enemy shots on solid tiles.
+  shotHits(x, y) { return this.groundish(Math.floor(x / TILE), Math.floor(y / TILE)); }
+  solidAt(x, y) { return this.solid(Math.floor(x / TILE), Math.floor(y / TILE)); }
 
   // Shots and attacks break 'x' blocks and switch crates, and wear down
   // countdown blocks; a stomp also breaks 'm' blocks; `speed` (running at

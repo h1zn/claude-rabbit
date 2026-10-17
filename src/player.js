@@ -3,6 +3,10 @@
 // (uppercut) timing; tuned gravity, caps and buttstomp speed.
 
 import { PHYS, PLAYER, TILE } from './config.js';
+import { eventFields } from './jj2/files.js';
+import { EV } from './jj2/level.js';
+
+const HANG = 14;   // px from a vine down to the top of a hanging body
 
 export class Player {
   constructor(x, y) {
@@ -22,6 +26,7 @@ export class Player {
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
+      hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0,
     });
   }
@@ -36,7 +41,7 @@ export class Player {
     this.prevX = this.x;
     this.prevY = this.y;
     this.animTime++;
-    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock']) if (this[k] > 0) this[k]--;
+    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube']) if (this[k] > 0) this[k]--;
     if (this.rush > 0 && --this.rush === 0) game.endRush();
     if (this.shield > 0) this.shield--;
 
@@ -58,6 +63,8 @@ export class Player {
       this.swing(game, input);
       return;
     }
+    // Original JJ2 levels: tubes, vines and hooks take over movement.
+    if (level.areas && this.jj2Move(game, input)) return;
 
     const controlled = this.knock === 0 && this.special === 0 && this.springLock === 0;
     const dir = controlled ? (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0) : 0;
@@ -68,7 +75,7 @@ export class Player {
     const dashing = this.dash > 0;
     const boost = this.rush > 0 ? PHYS.rushSpeedScale : 1;
     const accel = (dashing ? PHYS.runAccel : PHYS.walkAccel) * boost;
-    const max = (dashing && !this.hovering ? PHYS.runMax : PHYS.walkMax) * boost;
+    const max = this.swimming ? (dashing ? 4 : 2.5) : (dashing && !this.hovering ? PHYS.runMax : PHYS.walkMax) * boost;
     const crouching = controlled && this.onGround && input.held('down') && !dir;
     this.crouchT = crouching ? this.crouchT + 1 : 0;
     if (dir) {
@@ -117,7 +124,7 @@ export class Player {
     if (controlled && input.pressed('jump')) this.jumpBuffer = PHYS.jumpBufferTicks;
     else if (this.jumpBuffer > 0) this.jumpBuffer--;
     const onPlatform = this.onGround && level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE));
-    if (this.special === 0) {
+    if (this.special === 0 && !this.swimming) {
       if (this.jumpBuffer > 0 && input.held('down') && onPlatform) {
         this.dropThrough = 10;
         this.jumpBuffer = 0;
@@ -156,6 +163,26 @@ export class Player {
     // ---- vertical
     if (this.special > 0) {
       // velocity set above
+    } else if (this.swimming) {
+      // Original swimming: weak gravity, Up/Down (or Jump) push 1/8 px/tick²
+      // up to 2 px/tick (doubled while running); Jump at the surface leaps out.
+      const vdir = (input.held('down') ? 1 : 0) - (input.held('up') || input.held('jump') ? 1 : 0);
+      let accel = 1024 / 65536;
+      let cap = 2;
+      if (vdir) { const k = this.dash > 0 ? 2 : 1; accel += 0.125 * k * vdir; cap *= k; }
+      cap += Math.abs(accel);
+      this.vy = Math.max(-cap, Math.min(cap, this.vy + accel));
+      this.stomping = false; this.hovering = false;
+      if (input.pressed('jump') && this.cy - level.water < 20) {
+        this.vy = PHYS.jumpBase;
+        this.jumping = true; this.jumpCut = false;
+        this.swimming = false;
+        audio.play('jump');
+      }
+    } else if (this.floatUp) {
+      // Updraft: carried up to 8 px/tick (original float-up speed).
+      this.vy = Math.max(this.vy - 0.5, -8);
+      this.stomping = false;
     } else if (this.stomping) {
       this.vx = 0;
       this.vy = Math.min(this.vy + PHYS.stompAccel, PHYS.stompFall);
@@ -179,6 +206,7 @@ export class Player {
     audio.hover(this.hovering);
 
     this.collide(game);
+    if (level.areas) this.areaPush(level);
 
     // ---- shooting. Measured timing: holding fire shoots every 35 ticks, but
     // releasing the button cuts the wait to 5 ticks, so tapping fires faster.
@@ -209,6 +237,98 @@ export class Player {
     else if (lookUp) this.anim = 'look';
     else this.anim = this.shootPose > 0 ? 'shoot' : 'idle';
     this.idleTime = this.anim === 'idle' ? this.idleTime + 1 : 0;
+  }
+
+  // Tubes and vines (original JJ2 levels). Returns true when it moved Kip.
+  jj2Move(game, input) {
+    const level = game.level;
+    this.swimming = level.water !== Infinity && this.cy > level.water;
+    this.floatUp = level.areaAt(this.cx, this.cy) === EV.FLOAT_UP || level.areaAt(this.cx, this.y + this.h - 2) === EV.FLOAT_UP;
+    // A tube carries Kip at its own speed, straight through its walls.
+    if (level.areaAt(this.cx, this.cy) === EV.TUBE) {
+      const [xs, ys] = eventFields(level.areaParam(this.cx, this.cy), [-7, -7]);
+      if (xs || ys) {
+        const tx = Math.floor(this.cx / TILE); const ty = Math.floor(this.cy / TILE);
+        this.vx = xs; this.vy = ys;
+        if (!xs) this.x += (tx * TILE + TILE / 2 - this.cx) * 0.5;
+        if (!ys) this.y += (ty * TILE + TILE / 2 - this.cy) * 0.5;
+        this.x += xs; this.y += ys;
+        Object.assign(this, { inTube: 6, hang: null, hovering: false, stomping: false, onGround: false, jumping: false, special: 0 });
+        game.audio.hover(false);
+        this.anim = 'jump';
+        return true;
+      }
+    }
+    if (this.hang) return this.hangOn(game, input);
+    if (this.hangCool === 0 && !this.onGround && this.inTube === 0) {
+      // Hands reach HANG px above the body's top.
+      const hy = this.y - HANG;
+      const tx = Math.floor(this.cx / TILE); const ty = Math.floor(hy / TILE);
+      const id = level.areaAt(this.cx, hy);
+      if (id === EV.VINE || id === EV.HOOK) {
+        const line = ty * TILE + (level.vineY.get(ty * level.w + tx) ?? 8);
+        if (hy >= line - 8 && hy <= line + 12) {
+          this.hang = { hook: id === EV.HOOK, line };
+          this.y = line + HANG;
+          Object.assign(this, { vx: 0, vy: 0, hovering: false, stomping: false, jumping: false, special: 0 });
+          game.audio.hover(false);
+          return this.hangOn(game, input);
+        }
+      }
+    }
+    return false;
+  }
+
+  // Hanging from a vine (move hand over hand) or a hook (stay put).
+  hangOn(game, input) {
+    const level = game.level;
+    const h = this.hang;
+    const release = (vy, cool) => { this.hang = null; this.hangCool = cool; this.vy = vy; };
+    if (input.pressed('jump')) {
+      release(PHYS.jumpBase, 12);
+      this.y -= 4;
+      this.jumping = true; this.jumpCut = false; this.launched = true;
+      game.audio.play('jump');
+      return false;
+    }
+    if (input.pressed('down')) { release(4, 8); this.y += 4; return false; }
+    const dir = (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0);
+    if (dir) this.facing = dir;
+    let vx = 0;
+    if (!h.hook && dir) {
+      // Original: 2 px/tick along a vine, double with Run.
+      const ahead = level.areaAt(this.cx + dir * (this.w / 2 + 2), h.line + 1);
+      if (ahead === EV.VINE) vx = dir * (input.held('run') ? 4 : 2);
+    }
+    this.vx = vx; this.vy = 0;
+    if (vx) level.move(this, vx, 0, {});
+    this.y = h.line + HANG;
+    if (level.areaAt(this.cx, h.line + 1) !== (h.hook ? EV.HOOK : EV.VINE)) release(0, 8);
+    this.anim = 'hang';
+    return true;
+  }
+
+  // Wind areas push Kip along; belts carry him while he stands on them.
+  areaPush(level) {
+    const force = (id, p) => {
+      switch (id) {
+        case EV.WIND_LEFT: return p > 127 ? -(256 - p) : p;
+        case EV.WIND_RIGHT: return p;
+        case EV.BELT_LEFT: return p === 0 ? -2 : p > 127 ? 256 - p : -p;
+        case EV.BELT_RIGHT: return p === 0 ? 2 : p > 127 ? -(256 - p) : p;
+        case EV.ACC_BELT_LEFT: return -1.5 * (p || 4);
+        case EV.ACC_BELT_RIGHT: return 1.5 * (p || 4);
+        default: return 0;
+      }
+    };
+    const wind = level.areaAt(this.cx, this.cy);
+    let push = wind === EV.WIND_LEFT || wind === EV.WIND_RIGHT ? force(wind, level.areaParam(this.cx, this.cy)) : 0;
+    if (this.onGround) {
+      const fy = this.y + this.h + 2;
+      const belt = level.areaAt(this.cx, fy);
+      if (belt >= EV.BELT_RIGHT && belt <= EV.ACC_BELT_LEFT) push += force(belt, level.areaParam(this.cx, fy));
+    }
+    if (push) level.move(this, Math.max(-8, Math.min(8, push)), 0, { climb: this.onGround });
   }
 
   grabPole(pole, game) {
