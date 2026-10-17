@@ -1,4 +1,4 @@
-import { Builder, ladder, over, shape } from './kit.js';
+import { Builder, ladder, over, shape, weaponVault } from './kit.js';
 
 // Descent into a volcano: from the crater rim down through four chambers to
 // the forge heart. Lava sits at the bottom of pits (it burns and throws you
@@ -104,6 +104,10 @@ export function lavaForge() {
   L.floorRow(54, 87, 87, 'o', 3);
   L.put(71, 87, '1');
 
+  // Toaster: ammo at the crater rim, a crate, and a vault only fire opens.
+  L.ammo(8, 11, 6).ammo(10, 11, 6).ammoCrate(15, 11, 6);
+  weaponVault(L, 42, 11, 6, { loot: 'g' });
+  L.hint(36, 11, 'The TOASTER (6) burns through this block.\nFastfire makes its flame longer.');
   return L.build({ name: 'Lava Forge', theme: 'forge', music: 'castle', horizon: 12, dark: { color: '22,4,2', amount: 0.55 } });
 }
 lavaForge.title = 'Lava Forge';

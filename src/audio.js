@@ -307,6 +307,25 @@ export class Audio {
         this.noise({ dur: 0.03, vol: 0.07, filter: 5000, type: 'highpass' });
         break;
       case 'spread': this.tone({ wave: 'sawtooth', from: 1000, to: 220, dur: 0.12, vol: 0.07 }); break;
+      case 'bounce': this.tone({ wave: 'sine', from: 260, to: 620, dur: 0.07, vol: 0.09 }); break;
+      case 'freeze':
+        this.tone({ wave: 'triangle', from: 2400, to: 1200, dur: 0.14, vol: 0.06 });
+        this.noise({ dur: 0.1, vol: 0.06, filter: 7000, type: 'highpass' });
+        break;
+      case 'missile': this.noise({ dur: 0.25, vol: 0.12, filter: 600, sweep: 2400, type: 'bandpass' }); break;
+      case 'flame': this.noise({ dur: 0.06, vol: 0.05, filter: 900, type: 'lowpass' }); break;
+      case 'tnt': this.tone({ wave: 'square', from: 180, to: 140, dur: 0.06, vol: 0.06 }); break;
+      case 'pepper': this.noise({ dur: 0.05, vol: 0.09, filter: 2500, type: 'bandpass' }); break;
+      case 'electro':
+        this.tone({ wave: 'sawtooth', from: 90, to: 1800, dur: 0.16, vol: 0.06 });
+        this.tone({ wave: 'square', from: 1800, to: 90, dur: 0.16, vol: 0.03 });
+        break;
+      case 'boom':
+        this.tone({ wave: 'triangle', from: 160, to: 30, dur: 0.6, vol: 0.28 });
+        this.noise({ dur: 0.7, vol: 0.3, filter: 900, sweep: 80 });
+        break;
+      case 'weapon': this.tone({ wave: 'square', from: 660, to: 990, dur: 0.05, vol: 0.06 }); break;
+      case 'ammo': this.notes(['E5', 'B5'], { step: 0.05, dur: 0.08, vol: 0.08 }); break;
       case 'hit': this.noise({ dur: 0.08, vol: 0.2, filter: 1800, type: 'bandpass' }); break;
       case 'kill':
         this.tone({ wave: 'triangle', from: 620, to: 70, dur: 0.3, vol: 0.2 });

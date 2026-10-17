@@ -1,4 +1,4 @@
-import { Builder, rng, roomMaze } from './kit.js';
+import { Builder, rng, roomMaze, weaponVault } from './kit.js';
 
 export function tubelectric() {
   const L = new Builder(160, 66);
@@ -27,6 +27,9 @@ export function tubelectric() {
   L.floorRow(B.x0 + 2, B.x1 - 1, B.floor - 1, 'o', 3);
   L.put(B.x0 + 8, B.floor - 1, '1');
   for (const R of M.rooms) if ((R.x + R.y) % 3 === 0) L.deco(R.x % 2 ? 'column' : 'flame', R.x0 + 1, R.floor);
+  // Electro-blaster: ammo, a crate and a vault in the first corridor.
+  L.ammo(10, 63, 9).ammo(12, 63, 9).ammoCrate(30, 63, 9);
+  weaponVault(L, 41, 63, 9, { loot: 'g' });
   return L.build({ name: 'Tubelectric', theme: 'tube', music: 'winter' });
 }
 tubelectric.title = 'Tubelectric';

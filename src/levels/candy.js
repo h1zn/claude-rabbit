@@ -1,4 +1,4 @@
-import { Builder, over, shape } from './kit.js';
+import { Builder, over, shape, weaponVault } from './kit.js';
 
 // Sky level over a bottomless drop. A low route hops across frosted islands;
 // a faster high route runs along cotton-candy clouds and swinging poles,
@@ -80,6 +80,8 @@ export function candyClouds() {
   L.floorRow(5, 23, 7, 'o', 3);
   L.put(15, 7, '1');
 
+  // Bouncer power-up: purple balls that bounce further and faster.
+  L.ammo(9, 33, 2).ammo(11, 33, 2).powerup(14, 33, 2);
   return L.build({ name: 'Candy Clouds', theme: 'candy', music: 'meadow', horizon: 34 });
 }
 candyClouds.title = 'Candy Clouds';

@@ -85,6 +85,7 @@ Only rules and numbers are used here; no art, names or level data.
 | Powered blaster | 7 px/tick, +0.1875, 30-tick life, 2 damage | measured |
 | Bouncer | 5 px/tick, 105-tick life | measured |
 | Seeker | 2 px/tick, homing, 140-tick life, 2 damage | measured |
+| Ice, RF, toaster, TNT, pepper, electro | speeds, lives and damage in `src/weapons.js` follow the manual's descriptions (frostbiter freezes 210 ticks, 350 powered; TNT 72 px blast, 280-tick fuse) | tuned |
 
 ### Enemies (behaviour routines named by address)
 

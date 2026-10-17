@@ -27,12 +27,13 @@ not work, because browsers block JavaScript modules on `file://`.)
 | Move | Arrow keys / WASD |
 | Jump | Space / Z (hold for a higher jump) |
 | Hover-boots | Press jump again in the air and hold |
-| Blast | X / J / Ctrl |
+| Fire | X / J / Ctrl |
+| Change weapon | C / Tab (next with ammo), or 1-9 |
 | Run | Shift (hold) |
 | Drop through a platform | Down + Jump |
 | Super jump | Hold Down until crouched, then Jump (60% higher, smashes blocks above) |
 | Butt-stomp | Down in the air |
-| Uppercut | Up + Blast |
+| Uppercut | Up + Fire |
 | Let go of a swinging pole | Jump |
 | Pause / Mute | P / M |
 
@@ -86,13 +87,23 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 
 - **Blocks** (manual): blast blocks, countdown blocks (shoot as often as
   the number), butt-stomp blocks, speed blocks (run into them at full speed),
-  and switch crates that flip switch blocks and ghost blocks level-wide.
+  switch crates that flip switch blocks and ghost blocks level-wide, and
+  weapon blocks that only the gun pictured on them breaks (TNT blocks: any
+  explosion). Every level has a weapon vault.
+- **Weapons** (manual, all nine): blaster (never runs out), bouncer (bounces
+  off floors and walls), frostbiter (freezes enemies; frozen ones shatter at a
+  touch), missiles (home in), RF missiles (two in a V, three powered up),
+  toaster (flamethrower; Fastfire lengthens the flame), TNT (drop it; goes off
+  when an enemy comes near, when shot, or after 4 s, and sets off other TNT),
+  pepper spray (short range) and electro-blaster (goes through enemies).
+  Ammo pickups give +3, ammo crates +15, and power-up monitors +25 and the
+  powered-up shot. Ammo carries over between levels.
 - **Things to use**: red, green and blue springs, side springs, swinging poles
   (measured: held up to 70 ticks, flung at up to 20 px/tick), warps and coin
   warps (they show `xN` when you are N coins short), lava (burns).
 - **Pickups**: silver/gold coins, 4 gem colours, 38 foods, carrot, super carrot,
   1-up, Fastfire (fire delay -3, down to 6), fire-shield monitor (30 s, each hit
-  costs 5 s), spread-shot crates.
+  costs 5 s), ammo, ammo crates, power-up monitors.
 - **Enemies**: turtle (stomp it and kick the shell into others), lizard
   (lunges), demon (fast), frog (hops), bat (sleeps until you come near),
   dragonfly (hovers above you, then dives), monkey (throws bananas at you) and
@@ -146,9 +157,12 @@ the original. Tracker music (.xm/.mod/.it/.s3m) plays through libopenmpt
 (`vendor/chiptune3`); .ogg/.mp3 play as they are.
 
 Drop another pack folder into `Levels/` and it appears in the episode select
-when you run `serve.py`. Not supported yet: bosses (their exit waits where
-the boss stands), moving platforms, triggers, the frog/bird morphs, ammo and
-the other weapons, and JJ2+ scripts.
+when you run `serve.py`. Weapons, ammo, ammo crates, power-up monitors,
+bomb crates, TNT and weapon blocks work as in the original; a weapon block
+whose gun the level never hands out (the original let you bring ammo from
+earlier levels) breaks with any shot, so no level is left impassable. Not
+supported yet: bosses (their exit waits where the boss stands), the frog/bird
+morphs, and JJ2+ scripts.
 
 `node tools/check_levels.mjs` checks every level: it searches the spots Kip
 can reach (jumps, super jumps, springs, poles, warps) and lists anything left
@@ -186,8 +200,7 @@ SPEC.md                 the measured mechanics and where they came from
 ## Ideas for the next pass
 
 - Bosses guarding some exits (manual: the Queen, Schwartzenguard).
-- More of JJ2 in the classic levels: moving platforms, triggers, bosses.
-- Weapon blocks and the other weapons (bouncer, frostbiter, missiles, toaster, TNT).
+- More of JJ2 in the classic levels: bosses and the frog/bird morphs.
 - Water, vines and moving platforms in our own levels too.
 - A save file for high scores.
 - Gamepad support and touch controls.

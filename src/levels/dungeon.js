@@ -1,4 +1,4 @@
-import { Builder, over, rng } from './kit.js';
+import { Builder, over, rng, weaponVault } from './kit.js';
 
 // Castle tower: nine floors, each a corridor between two-tile stone bands.
 // Holes alternate ends, with a ledge under each, so the climb zigzags; springs,
@@ -36,7 +36,11 @@ export function dungeonEscape() {
   corridor(66, 8, 120);
   L.on(30, 'w', 68).on(60, 'h', 68).on(95, 'w', 68).put(80, 68, 'f');
   L.row(40, 70, 4, '*').row(70, 70, 4, '*');
-  L.on(110, 'A', 68);
+  // TNT: a crate, two more sticks, and a vault that only a blast opens.
+  L.ammoCrate(110, 73, 7).ammo(64, 73, 7).ammo(100, 73, 7);
+  weaponVault(L, 132, 73, 7, { h: 3, loot: 'g' });
+  L.put(135, 72, '%');
+  L.hint(125, 73, 'TNT BLOCK: only an explosion opens it.\nPick TNT (C or 7), drop it, stand back!');
   // Pole lift: a vertical pole under a shaft through two floors.
   L.carve(66, 66, 3, 2).carve(66, 58, 3, 2).put(67, 70, 'I');
   L.put(67, 62, '$').put(67, 56, '$');

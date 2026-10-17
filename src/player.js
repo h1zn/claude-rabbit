@@ -5,6 +5,7 @@
 import { PHYS, PLAYER, TILE } from './config.js';
 import { eventFields } from './jj2/files.js';
 import { EV } from './jj2/level.js';
+import { AMMO_MAX, fire, fireDelay, WEAPONS } from './weapons.js';
 
 const HANG = 14;         // px from a vine down to the top of a hanging body
 const KICK_WINDUP = 8;   // tuned: Spaz's and Lori's kicks
@@ -16,8 +17,34 @@ export class Player {
     this.h = PLAYER.h;
     this.spawn(x, y);
     this.health = PLAYER.maxHealth;
-    this.spreadAmmo = 0;
     this.shotDelay = PLAYER.shotDelay;
+    // Weapons 1-9 (src/weapons.js): the blaster never runs out.
+    this.weapon = 1;
+    this.ammo = new Array(WEAPONS.length).fill(0);
+    this.powered = new Array(WEAPONS.length).fill(false);
+    this.toast = 0;
+  }
+
+  // Ammo from a pickup or crate. Switches to the weapon when it is new and
+  // only the blaster was in hand.
+  addAmmo(n, amount) {
+    const fresh = this.ammo[n] <= 0;
+    this.ammo[n] = Math.min(AMMO_MAX, this.ammo[n] + amount);
+    if (fresh && this.weapon === 1 && n !== 1) this.weapon = n;
+  }
+
+  // Next (dir 1) or previous (dir -1) weapon that has ammo.
+  nextWeapon(dir = 1) {
+    const count = WEAPONS.length - 1;
+    for (let k = 1; k <= count; k++) {
+      const n = ((this.weapon - 1 + dir * k + count * 2) % count) + 1;
+      if (n === 1 || this.ammo[n] > 0) { this.weapon = n; this.weaponShown = 70; return; }
+    }
+  }
+
+  selectWeapon(n) {
+    if (n === 1 || this.ammo[n] > 0) { this.weapon = n; this.weaponShown = 70; return true; }
+    return false;
   }
 
   spawn(x, y) {
@@ -29,7 +56,7 @@ export class Player {
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
       hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
-      dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0,
+      dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0,
     });
   }
 
@@ -47,7 +74,7 @@ export class Player {
     this.prevX = this.x;
     this.prevY = this.y;
     this.animTime++;
-    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube']) if (this[k] > 0) this[k]--;
+    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube', 'weaponShown']) if (this[k] > 0) this[k]--;
     if (this.rush > 0 && --this.rush === 0) game.endRush();
     if (this.shield > 0) this.shield--;
 
@@ -57,6 +84,10 @@ export class Player {
       this.y += this.vy;
       this.anim = 'hurt';
       return;
+    }
+    if (input.pressed('weapon')) { this.nextWeapon(1); game.audio.play('weapon'); }
+    for (let n = 1; n < WEAPONS.length; n++) {
+      if (input.pressed(`w${n}`)) game.audio.play(this.selectWeapon(n) ? 'weapon' : 'denied');
     }
     if (this.celebrate) {
       this.vx = 0;
@@ -251,11 +282,10 @@ export class Player {
     // releasing the button cuts the wait to 5 ticks, so tapping fires faster.
     if (input.released('shoot')) this.shotCooldown = Math.min(this.shotCooldown, PLAYER.tapDelay);
     if (controlled && !input.held('up') && input.held('shoot') && this.shotCooldown === 0 && !this.stomping) {
-      this.shotCooldown = this.shotDelay;
+      if (this.weapon !== 1 && this.ammo[this.weapon] <= 0) this.nextWeapon(-1);
+      this.shotCooldown = fireDelay(this);
       this.shootPose = 8;
-      const spread = this.spreadAmmo > 0;
-      if (spread) this.spreadAmmo--;
-      game.fire(this, spread);
+      fire(game, this);
     }
 
     // ---- hazards

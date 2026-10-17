@@ -1,4 +1,4 @@
-import { Builder, rng, roomMaze } from './kit.js';
+import { Builder, rng, roomMaze, weaponVault } from './kit.js';
 
 // Dark caverns: an irregular room maze lit only around Kip and glowing things.
 export function crystalCaverns() {
@@ -33,6 +33,9 @@ export function crystalCaverns() {
     }
     L.deco('crystals', R.x0 + 1 + Math.floor(rr() * (R.x1 - R.x0 - 1)), R.floor, { v: Math.floor(rr() * 3) });
   }
+  // RF missiles: ammo, a power-up for three at once, and a vault.
+  L.powerup(6, 9, 5).ammo(8, 9, 5).ammo(10, 9, 5);
+  weaponVault(L, 12, 9, 5, { w: 5, loot: 'b' });
   return L.build({ name: 'Crystal Caverns', theme: 'crystal', music: 'crystal', dark: true });
 }
 crystalCaverns.title = 'Crystal Caverns';

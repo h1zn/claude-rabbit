@@ -32,6 +32,21 @@ export function dress(L, kinds, x0, x1, from, seed, every = 6) {
 // An item or enemy standing on the surface at a column.
 export function on(L, x, ch) { return L.put(x, L.above(x), ch); }
 
+// A loot vault standing on the floor of row `row` (the row Kip stands in):
+// `w` wide, `h` tall inside, with a weapon-block door on its left side that
+// only `weapon` breaks (manual: "Weapon Block").
+export function weaponVault(L, x, row, weapon, { w = 7, h = 2, loot = 'g', door = 'left' } = {}) {
+  L.block(x, row - h, w, 1);
+  const dx = door === 'left' ? x : x + w - 1;
+  const bx = door === 'left' ? x + w - 1 : x;
+  L.weaponBlock(dx, row - h + 1, 1, h, weapon).block(bx, row - h + 1, 1, h);
+  for (let c = x + 1; c < x + w - 1; c++) L.put(c, row, loot);
+  return L;
+}
+
+// Ammo for `weapon` standing on the first ground at or below row `from`.
+export function ammoOn(L, x, weapon, from = 0) { return L.ammo(x, L.surface(x, from) - 1, weapon); }
+
 // One-way ledges up a shaft, every `step` rows, alternating sides, so Kip can
 // hop up a tall shaft (he jumps through one-way ledges from below).
 export function ladder(L, x, w, top, bottom, step = 3) {

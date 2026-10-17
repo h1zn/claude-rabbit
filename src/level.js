@@ -9,6 +9,7 @@ import { TILE } from './config.js';
 //   p  speed block (only running into it at full speed breaks it)
 //   Y  switch crate (break it to flip every switch block in the level)
 //   u  switch block (solid until flipped)   i  ghost switch block (solid once flipped)
+//   W  weapon block (only the weapon pictured on it breaks it; see Builder.weaponBlock)
 //   -  one-way platform          ^  spikes (hurt, not solid)   ~  lava (hurts, not solid)
 //   /  45° slope rising right    \  45° slope falling right
 //   q  gentle rise, lower half   r  gentle rise, upper half
@@ -18,13 +19,14 @@ import { TILE } from './config.js';
 //   S red spring  T green spring  U blue spring  > <  side springs (push right / left)
 //   H horizontal pole  I vertical pole
 //   * red gem  g green gem  b blue gem  v purple gem  $ silver coin  @ gold coin
-//   o food  + carrot  % full carrot  1 extra life  A spread-shot crate
+//   o food  + carrot  % full carrot  1 extra life  A ammo crate (weapon picked by position)
 //   F fastfire  Q fire-shield monitor (shoot or stomp it open)
 //   w turtle  k lizard  n demon  h frog  f bat  d dragonfly  J monkey (throws)  G bomb lizard
-// Warps and hint signs carry data, so they are objects (Builder.warp/hint).
-const SOLID = new Set(['#', '=', 'x', 'm', 'c', 'p', 'Y', 'u']);
+// Warps, hint signs and weapon pickups carry data, so they are objects
+// (Builder.warp/hint/ammo/ammoCrate/powerup/bomb).
+const SOLID = new Set(['#', '=', 'x', 'm', 'c', 'p', 'Y', 'u', 'W']);
 // Blocks drawn from the shared block sheet instead of the terrain.
-export const BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u', 'i']);
+export const BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u', 'i', 'W']);
 const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQwknhfdJG'.split(''));
 
 // Surface height (pixels from the tile's top) at local x in [0, TILE].
@@ -45,6 +47,7 @@ export class Builder {
     this.decor = [];
     this.objects = [];
     this.hits = new Map();
+    this.weapons = new Map();     // "x,y" -> weapon a weapon block needs
     this.tops = new Array(width).fill(null);   // surface row per column (may be .5)
     // Cells with a back wall: carved caves show rock behind them, not sky.
     this.back = Array.from({ length: height }, () => new Uint8Array(width));
@@ -86,6 +89,21 @@ export class Builder {
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.hits.set(`${x + i},${y + j}`, hits);
     return this;
   }
+
+  // Weapon blocks (manual): only `weapon` (1-9, src/weapons.js) breaks them;
+  // TNT blocks (7) give way to any explosion.
+  weaponBlock(x, y, w, h, weapon) {
+    this.fill(x, y, w, h, 'W');
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.weapons.set(`${x + i},${y + j}`, weapon);
+    return this;
+  }
+
+  // Weapon pickups: ammo (+3), an ammo crate (+15, shoot it open), a power-up
+  // monitor, or a TNT bomb lying in wait.
+  ammo(x, y, weapon, amount = 3) { this.objects.push({ type: 'ammo', tx: x, ty: y, weapon, amount }); return this; }
+  ammoCrate(x, y, weapon) { this.objects.push({ type: 'ammoCrate', tx: x, ty: y, weapon }); return this; }
+  powerup(x, y, weapon) { this.objects.push({ type: 'powerup', tx: x, ty: y, weapon }); return this; }
+  bomb(x, y) { this.objects.push({ type: 'bomb', tx: x, ty: y }); return this; }
 
   // Warp standing on the cell (x, y). It sends Kip to the warp with id `to`;
   // `cost` coins makes it a coin warp. Arrival-only warps have no `to`.
@@ -263,6 +281,7 @@ export class Builder {
     level.objects = this.objects;
     level.back = this.back;
     level.hits = this.hits;
+    level.weapons = this.weapons;
     return level;
   }
 }
@@ -278,6 +297,7 @@ export class Level {
     this.objects = [];
     this.back = Array.from({ length: this.h }, () => new Uint8Array(this.w));
     this.hits = new Map();
+    this.weapons = new Map();
     for (let y = 0; y < this.h; y++) {
       for (let x = 0; x < this.w; x++) {
         const ch = this.tiles[y][x];
@@ -310,10 +330,14 @@ export class Level {
 
   // Shots and attacks break 'x' blocks and switch crates, and wear down
   // countdown blocks; a stomp also breaks 'm' blocks; `speed` (running at
-  // full tilt, an uppercut or a sugar rush) breaks 'p' blocks.
-  breakTile(tx, ty, { stomp = false, speed = false } = {}) {
+  // full tilt, an uppercut or a sugar rush) breaks 'p' blocks. A weapon
+  // block ('W') needs its own `weapon`, or for TNT blocks any `blast`.
+  breakTile(tx, ty, { stomp = false, speed = false, weapon = 0, blast = false } = {}) {
     const ch = this.at(tx, ty);
-    if (ch === 'c') {
+    if (ch === 'W') {
+      const need = this.weapons.get(`${tx},${ty}`);
+      if (need === 7 ? !blast : weapon !== need) return false;
+    } else if (ch === 'c') {
       const key = `${tx},${ty}`;
       const left = (this.hits.get(key) || 1) - 1;
       this.hits.set(key, left);

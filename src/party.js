@@ -12,6 +12,7 @@
 
 import { PLAYER, TILE } from './config.js';
 import { overlap, Pickup } from './entities.js';
+import { Bullet, TNT } from './weapons.js';
 
 export const PARTY_GOAL = 100;
 export const PARTY_RESPAWN = 700;   // ticks (10 s)
@@ -81,22 +82,6 @@ class Rival {
   }
 }
 
-// A rival's shot: moves like a blaster shot, dies on walls, hurts only us.
-class RivalShot {
-  constructor(m) {
-    Object.assign(this, { x: m.x, y: m.y, vx: m.vx, vy: m.vy, spread: m.sp, w: 14, h: 8, life: PLAYER.shotLife, dead: false });
-    this.prevX = this.x; this.prevY = this.y;
-  }
-
-  update(game) {
-    this.prevX = this.x; this.prevY = this.y;
-    this.vx += Math.sign(this.vx) * PLAYER.shotAccel;
-    this.x += this.vx; this.y += this.vy;
-    if (--this.life <= 0) this.dead = true;
-    if (game.level.solidAt(this.x + 7, this.y + 4)) this.dead = true;
-  }
-}
-
 export class Party {
   constructor(net, role) {
     this.net = net;
@@ -142,12 +127,18 @@ export class Party {
     }
     this.rival.update();
     for (const s of this.shots) s.update(game);
-    // Rival shots against us; ours fizzle on the rival (it decides the hit).
+    // Rival shots against us (missiles and TNT blast us instead); ours
+    // fizzle on the rival (it decides the hit).
     if (!p.dead && p.invuln === 0) {
-      for (const s of this.shots) if (!s.dead && overlap(s, p)) { s.dead = true; this.hit(game, s.x); }
+      for (const s of this.shots) {
+        if (s.dead || s.weapon === TNT || !overlap(s, p)) continue;
+        if (s.explosive) s.burst(game);
+        else { s.dead = true; this.hit(game, s.x); }
+      }
     }
     for (const s of game.shots) {
-      if (!s.dead && !this.rival.dead && overlap(s, this.rival)) { s.dead = true; game.effect('hitSpark', s.x + 7, s.y + 4); }
+      if (s.dead || s.weapon === TNT || this.rival.dead || !overlap(s, this.rival)) continue;
+      if (s.explosive) { s.dead = true; game.effect('explosion', s.cx, s.cy, 3); } else { s.dead = true; game.effect('hitSpark', s.cx, s.cy); }
     }
     this.shots = this.shots.filter((s) => !s.dead);
   }
@@ -203,8 +194,8 @@ export class Party {
     }
   }
 
-  tile(tx, ty) { this.net.send({ t: 'tile', x: tx, y: ty }); }
-  fire(shot) { this.net.send({ t: 'shot', x: Math.round(shot.x), y: Math.round(shot.y), vx: +shot.vx.toFixed(2), vy: +shot.vy.toFixed(2), sp: shot.spread ? 1 : 0 }); }
+  tile(tx, ty, opts = {}) { this.net.send({ t: 'tile', x: tx, y: ty, w: opts.weapon || 0, b: opts.blast ? 1 : 0 }); }
+  fire(shot) { this.net.send({ t: 'shot', x: Math.round(shot.x), y: Math.round(shot.y), vx: +shot.vx.toFixed(2), vy: +shot.vy.toFixed(2), w: shot.weapon, p: shot.powered ? 1 : 0, l: shot.life }); }
 
   win(game) {
     this.result = 'win';
@@ -227,7 +218,14 @@ export class Party {
         Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, seen: true, character: m.c });
         break;
       }
-      case 'shot': this.shots.push(new RivalShot(m)); game.audio.play('shoot'); break;
+      case 'shot': {
+        // The rival's shot flies here as well, but only hurts us.
+        const b = new Bullet(m.w || 1, !!m.p, m.x, m.y, m.vx, m.vy, { remote: true });
+        if (b.weapon === TNT) b.life = m.l || b.life;
+        this.shots.push(b);
+        game.audio.play(b.weapon === 6 ? 'flame' : 'shoot');
+        break;
+      }
       case 'drop': this.addDrops(game, m.drops, m.by); break;
       case 'take': {               // host: the guest asks for a pickup
         const k = find(m.id);
@@ -237,7 +235,7 @@ export class Party {
       case 'grant': { const k = game.pickups.find((q) => q.id === m.id); if (k && !k.taken) k.collect(game); break; }
       case 'deny': { const k = game.pickups.find((q) => q.id === m.id); if (k && !k.taken) gone(k); break; }
       case 'gone': { const k = find(m.id) || game.pickups.find((q) => q.id === m.id && q.pending); if (k) gone(k); break; }
-      case 'tile': game.hitTile(m.x, m.y, { stomp: true, speed: true, collapse: true, remote: true }); break;
+      case 'tile': game.hitTile(m.x, m.y, { stomp: true, speed: true, collapse: true, weapon: m.w, blast: !!m.b, remote: true }); break;
       case 'win': this.result = 'lose'; game.audio.play('gameover'); break;
       case 'left': this.result = this.result || 'left'; break;
       default: break;

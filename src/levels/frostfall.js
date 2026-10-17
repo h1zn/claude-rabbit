@@ -1,4 +1,4 @@
-import { Builder, ladder, over, scenery } from './kit.js';
+import { Builder, ladder, over, scenery, weaponVault } from './kit.js';
 
 // Mountain climb: the surface rises in slopes and cliffs to the summit exit;
 // ice caves inside the mountain give other ways up.
@@ -87,6 +87,10 @@ export function frostfallRidge() {
   for (const [x, n] of [[14, 'arc'], [26, 'hump'], [44, 'arc'], [52, 'line3'], [70, 'hump'], [100, 'arc'], [112, 'line5'], [132, 'arc'], [150, 'hump'], [122, 'hump'], [142, 'arc'], [164, 'line3']]) over(L, x, 0, n, 'o', 2);
   over(L, 68, 54, 'line3', '$', 2);
   scenery(L, ['snowPine', 'snowPine'], 1, 160, 31, 6);
+  // Frostbiter: ammo by the start, a crate, and a cave vault only ice opens.
+  L.ammo(8, 71, 3).ammo(9, 71, 3).ammoCrate(17, 71, 3);
+  weaponVault(L, 42, 78, 3, { w: 6, loot: 'g' });
+  L.hint(34, 78, 'An ice block! Only the FROSTBITER (3) breaks it.\nFrozen enemies shatter at a touch.');
   return L.build({ name: 'Frostfall Ridge', theme: 'winter', music: 'winter', horizon: 50 });
 }
 frostfallRidge.title = 'Frostfall Ridge';

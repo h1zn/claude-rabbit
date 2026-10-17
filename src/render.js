@@ -5,11 +5,31 @@ import { PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import { frameAt } from './sheets.js';
 import { BLOCKS } from './level.js';
 import { THEME_TILESET } from './tilesets.js';
+import { TNT, WEAPONS } from './weapons.js';
 
 // Block tile -> index in the shared block sheet (tools/build_blocks.py).
-const BLOCK_SPRITE = { x: 0, m: 5, p: 6, Y: 7, u: 8, i: 8 };
+const BLOCK_SPRITE = { x: 0, m: 5, p: 6, Y: 7, u: 8, i: 8, W: 6 };
 
 function lerp(a, b, t) { return a + (b - a) * t; }
+
+// A sheet frame washed in ice blue, for frozen enemies (made once per frame).
+const icedFrames = new WeakMap();
+function iced(f) {
+  if (icedFrames.has(f)) return icedFrames.get(f);
+  const wash = (src) => {
+    const c = document.createElement('canvas');
+    c.width = f.w; c.height = f.h;
+    const g = c.getContext('2d');
+    g.drawImage(src, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = 'rgba(140,215,255,0.62)';
+    g.fillRect(0, 0, f.w, f.h);
+    return c;
+  };
+  const out = { ...f, right: wash(f.right), left: wash(f.left) };
+  icedFrames.set(f, out);
+  return out;
+}
 
 export class Renderer {
   constructor(ctx, art) {
@@ -128,7 +148,7 @@ export class Renderer {
       if (color) glows.push([x, y, r * 0.8, color, strength]);
     };
     light(lerp(p.prevX, p.x, alpha) + p.w / 2, lerp(p.prevY, p.y, alpha) + p.h / 2, 150 * flicker);
-    for (const s of game.shots) light(s.x + s.w / 2, s.y + s.h / 2, 56, 0.8, '255,220,120');
+    for (const s of game.shots) light(s.x + s.w / 2, s.y + s.h / 2, s.weapon === 6 ? 40 : 56, 0.8, WEAPONS[s.weapon].glow);
     for (const b of game.enemyShots) light(b.x + 8, b.y + 8, 40, 0.6, '255,140,60');
     const GEM = { red: '255,60,110', green: '60,255,140', blue: '80,150,255', purple: '200,90,255' };
     for (const k of game.pickups) if (k.kind === 'gem') light(k.x + k.w / 2, k.y + k.h / 2, 34, 0.5, GEM[k.color]);
@@ -241,6 +261,13 @@ export class Renderer {
         if (ch === 'i') ctx.globalAlpha = 0.3 + Math.sin(game.time / 10) * 0.08;
         ctx.drawImage(this.art.blocks[k], tx * TILE, ty * TILE);
         ctx.globalAlpha = 1;
+        if (ch === 'W') {
+          // Manual: the weapon that breaks it is pictured on its face.
+          const n = level.weapons.get(`${tx},${ty}`) || 1;
+          const f = this.art.items.anims[WEAPONS[n].icon].frames[0];
+          const s = Math.min(1, 24 / Math.max(f.w, f.h));
+          ctx.drawImage(f.right, Math.round(tx * TILE + 16 - (f.w * s) / 2), Math.round(ty * TILE + 16 - (f.h * s) / 2), Math.round(f.w * s), Math.round(f.h * s));
+        }
       }
     }
   }
@@ -356,7 +383,9 @@ export class Renderer {
     for (const e of game.enemies) {
       if (e.flash > 0 && e.flash % 2) continue;
       if (e.onGround) this.footShadow(lerp(e.prevX, e.x, alpha) + e.w / 2, e.y + e.h, e.w * 0.9);
-      const f = e.sprite(this.art);
+      let f = e.sprite(this.art);
+      // Frozen: ice blue, blinking as it is about to thaw.
+      if (e.frozen > 0 && (e.frozen > 50 || e.frozen % 8 < 5)) f = iced(f);
       const x = lerp(e.prevX, e.x, alpha) + e.w / 2;
       const y = lerp(e.prevY, e.y, alpha) + e.h + 2;
       // Sheet sprites face right; flying enemies hang from their centre.
@@ -390,16 +419,38 @@ export class Renderer {
 
 
   shots(game, alpha) {
-    for (const s of game.shots) {
-      const a = this.art.fx.anims[s.spread ? 'blasterPower' : 'blaster'];
-      const f = frameAt(a, s.life, a.speed);
-      const x = lerp(s.prevX, s.x, alpha) + s.w / 2;
-      const y = lerp(s.prevY, s.y, alpha) + s.h / 2;
-      this.glow(x, y, 12, s.spread ? 'rgba(255,190,60,0.5)' : 'rgba(255,240,160,0.45)');
-      this.centred(f, x, y, s.vx > 0);
-    }
+    for (const s of game.shots) this.shot(game, s, alpha);
   }
 
+  // One projectile (ours, or with `rival` a party rival's in red).
+  shot(game, s, alpha, rival = false) {
+    const ctx = this.ctx;
+    const x = lerp(s.prevX, s.x, alpha) + s.w / 2;
+    const y = lerp(s.prevY, s.y, alpha) + s.h / 2;
+    const w = WEAPONS[s.weapon];
+    if (s.weapon === TNT) {
+      // TNT blinks faster as its fuse burns down.
+      const f = frameAt(this.art.items.anims.ammoTNT, s.t, 4);
+      const soon = s.fuse > 0 || (!s.placed && s.life < 70);
+      if (soon ? s.t % 4 < 2 : s.t % 30 < 4) this.glow(x, y, 18, 'rgba(255,90,40,0.7)');
+      this.sprite(f, x, lerp(s.prevY, s.y, alpha) + s.h + 1);
+      return;
+    }
+    const a = this.art.fx.anims[s.powered ? w.shotP : w.shot];
+    // A flame grows and dies over its life; other shots loop.
+    const f = s.weapon === 6 ? a.frames[Math.min(a.frames.length - 1, Math.floor((s.t / (s.t + s.life)) * a.frames.length))] : frameAt(a, s.life, a.speed);
+    this.glow(x, y, s.weapon === 6 ? 16 : 12, rival ? 'rgba(255,80,60,0.6)' : `rgba(${w.glow},${s.weapon === 6 ? 0.35 : 0.5})`);
+    if (s.weapon === 4 || s.weapon === 5) {
+      // Missiles point where they fly.
+      ctx.save();
+      ctx.translate(Math.round(x), Math.round(y));
+      ctx.rotate(s.angle);
+      ctx.drawImage(f.right, -f.w / 2, -f.h / 2);
+      ctx.restore();
+      return;
+    }
+    this.centred(f, x, y, s.vx >= 0);
+  }
 
   // Which hero animation fits the player's current state.
   heroAnim(p) {
@@ -473,12 +524,7 @@ export class Renderer {
   rival(game, alpha) {
     const r = game.party.rival;
     if (!r.seen) return;
-    for (const s of game.party.shots) {
-      const a = this.art.fx.anims[s.spread ? 'blasterPower' : 'blaster'];
-      const x = lerp(s.prevX, s.x, alpha) + 7; const y = lerp(s.prevY, s.y, alpha) + 4;
-      this.glow(x, y, 12, 'rgba(255,80,60,0.6)');
-      this.centred(frameAt(a, s.life, a.speed), x, y, s.vx > 0);
-    }
+    for (const s of game.party.shots) this.shot(game, s, alpha, true);
     if (r.dead) return;
     const speed = Math.abs(r.vx);
     const sheet = this.art.heroesRed[r.character] || this.art.heroRed;
@@ -624,15 +670,20 @@ export class Renderer {
     const face = (this.art.heroes[p.character] || this.art.hero).anims.icon.frames[0].right;
     ctx.drawImage(face, 6, VIEW_H - face.height - 6);
     if (!game.party) arcadeText(ctx, `x${Math.max(0, game.lives)}`, 44, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: '#ffb04a' });
-    // Weapon and ammo, bottom-right.
-    const spread = p.spreadAmmo > 0;
-    this.centred(this.art.fx.anims[spread ? 'blasterPower' : 'blaster'].frames[0], VIEW_W - 84, VIEW_H - 20);
+    // Weapon and ammo, bottom-right (the name shows for a moment after a switch).
+    const wpn = WEAPONS[p.weapon];
+    const iconName = p.weapon === 1 && p.character === 'spaz' ? (p.powered[1] ? 'ammoBlasterSpazP' : 'ammoBlasterSpaz') : p.powered[p.weapon] ? wpn.iconP : wpn.icon;
+    this.centred(frameAt(this.art.items.anims[iconName], game.time, 6), VIEW_W - 86, VIEW_H - 22);
     if (p.shotDelay < PLAYER.shotDelay) {
       // One gun icon per Fastfire collected.
       const n = Math.round((PLAYER.shotDelay - p.shotDelay) / PLAYER.fastfireStep);
       for (let i = 0; i < Math.min(n, 10); i++) ctx.drawImage(this.art.items.anims.fastfire.frames[0].right, VIEW_W - 100 - i * 9, VIEW_H - 50, 12, 12);
     }
-    arcadeText(ctx, spread ? `x${p.spreadAmmo}` : 'x∞', VIEW_W - 70, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: spread ? '#ffd54a' : '#7ae8ff' });
+    const ammo = p.weapon === 1 ? 'x∞' : `x${p.ammo[p.weapon]}`;
+    arcadeText(ctx, ammo, VIEW_W - 70, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: p.powered[p.weapon] ? '#ffd54a' : '#7ae8ff' });
+    if (p.weaponShown > 0) {
+      arcadeText(ctx, wpn.name, VIEW_W - 8, VIEW_H - 66, { size: 12, align: 'right', alpha: Math.min(1, p.weaponShown / 20), top: '#ffffff', bottom: '#ffd54a' });
+    }
     // Combo meter while a combo is running.
     if (game.comboMult > 1 && game.comboTimer > 0) {
       const a = Math.min(1, game.comboTimer / 30);

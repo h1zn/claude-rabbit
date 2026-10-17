@@ -2,25 +2,530 @@
   "sheet": "../new/gems-and others.png",
   "minBand": 6,
   "anims": {
-    "gemRed": {"region": [140, 1238, 390, 1268], "speed": 5, "loop": true},
-    "gemGreen": {"region": [140, 1268, 390, 1298], "speed": 5, "loop": true},
-    "gemBlue": {"region": [140, 1298, 390, 1328], "speed": 5, "loop": true},
-    "gemPurple": {"region": [140, 1328, 390, 1358], "speed": 5, "loop": true},
-    "coinGold": {"region": [480, 1205, 890, 1243], "speed": 3, "loop": true, "pick": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]},
-    "coinSilver": {"region": [480, 1250, 890, 1292], "speed": 3, "loop": true, "pick": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]},
-    "carrot": {"region": [300, 315, 350, 352], "speed": 6, "loop": true},
-    "carrotFull": {"region": [800, 1158, 1080, 1202], "speed": 4, "loop": true},
-    "oneUp": {"region": [155, 472, 395, 502], "speed": 5, "loop": true},
-    "exitSign": {"region": [298, 243, 338, 278], "speed": 6, "loop": true},
-    "checkpoint": {"region": [515, 452, 1045, 538], "speed": 4, "loop": false, "pick": [9]},
-    "food": {"region": [12, 882, 1010, 928], "speed": 1, "loop": false},
-    "springRed": {"region": [700, 994, 895, 1015], "speed": 2, "loop": false},
-    "springGreen": {"region": [700, 973, 895, 995], "speed": 2, "loop": false},
-    "springBlue": {"region": [700, 944, 895, 973], "speed": 2, "loop": false},
-    "ammoCrate": {"region": [393, 738, 612, 782], "speed": 1, "loop": false},
-    "heart": {"region": [438, 497, 468, 517], "speed": 1, "loop": false},
-    "checkpointOpen": {"region": [515, 452, 1045, 538], "speed": 5, "loop": false, "pick": [10, 5, 3, 6, 7, 8]},
-    "fastfire": {"region": [65, 28, 270, 52], "speed": 4, "loop": true},
-    "shieldMonitor": {"region": [728, 70, 1078, 100], "speed": 6, "loop": true}
+    "gemRed": {
+      "region": [
+        140,
+        1238,
+        390,
+        1268
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "gemGreen": {
+      "region": [
+        140,
+        1268,
+        390,
+        1298
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "gemBlue": {
+      "region": [
+        140,
+        1298,
+        390,
+        1328
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "gemPurple": {
+      "region": [
+        140,
+        1328,
+        390,
+        1358
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "coinGold": {
+      "region": [
+        480,
+        1205,
+        890,
+        1243
+      ],
+      "speed": 3,
+      "loop": true,
+      "pick": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ]
+    },
+    "coinSilver": {
+      "region": [
+        480,
+        1250,
+        890,
+        1292
+      ],
+      "speed": 3,
+      "loop": true,
+      "pick": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22
+      ]
+    },
+    "carrot": {
+      "region": [
+        300,
+        315,
+        350,
+        352
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "carrotFull": {
+      "region": [
+        800,
+        1158,
+        1080,
+        1202
+      ],
+      "speed": 4,
+      "loop": true
+    },
+    "oneUp": {
+      "region": [
+        155,
+        472,
+        395,
+        502
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "exitSign": {
+      "region": [
+        298,
+        243,
+        338,
+        278
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "checkpoint": {
+      "region": [
+        515,
+        452,
+        1045,
+        538
+      ],
+      "speed": 4,
+      "loop": false,
+      "pick": [
+        9
+      ]
+    },
+    "food": {
+      "region": [
+        12,
+        882,
+        1010,
+        928
+      ],
+      "speed": 1,
+      "loop": false
+    },
+    "springRed": {
+      "region": [
+        700,
+        994,
+        895,
+        1015
+      ],
+      "speed": 2,
+      "loop": false
+    },
+    "springGreen": {
+      "region": [
+        700,
+        973,
+        895,
+        995
+      ],
+      "speed": 2,
+      "loop": false
+    },
+    "springBlue": {
+      "region": [
+        700,
+        944,
+        895,
+        973
+      ],
+      "speed": 2,
+      "loop": false
+    },
+    "ammoCrate": {
+      "region": [
+        393,
+        738,
+        612,
+        782
+      ],
+      "speed": 1,
+      "loop": false
+    },
+    "heart": {
+      "region": [
+        438,
+        497,
+        468,
+        517
+      ],
+      "speed": 1,
+      "loop": false
+    },
+    "checkpointOpen": {
+      "region": [
+        515,
+        452,
+        1045,
+        538
+      ],
+      "speed": 5,
+      "loop": false,
+      "pick": [
+        10,
+        5,
+        3,
+        6,
+        7,
+        8
+      ]
+    },
+    "fastfire": {
+      "region": [
+        65,
+        28,
+        270,
+        52
+      ],
+      "speed": 4,
+      "loop": true
+    },
+    "shieldMonitor": {
+      "region": [
+        728,
+        70,
+        1078,
+        100
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "ammoBlasterJazz": {
+      "region": [
+        66,
+        26,
+        256,
+        49
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoBlasterSpaz": {
+      "region": [
+        66,
+        53,
+        256,
+        80
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoBlasterJazzP": {
+      "region": [
+        56,
+        80,
+        256,
+        105
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoBlasterSpazP": {
+      "region": [
+        40,
+        106,
+        256,
+        128
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoBouncerP": {
+      "region": [
+        62,
+        132,
+        240,
+        149
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoBouncer": {
+      "region": [
+        62,
+        150,
+        240,
+        166
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoIce": {
+      "region": [
+        118,
+        170,
+        205,
+        191
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoIceP": {
+      "region": [
+        50,
+        194,
+        280,
+        218
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoSeeker": {
+      "region": [
+        72,
+        220,
+        256,
+        242
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoSeekerP": {
+      "region": [
+        60,
+        246,
+        270,
+        270
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoRF": {
+      "region": [
+        96,
+        272,
+        228,
+        296
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoRFP": {
+      "region": [
+        62,
+        298,
+        262,
+        318
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoPepper": {
+      "region": [
+        88,
+        322,
+        240,
+        340
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoTNT": {
+      "region": [
+        88,
+        341,
+        240,
+        356
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoElectro": {
+      "region": [
+        84,
+        358,
+        240,
+        374
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoElectroP": {
+      "region": [
+        84,
+        375,
+        240,
+        392
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoToaster": {
+      "region": [
+        10,
+        394,
+        310,
+        417
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "ammoToasterP": {
+      "region": [
+        10,
+        418,
+        310,
+        442
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "monBlasterJazz": {
+      "region": [
+        366,
+        35,
+        728,
+        69
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monBlasterSpaz": {
+      "region": [
+        366,
+        70,
+        728,
+        104
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monBouncer": {
+      "region": [
+        366,
+        105,
+        728,
+        139
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monIce": {
+      "region": [
+        366,
+        140,
+        728,
+        174
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monSeeker": {
+      "region": [
+        366,
+        175,
+        728,
+        209
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monRF": {
+      "region": [
+        366,
+        210,
+        728,
+        244
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monPepper": {
+      "region": [
+        366,
+        245,
+        728,
+        279
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monElectro": {
+      "region": [
+        366,
+        280,
+        728,
+        314
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monToaster": {
+      "region": [
+        366,
+        315,
+        728,
+        349
+      ],
+      "speed": 6,
+      "loop": true
+    }
   }
 }

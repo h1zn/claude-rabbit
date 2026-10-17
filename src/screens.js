@@ -398,25 +398,26 @@ export class Screens {
   help(t) {
     const ctx = this.ctx;
     this.dim(0.6);
-    this.panel(40, 92, VIEW_W - 80, 214, 0.85);
-    arcadeText(ctx, 'HOW TO PLAY', VIEW_W / 2, 100, { size: 18, align: 'center' });
+    this.panel(40, 84, VIEW_W - 80, 232, 0.85);
+    arcadeText(ctx, 'HOW TO PLAY', VIEW_W / 2, 92, { size: 18, align: 'center' });
     const lines = [
       ['ARROWS / WASD', 'move (hold SHIFT to run)'],
       ['SPACE / Z', 'jump - hold for higher; again in the air:'],
       ['', 'Jazz & Lori hover on their ears, Spaz jumps again'],
       ['DOWN, then JUMP', 'super jump (60% higher, smashes blocks above)'],
       ['DOWN in the air', 'butt-stomp: breaks stomp blocks, kills enemies'],
-      ['X / J', 'blast    UP + X: uppercut (Jazz) or kick (Spaz, Lori)'],
+      ['X / J', 'fire    UP + X: uppercut (Jazz) or kick (Spaz, Lori)'],
+      ['C / TAB, 1-9', 'change weapon (bouncer, frostbiter, missiles, TNT...)'],
       ['Poles & vines', 'touch a pole to spin and fly; hang from vines'],
-      ['Blocks', 'star: shoot  number: shoot N times  arrow: stomp'],
+      ['Blocks', 'star: shoot  number: N shots  arrow: stomp  gun: that gun'],
       ['Stars', 'exit  /  75% of gems  /  every secret'],
       ['P / M', 'pause / mute'],
     ];
     lines.forEach(([a, b], i) => {
-      arcadeText(ctx, a, 60, 128 + i * 16, { size: 10, shadow: false, top: '#ffd54a', bottom: '#ffb02e' });
-      arcadeText(ctx, b, 200, 128 + i * 16, { size: 10, shadow: false, top: '#ffffff', bottom: '#cfe6ff' });
+      arcadeText(ctx, a, 60, 118 + i * 16, { size: 10, shadow: false, top: '#ffd54a', bottom: '#ffb02e' });
+      arcadeText(ctx, b, 200, 118 + i * 16, { size: 10, shadow: false, top: '#ffffff', bottom: '#cfe6ff' });
     });
-    this.blink(t, 'Press ENTER', 290);
+    this.blink(t, 'Press ENTER', 298);
   }
 
   options(t, save) {

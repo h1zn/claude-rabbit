@@ -24,7 +24,7 @@ export const EV = {
 const CHAR = {
   44: '$', 45: '@', 63: '*', 64: 'g', 65: 'b', 66: 'v', 67: 'b', 97: '*', 98: 'g', 99: 'b',
   72: '+', 73: '%', 88: '%', 80: '1', 47: '+', 50: '+', 48: '1', 51: '1',
-  46: 'A', 69: 'A', 53: 'A', 54: 'A', 55: 'A', 56: 'A', 57: 'A', 131: 'A', 132: 'A', 133: 'A', 134: 'A', 135: 'A', 136: 'A', 219: 'A', 220: 'A', 221: 'A',
+  46: 'A', 69: 'A', 219: 'A',
   61: 'F', 74: 'Q', 75: 'Q', 76: 'Q', 227: 'Q', 83: 'C',
   85: 'S', 86: 'T', 87: 'U', 60: 'T',
   // Enemies, by how they move: walkers, hoppers, flyers, shooters.
@@ -38,6 +38,12 @@ const CHAR = {
 for (let id = 141; id <= 147; id++) CHAR[id] = 'o';
 for (let id = 154; id <= 182; id++) CHAR[id] = 'o';
 const BOSSES = new Set([101, 114, 151, 195, 198, 199, 200, 201, 202, 235, 241]);
+// Weapon events -> weapon number (src/weapons.js): ammo (+3), ammo crates
+// and power-up monitors.
+const AMMO_EV = { 33: 2, 34: 3, 35: 4, 36: 5, 37: 6, 38: 7, 39: 8, 40: 9 };
+const CRATE_EV = { 53: 3, 54: 2, 55: 4, 56: 5, 57: 6, 58: 7 };
+const POWER_EV = { 131: 1, 132: 2, 133: 3, 134: 4, 135: 5, 136: 6, 220: 8, 221: 9 };
+const BOMB_CRATE = 52; const BOMB = 43;
 
 // Cell kinds for collision.
 const SOLID = 0; const ONE_WAY = 1; const PASS = 2;
@@ -125,6 +131,7 @@ export class JJ2Level extends Level {
     const starts = {};
     let exits = 0;
     const bosses = [];
+    const armed = new Set([1]);        // weapons the level gives ammo for ('blast': explosives)
     const put = (tx, ty, ch) => { if (tx >= 0 && ty >= 0 && tx < w && ty < h) this.entities.push({ ch, tx, ty }); };
 
     for (let ty = 0; ty < h; ty++) {
@@ -161,8 +168,11 @@ export class JJ2Level extends Level {
             break;
           case EV.DESTRUCT: case EV.DESTRUCT_BOMB: case EV.BUTTSTOMP: case EV.GEMSTOMP: case EV.COLLAPSE: {
             if (!mask) break;
-            const [, speed] = id === EV.DESTRUCT ? eventFields(ev.params, [10, 5]) : [0, 0];
+            const [, speed, weapon] = id === EV.DESTRUCT ? eventFields(ev.params, [10, 5, 4]) : [0, 0, 0];
             ch = speed > 0 ? 'p' : id === EV.BUTTSTOMP || id === EV.GEMSTOMP ? 'm' : 'x';
+            // Weapon blocks: one weapon breaks them; bomb scenery, explosions.
+            const need = id === EV.DESTRUCT_BOMB ? 7 : !speed && weapon > 1 && weapon <= 9 ? weapon : 0;
+            if (need) { ch = 'W'; this.weapons.set(`${tx},${ty}`, need); }
             // Collapsing scenery ('K') only gives way under the player's feet.
             if (id === EV.COLLAPSE) { this.collapse.set(i, 0); ch = 'K'; }
             // Destructible animated tiles hold their first frame until broken,
@@ -268,6 +278,20 @@ export class JJ2Level extends Level {
           case EV.LAVA:
             this.areas[i] = EV.HURT;
             break;
+          case 33: case 34: case 35: case 36: case 37: case 38: case 39: case 40:
+            this.objects.push({ type: 'ammo', tx, ty, weapon: AMMO_EV[id] });
+            armed.add(AMMO_EV[id]);
+            break;
+          case 53: case 54: case 55: case 56: case 57: case 58:
+            this.objects.push({ type: 'ammoCrate', tx, ty, weapon: CRATE_EV[id] });
+            armed.add(CRATE_EV[id]);
+            break;
+          case 131: case 132: case 133: case 134: case 135: case 136: case 220: case 221:
+            this.objects.push({ type: 'powerup', tx, ty, weapon: POWER_EV[id], ev: id });
+            if (id < 220) armed.add(POWER_EV[id]);
+            break;
+          case BOMB_CRATE: this.objects.push({ type: 'bombCrate', tx, ty }); armed.add('blast'); break;
+          case BOMB: this.objects.push({ type: 'bomb', tx, ty }); armed.add('blast'); break;
           case EV.TRIGGER_ZONE: case EV.WATER_BLOCK:
             this.areas[i] = id; this.areaParams[i] = ev.params;
             break;
@@ -285,6 +309,22 @@ export class JJ2Level extends Level {
         }
         this.tiles[ty][tx] = ch;
       }
+    }
+
+    // Events 220/221 (pepper and electro power-ups) by the dozen are some
+    // JJ2+ script's markers, not monitors.
+    if (this.objects.filter((o) => o.ev >= 220).length > 8) this.objects = this.objects.filter((o) => !(o.ev >= 220));
+    for (const o of this.objects) if (o.ev >= 220) armed.add(o.weapon);
+
+    // A weapon block whose weapon the level never hands out (players carried
+    // ammo between levels in the original) breaks with any shot instead, so
+    // no level is left impassable. Missiles and TNT count as explosives.
+    if ([4, 5, 7].some((n) => armed.has(n))) armed.add('blast');
+    for (const [key, need] of this.weapons) {
+      if (armed.has(need === 7 ? 'blast' : need)) continue;
+      const [tx, ty] = key.split(',').map(Number);
+      this.tiles[ty][tx] = 'x';
+      this.weapons.delete(key);
     }
 
     for (const b of this.bridges) {
@@ -374,7 +414,7 @@ export class JJ2Level extends Level {
   }
 
   // Tile-level answers for enemies, shots and the HUD.
-  solid(tx, ty) { const c = this.at(tx, ty); return c === '=' || c === '#' || c === 'x' || c === 'm' || c === 'p' || c === 'K'; }
+  solid(tx, ty) { const c = this.at(tx, ty); return c === '=' || c === '#' || c === 'x' || c === 'm' || c === 'p' || c === 'K' || c === 'W'; }
   slope(tx, ty) { return this.at(tx, ty) === 's'; }
   groundish(tx, ty) { return this.solid(tx, ty) || this.at(tx, ty) === 's' || this.at(tx, ty) === '^'; }
   shotHits(x, y) { return this.solidPx(x, y); }

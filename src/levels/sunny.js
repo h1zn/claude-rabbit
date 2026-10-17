@@ -1,4 +1,4 @@
-import { Builder, dress, over, shape } from './kit.js';
+import { ammoOn, Builder, dress, over, shape, weaponVault } from './kit.js';
 
 // Beach: three layers of ground with open caves between them (back wall below
 // row 26), sky islands linked by swinging poles, and the exit plateau in the
@@ -19,7 +19,8 @@ export function sunnySpires() {
   L.hint(6, 21, 'Explore everywhere! Three layers of ground,\nsky islands, secrets and a Coin Warp.');
   over(L, 9, 0, 'arc', 'o', 2);
   shape(L, 16, 18, 'line3', '*');
-  L.on(20, 'A');
+  L.ammoCrate(20, 21, 2);                              // bouncer ammo
+  ammoOn(L, 13, 2).ammo(15, 21, 2);
   L.on(24, 'w');
   L.put(38, 17, 'S');                                   // spring to the sky islands
   over(L, 32, 0, 'hump', 'o', 2);
@@ -94,6 +95,10 @@ export function sunnySpires() {
   shape(L, 12, 43, 'line5', '$');
   over(L, 22, 40, 'arc', 'o', 2);
   L.on(30, 'h', 40);
+  // Bouncer vault: a weapon block opens only to the gun on its face.
+  weaponVault(L, 34, 45, 2, { h: 3, loot: 'g' });
+  L.put(37, 44, '@');
+  L.hint(25, 45, 'WEAPON BLOCK: only the gun shown breaks it.\nC / TAB (or 1-9) changes weapon.');
   over(L, 40, 40, 'hump', 'o', 2);
   L.put(60, 41, 'Y');
   L.hint(63, 41, 'Shoot the ! crate to flip\nthe switch blocks.');
