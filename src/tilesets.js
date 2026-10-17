@@ -56,9 +56,14 @@ export const TILESETS = {
     cap: [104, 105],
     ledge: [23, 24, 25],
     fillList: [64, 92, 96, 97, 100, 112, 113, 117],
+    // Stone blocks are wooden dock structures: a beam on top of dark planks.
+    stone: { cap: [602, 603, 604, 605, 606, 607, 608, 609], fill: [612, 613, 614, 616, 617, 622, 623, 624, 626, 627] },
     props: {
-      tree: [[6, 12, 3, 2]],
+      shell: [[6, 12, 3, 2]],
       rock: [[0, 75, 2, 3]],
+      plant: [[1, 34, 1, 1], [3, 34, 1, 1], [5, 34, 1, 1], [5, 42, 1, 2]],
+      railing: [[5, 30, 3, 1], [0, 30, 2, 1]],
+      wheel: [[0, 37, 1, 3]],
     },
   },
 };
@@ -66,6 +71,7 @@ export const TILESETS = {
 // Recoloured worlds: a base tileset's layout with a gradient map over it.
 TILESETS.grove = {
   ...TILESETS.beach,
+  stone: undefined,
   props: {},
   gradient: [[0, '#0a0420'], [0.28, '#4a1288'], [0.52, '#1a9a9a'], [0.76, '#8af56a'], [1, '#fffac8']],
 };

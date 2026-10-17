@@ -44,7 +44,8 @@ export async function loadSheet(url) {
 // Frame of an animation `t` ticks after it started.
 export function frameAt(anim, t, speed = anim.speed) {
   const n = anim.frames.length;
-  const i = Math.floor(t / Math.max(1, speed));
+  // A missing or negative timer shows the first frame rather than nothing.
+  const i = Math.max(0, Math.floor((t || 0) / Math.max(1, speed || 1)));
   return anim.frames[anim.loop ? i % n : Math.min(i, n - 1)];
 }
 

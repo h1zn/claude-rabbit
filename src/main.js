@@ -225,7 +225,17 @@ function loop(now) {
     acc -= TICK_MS;
     if (++steps > MAX_CATCHUP_TICKS) { acc = 0; break; }
   }
-  render(acc / TICK_MS);
+  // Never let one bad frame freeze the game: report it and keep going.
+  try {
+    render(acc / TICK_MS);
+  } catch (e) {
+    if (!loop.reported) { console.error(e); loop.reported = true; }
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, VIEW_H - 40, VIEW_W, 40);
+    ctx.fillStyle = '#ff8a8a';
+    ctx.font = '11px sans-serif';
+    ctx.fillText(`Error: ${e.message} (see the browser console)`, 8, VIEW_H - 16);
+  }
   requestAnimationFrame(loop);
 }
 

@@ -57,7 +57,7 @@ reach; playing over the internet means hosting `serve.py` somewhere public.)
 Nine big levels, each built for exploring in every direction rather than
 running straight to the right:
 
-1. **Sunny Spires** (beach): three layers of ground with caves between them,
+1. **Shipwreck Shores** (night beach): three layers of ground with caves between them,
    sky islands linked by swinging poles, and an exit plateau reached by a blue
    spring from the bottom of the canyon.
 2. **Dungeon Escape** (castle): climb nine floors through holes in the

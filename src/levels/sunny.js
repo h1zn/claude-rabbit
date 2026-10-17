@@ -1,4 +1,4 @@
-import { Builder, over, scenery, shape } from './kit.js';
+import { Builder, dress, over, shape } from './kit.js';
 
 // Beach: three layers of ground with open caves between them (back wall below
 // row 26), sky islands linked by swinging poles, and the exit plateau in the
@@ -133,8 +133,11 @@ export function sunnySpires() {
   L.put(192, 33, '1');
 
   for (const c of [8, 60, 128]) L.onGround(c, '+');
-  scenery(L, ['tree', 'rock'], 1, 150, 11, 6);
-  return L.build({ name: 'Sunny Spires', theme: 'meadow', music: 'beach', horizon: 22 });
+  const BEACH = ['shell', 'plant', 'plant', 'rock', 'plant'];
+  dress(L, BEACH, 2, 150, 0, 11, 7);
+  dress(L, BEACH, 12, 165, 27, 12, 8);
+  dress(L, BEACH, 2, 186, 37, 13, 8);
+  return L.build({ name: 'Shipwreck Shores', theme: 'meadow', music: 'beach', horizon: 22 });
 }
-sunnySpires.title = 'Sunny Spires';
+sunnySpires.title = 'Shipwreck Shores';
 sunnySpires.tip = 'Explore! Three layers of ground, sky islands and a Coin Warp.';

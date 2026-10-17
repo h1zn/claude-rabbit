@@ -160,6 +160,9 @@ export class TerrainRenderer {
           const k = m === 2 && this.tileset.stone ? this.stonePixel(wx, wy, depth) : this.tilePixel(wx, wy, depth);
           const td = this.tileset.pixels.data;
           if (td[k + 3] === 0) continue;
+          // Ground darkens with depth, so big masses read as volume rather
+          // than a flat sheet of texture.
+          if (depth > 40) shade *= Math.max(0.58, 1 - (depth - 40) / 520);
           // Rim light on left edges, shade on right edges: reads as solid.
           if (depth > 6) {
             if (!this.material(wx + 1, wy)) shade *= 0.6;

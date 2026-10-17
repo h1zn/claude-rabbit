@@ -15,6 +15,20 @@ export function scenery(L, kinds, from, to, seed, every = 5, opts = {}) {
   }
 }
 
+// Scenery on the first ground at or below row `from`, on flat spots with
+// nothing standing there, every `every` columns or so.
+export function dress(L, kinds, x0, x1, from, seed, every = 6) {
+  const r = rng(seed);
+  for (let c = x0; c < x1; c += every + Math.floor(r() * 4)) {
+    const top = L.surface(c, from);
+    if (top >= L.h || L.surface(c - 1, from) !== top || L.surface(c + 1, from) !== top) continue;
+    if (L.grid[top][c] !== '#' && L.grid[top][c] !== '=') continue;
+    if (L.grid[top - 1]?.[c] !== '.' || L.grid[top - 2]?.[c] !== '.') continue;
+    L.deco(kinds[Math.floor(r() * kinds.length)], c, top, { v: Math.floor(r() * 4) });
+  }
+  return L;
+}
+
 // An item or enemy standing on the surface at a column.
 export function on(L, x, ch) { return L.put(x, L.above(x), ch); }
 

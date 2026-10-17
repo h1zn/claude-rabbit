@@ -193,6 +193,7 @@ export class Frog extends Enemy {
   constructor(x, y) {
     super('frog', x, y - 22 + TILE, 24, 22, 3, 400);
     this.wait = 40 + Math.floor(Math.random() * 40);
+    this.hopT = 0;
     this.color = '#4ade78';
   }
 
