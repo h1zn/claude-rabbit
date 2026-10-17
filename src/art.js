@@ -1,7 +1,7 @@
 // Assembles all original procedural art: shaded sprites, plus helpers for
 // styled arcade text (gradient fill, thick outline, drop shadow).
 
-import { loadSheet, loadTileset } from './sheets.js';
+import { loadImage, loadSheet, loadTileset } from './sheets.js';
 import { TILESETS } from './tilesets.js';
 import { buildSprites } from './sprites.js';
 
@@ -42,8 +42,9 @@ function gradientMap(ts, stops) {
   ctx.putImageData(img, 0, 0);
 }
 
-// A copy of a sheet with its greens turned red (the party-mode rival).
-function tintSheet(sheet) {
+// A copy of a sheet with its greens turned red (the party-mode rival), or,
+// for characters without green (`wash`), everything washed toward red.
+function tintSheet(sheet, wash = false) {
   const recolor = (src) => {
     const c = document.createElement('canvas');
     c.width = src.width; c.height = src.height;
@@ -53,8 +54,10 @@ function tintSheet(sheet) {
     const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i]; const g = d[i + 1]; const b = d[i + 2];
+      if (!d[i + 3]) continue;
       // Green-dominant pixels swap their green and red channels.
-      if (d[i + 3] && g > r * 1.15 && g > b * 1.05) { d[i] = g; d[i + 1] = Math.round(r * 0.6); d[i + 2] = Math.round(b * 0.7); }
+      if (wash) { d[i] = Math.min(255, r * 0.7 + 90); d[i + 1] = Math.round(g * 0.35); d[i + 2] = Math.round(b * 0.35); }
+      else if (g > r * 1.15 && g > b * 1.05) { d[i] = g; d[i + 1] = Math.round(r * 0.6); d[i + 2] = Math.round(b * 0.7); }
     }
     ctx.putImageData(img, 0, 0);
     return c;
@@ -68,7 +71,10 @@ function tintSheet(sheet) {
 
 export async function buildArt() {
   const art = buildSprites();
-  art.hero = await loadSheet('assets/hero.json');
+  // The three playable characters (see tools/*_anims.json for the frames).
+  const [jazz, spaz, lori] = await Promise.all(['hero', 'spaz', 'lori'].map((n) => loadSheet(`assets/${n}.json`)));
+  art.hero = jazz;
+  art.heroes = { jazz, spaz, lori };
   [art.items, art.enemy, art.turtle, art.fx] = await Promise.all(
     ['items', 'enemies', 'turtles', 'fx'].map((n) => loadSheet(`assets/${n}.json`)),
   );
@@ -87,7 +93,18 @@ export async function buildArt() {
     for (const [kind, list] of Object.entries(t.props || {})) props[kind] = list.map((r) => cutTiles(pixels.image, r));
     art.tilesets[name] = { ...t, pixels, props };
   }
+  // JJ2 menu art: bitmap fonts, title/loading/continue screens, episode
+  // pictures and the character-select portraits (tools/build_font.py etc.).
+  const font = async (name) => ({ img: await loadImage(`assets/font_${name}.png`), ...(await (await fetch(`assets/font_${name}.json`)).json()), tints: new Map(), space: name === 'big' ? 16 : 9 });
+  art.fonts = { big: await font('big'), med: await font('med') };
+  art.fonts.med.fallback = art.fonts.big;   // for the few marks the medium font lacks
+  art.screens = {};
+  await Promise.all(['title_jj2', 'title_plus', 'title_tsf', 'loading', 'continue'].map(async (n) => { art.screens[n] = await loadImage(`assets/screens/${n}.jpg`); }));
+  art.episodes = {};
+  await Promise.all(['prince', 'time', 'flashback', 'monkeys', 'demo', 'homecooked', 'christmas', 'secret'].map(async (n) => { art.episodes[n] = await loadImage(`assets/episodes/${n}.jpg`); }));
+  art.charsel = await loadSheet('assets/charsel.json');
   art.heroRed = tintSheet(art.hero);
+  art.heroesRed = { jazz: art.heroRed, spaz: tintSheet(spaz, true), lori: tintSheet(lori, true) };
   // Screens draw the hero through `art.kip[anim][i].right/left`.
   const pick = (name) => art.hero.anims[name].frames;
   art.kip = {
@@ -134,4 +151,65 @@ export function textWidth(ctx, str, size) {
   const w = ctx.measureText(str).width;
   ctx.restore();
   return w;
+}
+
+// ---------------------------------------------------------------- JJ2 bitmap fonts
+
+// The font image multiplied by a colour (cached per colour).
+function tinted(font, color) {
+  if (!color) return font.img;
+  if (!font.tints.has(color)) {
+    const c = document.createElement('canvas');
+    c.width = font.img.width; c.height = font.img.height;
+    const x = c.getContext('2d');
+    x.drawImage(font.img, 0, 0);
+    x.globalCompositeOperation = 'multiply';
+    x.fillStyle = color;
+    x.fillRect(0, 0, c.width, c.height);
+    x.globalCompositeOperation = 'destination-in';
+    x.drawImage(font.img, 0, 0);
+    font.tints.set(color, c);
+  }
+  return font.tints.get(color);
+}
+
+export function jjWidth(font, str, scale = 1) {
+  let w = 0;
+  for (const ch of str) {
+    const [f, g, k] = glyph(font, ch);
+    w += g ? (g[2] + 1) * k : font.space;
+  }
+  return w * scale;
+}
+
+// A character's glyph: its own, its capital, or the fallback font's (scaled
+// to this font's height). Returns [font, glyph, scale] or [font, null, 1].
+function glyph(font, ch) {
+  const g = font.glyphs[ch] || font.glyphs[ch.toUpperCase()];
+  if (g) return [font, g, 1];
+  const fb = font.fallback;
+  if (fb && fb.glyphs[ch]) return [fb, fb.glyphs[ch], font.height / fb.height];
+  return [font, null, 1];
+}
+
+// Draw text in a JJ2 font: `color` tints it, `wave` makes the letters bob
+// (the menu's selected item), `t` drives the wave.
+export function jjText(ctx, font, str, x, y, { scale = 1, align = 'left', color = null, wave = 0, t = 0, alpha = 1 } = {}) {
+  str = str.replace(/%/g, ' percent').replace(/\+/g, 'and');
+  let cx = x - (align === 'center' ? jjWidth(font, str, scale) / 2 : align === 'right' ? jjWidth(font, str, scale) : 0);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.imageSmoothingEnabled = scale < 1;
+  let i = 0;
+  for (const ch of str) {
+    const [f, g, k] = glyph(font, ch);
+    if (!g) { cx += font.space * scale; i++; continue; }
+    const [gx, gy, w, h, top] = g;
+    const s = scale * k;
+    const dy = wave ? Math.sin(t * 0.12 + i * 0.7) * wave : 0;
+    ctx.drawImage(tinted(f, color), gx, gy, w, h, Math.round(cx), Math.round(y + top * s + dy * scale), Math.round(w * s), Math.round(h * s));
+    cx += (w + 1) * s;
+    i++;
+  }
+  ctx.restore();
 }

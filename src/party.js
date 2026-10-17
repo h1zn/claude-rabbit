@@ -138,7 +138,7 @@ export class Party {
     }
     if (++this.stateTimer >= 3) {
       this.stateTimer = 0;
-      this.net.send({ t: 's', x: Math.round(p.x), y: Math.round(p.y), vx: +p.vx.toFixed(2), vy: +p.vy.toFixed(2), f: p.facing, a: p.anim, g: game.gems, d: p.dead ? 1 : 0 });
+      this.net.send({ t: 's', x: Math.round(p.x), y: Math.round(p.y), vx: +p.vx.toFixed(2), vy: +p.vy.toFixed(2), f: p.facing, a: p.anim, g: game.gems, d: p.dead ? 1 : 0, c: p.character });
     }
     this.rival.update();
     for (const s of this.shots) s.update(game);
@@ -218,7 +218,7 @@ export class Party {
       case 's': {
         const r = this.rival;
         if (!r.seen) { r.x = m.x; r.y = m.y; r.prevX = m.x; r.prevY = m.y; }
-        Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, seen: true });
+        Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, seen: true, character: m.c });
         break;
       }
       case 'shot': this.shots.push(new RivalShot(m)); game.audio.play('shoot'); break;

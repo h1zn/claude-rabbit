@@ -1,0 +1,221 @@
+{
+ "sheet": "../new/New Tilesets/Playable Characters - Spaz Jackrabbit.png",
+ "anims": {
+  "idle": {
+   "frames": [
+    0,
+    4
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "bored": {
+   "frames": [
+    6,
+    25
+   ],
+   "speed": 6,
+   "loop": false
+  },
+  "walk": {
+   "frames": [
+    138,
+    145
+   ],
+   "speed": 5,
+   "loop": true
+  },
+  "run": {
+   "frames": [
+    146,
+    153
+   ],
+   "speed": 4,
+   "loop": true
+  },
+  "skid": {
+   "frames": [
+    174,
+    176
+   ],
+   "speed": 4,
+   "loop": true
+  },
+  "jump": {
+   "frames": [
+    196,
+    199
+   ],
+   "speed": 5,
+   "loop": false
+  },
+  "jumpFwd": {
+   "frames": [
+    206,
+    213
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "fall": {
+   "frames": [
+    202,
+    205
+   ],
+   "speed": 5,
+   "loop": true
+  },
+  "fallFwd": {
+   "frames": [
+    214,
+    217
+   ],
+   "speed": 5,
+   "loop": true
+  },
+  "spring": {
+   "frames": [
+    222,
+    229
+   ],
+   "speed": 4,
+   "loop": true
+  },
+  "hover": {
+   "frames": [
+    245,
+    252
+   ],
+   "speed": 3,
+   "loop": true
+  },
+  "hoverShoot": {
+   "frames": [
+    253,
+    254
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "shoot": {
+   "frames": [
+    105,
+    106
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "shootAir": {
+   "frames": [
+    218,
+    219
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "crouch": {
+   "frames": [
+    119,
+    120
+   ],
+   "speed": 3,
+   "loop": false
+  },
+  "crouchShoot": {
+   "frames": [
+    121,
+    122
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "look": {
+   "frames": [
+    115,
+    116
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "stomp": {
+   "frames": [
+    230,
+    237
+   ],
+   "speed": 2,
+   "loop": false
+  },
+  "stompLand": {
+   "frames": [
+    238,
+    244
+   ],
+   "speed": 3,
+   "loop": false
+  },
+  "uppercutWindup": {
+   "frames": [
+    125,
+    129
+   ],
+   "speed": 2,
+   "loop": false
+  },
+  "uppercut": {
+   "frames": [
+    130,
+    135
+   ],
+   "speed": 3,
+   "loop": true
+  },
+  "land": {
+   "frames": [
+    256,
+    260
+   ],
+   "speed": 3,
+   "loop": false
+  },
+  "hurt": {
+   "frames": [
+    489,
+    494
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "dead": {
+   "frames": [
+    497,
+    507
+   ],
+   "speed": 5,
+   "loop": false
+  },
+  "victory": {
+   "frames": [
+    425,
+    432
+   ],
+   "speed": 5,
+   "loop": false
+  },
+  "icon": {
+   "frames": [
+    524,
+    524
+   ],
+   "speed": 1,
+   "loop": false
+  },
+  "doubleJump": {
+   "frames": [
+    274,
+    281
+   ],
+   "speed": 3,
+   "loop": false
+  }
+ }
+}

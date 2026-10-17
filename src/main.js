@@ -25,6 +25,7 @@ const screens = new Screens(ctx, art, audio);
 let save = loadSave();
 audio.setVolumes(save.options.music, save.options.sfx);
 game.unlocked = save.unlocked;
+game.character = save.character || 'jazz';
 
 let scene = 'splash';
 let sceneTime = 0;
@@ -157,9 +158,9 @@ function tick() {
       lobbyTick();
       if (scene !== 'title') break;
       const action = screens.titleInput(input, save) || '';
-      if (action === 'play') showCard(Math.min(save.unlocked, LEVELS.length) - 1, true);
-      else if (action.startsWith('level:')) showCard(levelKey(action.slice(6)), true);
+      if (action.startsWith('level:')) showCard(levelKey(action.slice(6)), true);
       else if (action === 'options') { audio.setVolumes(save.options.music, save.options.sfx); writeSave(save); }
+      else if (action === 'save') { writeSave(save); game.character = save.character; }
       else if (action === 'reset') { save = { ...loadSave(), unlocked: 1, levels: {} }; writeSave(save); game.unlocked = 1; }
       else if (action === 'host') hostParty();
       else if (action.startsWith('join:')) joinParty(action.slice(5));
@@ -202,7 +203,13 @@ function tick() {
         if (def.jj2) { if (def.next) showCard(def.next, false); else toMenu(); }
         else if (game.levelIndex + 1 < LEVELS.length) showCard(game.levelIndex + 1, false);
         else game.nextLevel();
-      } else if (game.state === 'gameover' || game.state === 'win') {
+      } else if (game.state === 'gameover') {
+        // "Continue?": YES starts the level again with fresh lives.
+        game.overTime = (game.overTime || 0) + 1;
+        const answer = game.overTime > 40 ? screens.continueInput(input) : null;
+        if (answer === 'yes') showCard(game.levelIndex, true);
+        else if (answer === 'no') toMenu();
+      } else if (game.state === 'win') {
         game.overTime = (game.overTime || 0) + 1;
         if (game.overTime > 90 && input.pressed('start')) toMenu();
       }

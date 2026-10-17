@@ -30,6 +30,7 @@ export class Game {
     this.time = 0;
     this.unlocked = 1;
     this.party = null;      // a Party while a two-player hunt is running
+    this.character = 'jazz'; // jazz | spaz | lori
   }
 
   // Start a two-player hunt on a level (both sides call this).
@@ -115,6 +116,7 @@ export class Game {
     if (freshPlayer || !this.player) this.player = new Player(start.x, start.y);
     else this.player.spawn(start.x, start.y);
     this.player.h = playerH;
+    this.player.character = this.character || 'jazz';
     this.player.health = Math.max(this.player.health, 3);
     this.cam = { x: this.player.cx - VIEW_W / 2, y: this.player.cy - VIEW_H / 2 };
     this.clampCamera();

@@ -1,0 +1,213 @@
+{
+ "sheet": "../new/New Tilesets/Playable Characters - Lori Jackrabbit.png",
+ "anims": {
+  "idle": {
+   "frames": [
+    0,
+    8
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "bored": {
+   "frames": [
+    46,
+    59
+   ],
+   "speed": 6,
+   "loop": false
+  },
+  "walk": {
+   "frames": [
+    117,
+    124
+   ],
+   "speed": 5,
+   "loop": true
+  },
+  "run": {
+   "frames": [
+    125,
+    132
+   ],
+   "speed": 4,
+   "loop": true
+  },
+  "skid": {
+   "frames": [
+    157,
+    159
+   ],
+   "speed": 4,
+   "loop": true
+  },
+  "jump": {
+   "frames": [
+    179,
+    182
+   ],
+   "speed": 5,
+   "loop": false
+  },
+  "jumpFwd": {
+   "frames": [
+    188,
+    195
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "fall": {
+   "frames": [
+    185,
+    187
+   ],
+   "speed": 5,
+   "loop": true
+  },
+  "fallFwd": {
+   "frames": [
+    196,
+    200
+   ],
+   "speed": 5,
+   "loop": true
+  },
+  "spring": {
+   "frames": [
+    205,
+    212
+   ],
+   "speed": 4,
+   "loop": true
+  },
+  "hover": {
+   "frames": [
+    228,
+    240
+   ],
+   "speed": 3,
+   "loop": true
+  },
+  "hoverShoot": {
+   "frames": [
+    256,
+    257
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "shoot": {
+   "frames": [
+    83,
+    84
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "shootAir": {
+   "frames": [
+    201,
+    202
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "crouch": {
+   "frames": [
+    97,
+    100
+   ],
+   "speed": 3,
+   "loop": false
+  },
+  "crouchShoot": {
+   "frames": [
+    102,
+    103
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "look": {
+   "frames": [
+    89,
+    90
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "stomp": {
+   "frames": [
+    213,
+    217
+   ],
+   "speed": 2,
+   "loop": false
+  },
+  "stompLand": {
+   "frames": [
+    218,
+    226
+   ],
+   "speed": 3,
+   "loop": false
+  },
+  "uppercutWindup": {
+   "frames": [
+    107,
+    109
+   ],
+   "speed": 2,
+   "loop": false
+  },
+  "uppercut": {
+   "frames": [
+    110,
+    116
+   ],
+   "speed": 3,
+   "loop": true
+  },
+  "land": {
+   "frames": [
+    261,
+    265
+   ],
+   "speed": 3,
+   "loop": false
+  },
+  "hurt": {
+   "frames": [
+    507,
+    512
+   ],
+   "speed": 4,
+   "loop": false
+  },
+  "dead": {
+   "frames": [
+    527,
+    539
+   ],
+   "speed": 5,
+   "loop": false
+  },
+  "victory": {
+   "frames": [
+    467,
+    476
+   ],
+   "speed": 5,
+   "loop": false
+  },
+  "icon": {
+   "frames": [
+    540,
+    540
+   ],
+   "speed": 1,
+   "loop": false
+  }
+ }
+}

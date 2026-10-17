@@ -6,7 +6,9 @@ import { PHYS, PLAYER, TILE } from './config.js';
 import { eventFields } from './jj2/files.js';
 import { EV } from './jj2/level.js';
 
-const HANG = 14;   // px from a vine down to the top of a hanging body
+const HANG = 14;
+const KICK_WINDUP = 8;   // tuned: Spaz's and Lori's kicks
+const KICK_END = 30;   // px from a vine down to the top of a hanging body
 
 export class Player {
   constructor(x, y) {
@@ -26,10 +28,14 @@ export class Player {
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
-      hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0,
+      hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0,
     });
   }
+
+  // Ticks of wind-up before the special move: Jazz's uppercut, or the kick
+  // Spaz (side kick) and Lori (flying kick) do instead.
+  get windup() { return this.character === 'spaz' || this.character === 'lori' ? KICK_WINDUP : PHYS.uppercutWindup; }
 
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
@@ -104,7 +110,24 @@ export class Player {
       this.hovering = false;
       audio.play('uppercutCharge');
     }
-    if (this.special > 0) {
+    if (this.special > 0 && this.windup === KICK_WINDUP) {
+      // Kick: a short wind-up, then a fast dash forward that smashes whatever
+      // it meets (Lori's flying kick lifts a little).
+      const t = this.special++;
+      if (t < KICK_WINDUP) {
+        this.vx *= 0.5;
+        this.vy = 0;
+      } else if (t <= KICK_END) {
+        if (t === KICK_WINDUP) audio.play('uppercut');
+        this.vx = this.facing * 10;
+        this.vy = this.character === 'lori' ? -1.4 + (t - KICK_WINDUP) * 0.06 : 0;
+        if (t % 2 === 0) game.trail(this.cx - this.facing * 10, this.cy, '#ffd54a');
+      } else {
+        this.special = 0;
+        this.vx = this.facing * PHYS.walkMax;
+        this.jumping = false;
+      }
+    } else if (this.special > 0) {
       const t = this.special++;
       if (t < PHYS.uppercutWindup) {
         this.vx *= 0.6;
@@ -143,6 +166,16 @@ export class Player {
         this.jumping = true;
         audio.play('jump');
         game.dust(this.cx, this.y + this.h, 4);
+      } else if (this.character === 'spaz' && controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping) {
+        // Spaz: one extra jump in the air instead of the copter ears.
+        if (!this.doubleJumped) {
+          this.doubleJumped = true;
+          this.vy = PHYS.jumpBase * 0.85;
+          this.jumping = true; this.jumpCut = false; this.launched = true;
+          this.jumpBuffer = 0;
+          audio.play('jump');
+          game.ring(this.cx, this.y + this.h, '#ffffff');
+        }
       } else if (controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && this.vy > -PHYS.hoverEngage) {
         // Original copter: each press re-arms 70 ticks; it only engages near
         // the top of a jump or while falling.
@@ -402,6 +435,12 @@ export class Player {
           if (level.at(tx, ty) === 'p' && game.hitTile(tx, ty, { speed: true })) broke = true;
         }
       }
+      // A kick smashes blocks in its way.
+      if (!broke && this.special >= KICK_WINDUP && this.windup === KICK_WINDUP) {
+        for (let ty = Math.floor(this.y / TILE); ty <= Math.floor((this.y + this.h - 1) / TILE); ty++) {
+          if (game.hitTile(tx, ty, { speed: true })) broke = true;
+        }
+      }
       this.vx = broke ? vx : 0;
     }
     if (hit.top) {
@@ -434,6 +473,7 @@ export class Player {
       this.hovering = false;
       this.hoverLeft = PHYS.hoverTicks;
       this.coyote = PHYS.coyoteTicks;
+      this.doubleJumped = false;
     } else if (this.coyote > 0) {
       this.coyote--;
     }

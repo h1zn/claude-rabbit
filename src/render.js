@@ -408,9 +408,10 @@ export class Renderer {
     if (p.pole || p.hang) return 'spring';
     if (p.knock > 0) return 'hurt';
     if (p.swimming && !p.onGround) return Math.abs(p.vx) > 0.6 ? 'jumpFwd' : 'fall';
-    if (p.special > 0) return p.special < PHYS.uppercutWindup ? 'uppercutWindup' : 'uppercut';
+    if (p.special > 0) return p.special < p.windup ? 'uppercutWindup' : 'uppercut';
     if (p.stomping) return 'stomp';
     if (p.hovering) return p.shootPose > 0 ? 'hoverShoot' : 'hover';
+    if (p.doubleJumped && p.vy < 0 && !p.onGround) return 'doubleJump';
     if (!p.onGround) {
       if (p.vy < 0) return p.vy < -11 ? 'spring' : speed > 2 ? 'jumpFwd' : 'jump';
       if (p.shootPose > 0) return 'shootAir';
@@ -430,7 +431,8 @@ export class Renderer {
     if (p.invuln > 0 && !p.dead && p.rush === 0 && Math.floor(p.invuln / 4) % 2) return;
     const name = this.heroAnim(p);
     if (!this.heroState || this.heroState.name !== name) this.heroState = { name, start: game.time };
-    const anim = this.art.hero.anims[name];
+    const sheet = this.art.heroes[p.character] || this.art.hero;
+    const anim = sheet.anims[name] || sheet.anims.idle;
     const t = game.time - this.heroState.start;
     // Walk and run cycles speed up with the player.
     const speed = name === 'walk' || name === 'run' ? Math.max(2, 7 - Math.abs(p.vx) * 0.6) : anim.speed;
@@ -440,7 +442,7 @@ export class Renderer {
     const y = Math.round(lerp(p.prevY, p.y, alpha) + p.h - f.ay + 2);
     if (p.onGround && !p.pole) this.footShadow(lerp(p.prevX, p.x, alpha) + p.w / 2, p.y + p.h, 22);
     if (p.rush > 0) this.glow(x + f.w / 2, y + f.h / 2, 34, `hsla(${(game.time * 12) % 360},100%,60%,0.45)`);
-    if (p.special > 0 && p.special >= PHYS.uppercutWindup) this.glow(x + f.w / 2, y + 12, 22, 'rgba(255,214,90,0.5)');
+    if (p.special > 0 && p.special >= p.windup) this.glow(x + f.w / 2, y + 12, 22, 'rgba(255,214,90,0.5)');
     if (p.stomping) this.glow(x + f.w / 2, y + f.h, 20, 'rgba(255,255,255,0.4)');
     if (p.shield > 0 && (p.shield > 210 || game.time % 8 < 5)) this.shieldRing(game, x + f.w / 2, y + f.h / 2);
     if (p.pole) {
@@ -478,8 +480,9 @@ export class Renderer {
     }
     if (r.dead) return;
     const speed = Math.abs(r.vx);
-    const name = { run: speed > 4.2 ? 'run' : 'walk', jump: speed > 2 ? 'jumpFwd' : 'jump', fall: speed > 2 ? 'fallFwd' : 'fall', pole: 'spring' }[r.anim] || (this.art.heroRed.anims[r.anim] ? r.anim : 'idle');
-    const anim = this.art.heroRed.anims[name];
+    const sheet = this.art.heroesRed[r.character] || this.art.heroRed;
+    const name = { run: speed > 4.2 ? 'run' : 'walk', jump: speed > 2 ? 'jumpFwd' : 'jump', fall: speed > 2 ? 'fallFwd' : 'fall', pole: 'spring' }[r.anim] || (sheet.anims[r.anim] ? r.anim : 'idle');
+    const anim = sheet.anims[name];
     const f = frameAt(anim, game.time, anim.speed);
     const right = r.facing > 0;
     const x = Math.round(lerp(r.prevX, r.x, alpha) + r.w / 2 - (right ? f.ax : f.w - f.ax));
@@ -617,7 +620,7 @@ export class Renderer {
       arcadeText(ctx, `${Math.ceil(p.rush / 70)}`, VIEW_W / 2, 24, { size: 22, align: 'center', top: '#ffffff', bottom: `hsl(${(game.time * 6) % 360},100%,65%)` });
     }
     // Lives, bottom-left.
-    const face = this.art.kip.icon[0].right;
+    const face = (this.art.heroes[p.character] || this.art.hero).anims.icon.frames[0].right;
     ctx.drawImage(face, 6, VIEW_H - face.height - 6);
     if (!game.party) arcadeText(ctx, `x${Math.max(0, game.lives)}`, 44, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: '#ffb04a' });
     // Weapon and ammo, bottom-right.

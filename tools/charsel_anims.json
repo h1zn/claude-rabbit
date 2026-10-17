@@ -1,0 +1,171 @@
+{
+ "sheet": "../new/New Tilesets/Miscellaneous - Character Select.png",
+ "anims": {
+  "jazz": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    28,
+    33,
+    40,
+    48,
+    53,
+    3,
+    13,
+    19,
+    25,
+    30,
+    36
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "spaz": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    43,
+    50,
+    57,
+    5,
+    10,
+    17,
+    23,
+    27,
+    31,
+    35
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "lori": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    39,
+    44,
+    51,
+    58,
+    8,
+    11,
+    18,
+    24,
+    29,
+    34
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "jazzName": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    6,
+    14,
+    20
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "jazzNameDim": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    7
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "spazName": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    47,
+    55,
+    42
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "spazNameDim": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    38
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "loriName": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    49,
+    56,
+    41
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "loriNameDim": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    54
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "jazzGun": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    2
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "spazGun": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    9
+   ],
+   "speed": 6,
+   "loop": true
+  },
+  "loriGun": {
+   "frames": [
+    0,
+    58
+   ],
+   "pick": [
+    16
+   ],
+   "speed": 6,
+   "loop": true
+  }
+ }
+}
