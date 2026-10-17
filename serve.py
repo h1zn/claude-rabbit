@@ -114,7 +114,29 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.split('?')[0] == '/ws' and self.headers.get('Upgrade', '').lower() == 'websocket':
             return self.relay()
+        if self.path.split('?')[0] == '/levels.json':
+            return self.level_list()
         return super().do_GET()
+
+    def level_list(self):
+        """The JJ2 level packs in Levels/: each folder's .j2l and .j2t files."""
+        packs = []
+        root = os.path.join(os.getcwd(), 'Levels')
+        if os.path.isdir(root):
+            for name in sorted(os.listdir(root)):
+                folder = os.path.join(root, name)
+                if not os.path.isdir(folder):
+                    continue
+                files = sorted(os.listdir(folder))
+                levels = [f for f in files if f.lower().endswith('.j2l') and '-mlle-data-' not in f.lower()]
+                if levels:
+                    packs.append({'dir': name, 'levels': levels, 'tilesets': [f for f in files if f.lower().endswith('.j2t')]})
+        body = json.dumps(packs).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def relay(self):
         key = self.headers.get('Sec-WebSocket-Key', '')

@@ -5,7 +5,7 @@
 import { arcadeText, textWidth } from './art.js';
 import { Backdrop, BACKDROP_SKY, BACKDROPS } from './backdrop.js';
 import { TILE, VIEW_H, VIEW_W } from './config.js';
-import { allJJ2, PACKS } from './jj2/catalog.js';
+import { allJJ2, discoverPacks, PACKS } from './jj2/catalog.js';
 import { preview } from './jj2/preview.js';
 import { LEVELS, levelDef } from './levels.js';
 import { PARTY_LEVELS } from './party.js';
@@ -35,6 +35,7 @@ export class Screens {
     this.sub = null;        // null | levels | jj2 | help | options | party | host | join
     this.jj2 = allJJ2();
     this.jj2Index = 0;
+    discoverPacks().then((added) => { if (added) this.jj2 = allJJ2(); });
     this.pauseIndex = 0;
     this.thumbs = [];
     this.codeBuf = '';

@@ -103,6 +103,33 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 - **Physics**: the original's values (see SPEC.md): floaty 0.125 fall, 0.375
   rise, 8 px/tick movement cap, dash with grace, copter glide 4:1.
 
+## Classic JJ2 levels
+
+**CLASSIC JJ2** in the menu plays original Jazz Jackrabbit 2 levels straight
+from `Levels/`: each folder holds `.j2l` levels with their `.j2t` tile sets
+(and music). Included now:
+
+- **Xenobiotic Xeranthemum 2** (Blade): Oasis, Islands in the Sapphire Sea,
+  Twilight Park, Space and Aztec, played in order.
+- **Overgrown** (Laro B.): a battle arena, also in PARTY mode.
+- **Threed Realms**: needs the retail tile set `Jungle1.j2t` copied into its
+  folder (it is a JJ2+ scripted level, so its custom weapons won't work).
+
+The game reads the files itself (1.20 to TSF/JJ2+): all eight layers with
+their parallax, animated tiles and the warp-horizon sky; collision from the
+tile masks, pixel for pixel; and the events turned into this game's things:
+gems, coins, food, carrots, springs, poles, checkpoints, warps and coin warps,
+text signs, exits, destructible/stomp/speed/collapsing scenery and enemies
+(each JJ2 enemy becomes the closest one we have). Vines, hooks, tubes, water
+(swimming), wind, belts, float-up columns, bridges and light zones work as in
+the original. Tracker music (.xm/.mod/.it) plays through libopenmpt
+(`vendor/chiptune3`); .ogg/.mp3 play as they are.
+
+Drop another pack folder into `Levels/` and it appears in the list when you
+run `serve.py`. Not supported yet: bosses (their exit waits where the boss
+stands), moving platforms, triggers, ammo and the other weapons, and JJ2+
+scripts.
+
 `node tools/check_levels.mjs` checks every level: it searches the spots Kip
 can reach (jumps, super jumps, springs, poles, warps) and lists anything left
 unreachable: exit, checkpoints, secrets, pickups, or a coin warp the level
@@ -121,6 +148,10 @@ src/level.js            tile map, collision and the level builder
 src/levels.js           the level list; designs in src/levels/ (kit.js: helpers, room maze)
 src/party.js            party mode: relay connection, rival, sync and rules
 src/save.js             saved progress, stars and options
+src/jj2/                original JJ2 levels: files.js (.j2l/.j2t reader), level.js
+                        (masks -> collision, events -> entities), view.js (layers),
+                        play.js (light/water/collapse), catalog.js (packs), preview.js
+vendor/chiptune3/       libopenmpt player for tracker music (MIT / BSD)
 src/screens.js          splash intro, menus, level select, lobby, tally
 serve.py                web server + party relay (WebSocket /ws)
 tools/check_levels.mjs  reachability check for all levels
@@ -135,9 +166,9 @@ SPEC.md                 the measured mechanics and where they came from
 ## Ideas for the next pass
 
 - Bosses guarding some exits (manual: the Queen, Schwartzenguard).
-- Loading the original `.j2l` levels, if you supply them from your copy.
+- More of JJ2 in the classic levels: moving platforms, triggers, bosses.
 - Weapon blocks and the other weapons (bouncer, frostbiter, missiles, toaster, TNT).
-- Water/swimming (a free-move branch was found), moving platforms, hanging vines.
+- Water, vines and moving platforms in our own levels too.
 - A save file for high scores.
 - Gamepad support and touch controls.
 - Tune gravity and terminal speed further against the original's feel.

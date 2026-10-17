@@ -115,8 +115,43 @@ export const TRACKS = {
   beach: { file: '7. Beach Bunny.mp3' },
   jungle: { file: 'C. Jungle Fevah.mp3' },
 };
-// Music that comes with a level pack (an .ogg or .mp3 next to the level).
-export function addTrack(name, url) { if (!TRACKS[name]) TRACKS[name] = { url }; }
+// Music that comes with a level pack: an .ogg or .mp3 plays as it is,
+// tracker music (`mod`) through libopenmpt, or `fallback` where the browser
+// can't run it (AudioWorklet needs localhost or https).
+export function addTrack(name, def) { if (!TRACKS[name]) TRACKS[name] = def; }
+
+// Tracker music shaped like the <audio> element the track code expects.
+class ModElement {
+  constructor(ctx, url, out) {
+    this.url = url;
+    this.loaded = false;
+    this.wanted = false;
+    this.onended = null;
+    this.ready = import('../vendor/chiptune3/chiptune3.js').then(({ ChiptuneJsPlayer }) => new Promise((resolve) => {
+      const player = new ChiptuneJsPlayer({ context: ctx, repeatCount: -1 });
+      player.onInitialized(() => { player.gain.connect(out); resolve(player); });
+      player.onError(() => resolve(null));
+    })).catch(() => null);
+  }
+
+  get currentTime() { return 0; }
+  set currentTime(v) { if (v === 0 && this.loaded) this.ready.then((p) => p && p.setPos(0)); }
+
+  play() {
+    this.wanted = true;
+    this.ready.then((p) => {
+      if (!p || !this.wanted) return;
+      if (this.loaded) p.unpause();
+      else { this.loaded = true; p.load(this.url); }
+    });
+    return Promise.resolve();
+  }
+
+  pause() {
+    this.wanted = false;
+    this.ready.then((p) => { if (p && this.loaded) p.pause(); });
+  }
+}
 const TRACK_VOLUME = 0.42;   // background level, well under the effects
 const FADE = 1.2;            // seconds for fades between tracks
 
@@ -359,6 +394,7 @@ export class Audio {
   startMusic(name, { restart = false, onEnd = null } = {}) {
     if (!this.ctx) return;
     this.stopSynth();
+    if (TRACKS[name] && TRACKS[name].mod && !this.ctx.audioWorklet) name = TRACKS[name].fallback;
     if (TRACKS[name]) return this.playTrack(name, restart, onEnd);
     this.fadeTrack(true);
     const song = SONGS[name];
@@ -382,12 +418,18 @@ export class Audio {
   trackNode(name) {
     if (!this.tracks[name]) {
       const def = TRACKS[name];
-      const el = new window.Audio(def.url || `Soundtracks/${encodeURIComponent(def.file)}`);
-      el.loop = def.loop !== false;
-      el.preload = 'auto';
       const gain = this.ctx.createGain();
       gain.gain.value = 0;
-      this.ctx.createMediaElementSource(el).connect(gain).connect(this.trackBus);
+      gain.connect(this.trackBus);
+      let el;
+      if (def.mod) {
+        el = new ModElement(this.ctx, def.mod, gain);
+      } else {
+        el = new window.Audio(def.url || `Soundtracks/${encodeURIComponent(def.file)}`);
+        el.loop = def.loop !== false;
+        el.preload = 'auto';
+        this.ctx.createMediaElementSource(el).connect(gain);
+      }
       this.tracks[name] = { el, gain };
     }
     return this.tracks[name];

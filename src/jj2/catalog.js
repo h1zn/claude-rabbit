@@ -7,8 +7,8 @@ import { addTrack } from '../audio.js';
 import { parseLevel, parseTileset } from './files.js';
 import { JJ2Level } from './level.js';
 
-// Tracker music (.xm/.mod/.it) can't play in the browser, so those levels
-// borrow a soundtrack of ours instead.
+// `music` names the soundtrack of ours a level falls back to when its own
+// music can't play.
 export const PACKS = [
   {
     id: 'xx',
@@ -74,7 +74,7 @@ export function jj2Def(key) {
   const def = (opts = {}) => {
     if (!state.level) throw new Error('JJ2 level not loaded yet');
     const file = state.level;
-    const music = entry.music || musicKey(pack, file.music);
+    const music = musicKey(pack, file.music, entry.music || 'jungle');
     const meta = {
       name: file.title || entry.file, theme: 'jj2', music, jj2: true, playerH: 28,
       dark: null,
@@ -86,7 +86,7 @@ export function jj2Def(key) {
   def.pack = pack;
   def.title = entry.title || entry.file.replace(/\.j2l$/i, '');
   def.tip = pack.blurb;
-  def.next = Number(n) + 1 < pack.levels.length ? `jj2:${pack.id}:${Number(n) + 1}` : null;
+  def.next = null;
   def.loaded = () => (state.level ? { file: state.level, ts: state.ts } : null);
   def.prepare = async () => {
     if (state.level) return def;
@@ -95,18 +95,51 @@ export function jj2Def(key) {
     state.ts = await fetchParsed(url(pack, packFile(pack, tsName)), parseTileset);
     state.level = level;
     def.title = level.title || def.title;
+    // The level names its successor; follow it when it's in the same pack.
+    const bare = (f) => f.toLowerCase().replace(/\.j2l$/, '');
+    const j = pack.levels.findIndex((l) => bare(l.file) === bare(level.next || ''));
+    def.next = j >= 0 && j !== Number(n) ? `jj2:${pack.id}:${j}` : null;
     return def;
   };
   defs.set(key, def);
   return def;
 }
 
-// Level music: ogg and mp3 files play as they are.
-function musicKey(pack, name) {
-  if (!/\.(ogg|mp3)$/i.test(name || '')) return 'jungle';
+// Level music: ogg and mp3 files play as they are, tracker modules through
+// libopenmpt. JJ2's own .j2b music isn't supported: a soundtrack of ours plays.
+function musicKey(pack, name, fallback) {
   const key = `jj2:${pack.id}:${name}`;
-  addTrack(key, url(pack, name));
+  if (/\.(ogg|mp3)$/i.test(name || '')) addTrack(key, { url: url(pack, name) });
+  else if (/\.(xm|mod|it|s3m)$/i.test(name || '')) addTrack(key, { mod: url(pack, name), fallback });
+  else return fallback;
   return key;
+}
+
+// Packs dropped into Levels/ that aren't listed above (serve.py lists the
+// folder at /levels.json; other servers just show the known packs).
+export async function discoverPacks() {
+  let found;
+  try {
+    const r = await fetch('levels.json');
+    if (!r.ok) return false;
+    found = await r.json();
+  } catch (e) { return false; }
+  let added = false;
+  for (const f of found) {
+    const dir = `Levels/${f.dir}/`;
+    let pack = PACKS.find((p) => p.dir === dir);
+    if (!pack) {
+      pack = { id: f.dir.toLowerCase().replace(/[^a-z0-9]+/g, '-'), title: f.dir, blurb: `Levels from Levels/${f.dir}/.`, dir, levels: [] };
+      PACKS.push(pack);
+    }
+    pack.tilesets = f.tilesets;
+    for (const file of f.levels) {
+      if (pack.levels.some((l) => l.file.toLowerCase() === file.toLowerCase())) continue;
+      pack.levels.push({ file });
+      added = true;
+    }
+  }
+  return added;
 }
 
 // Every level of every pack, in menu order.
