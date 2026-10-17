@@ -125,22 +125,22 @@ async function joinParty(code) {
 
 // While a party level loads, the lobby stops reading messages so the
 // rival's first moves wait in the inbox for the game.
-let partyLoading = false;
+let partyLoading = null;        // the connection whose party level is loading
 
 // Load a party level; false if it failed or the player left meanwhile.
 async function preparePartyLevel(index) {
   const def = levelDef(index);
   if (!def.prepare) return true;
   const conn = net;
-  partyLoading = true;
+  partyLoading = conn;
   screens.lobby.status = 'loading';
   try {
     await def.prepare();
   } catch (e) {
-    screens.lobby = { status: 'error', error: e.message };
+    if (net === conn) screens.lobby = { status: 'error', error: e.message };
     return false;
   } finally {
-    partyLoading = false;
+    if (partyLoading === conn) partyLoading = null;
   }
   return !!net && net === conn && net.status === 'open' && scene === 'title' && screens.lobby.status !== 'error';
 }
@@ -153,7 +153,7 @@ function startParty(index, role) {
 
 // The host loads the level first, then tells the guest to start.
 async function hostStart(index) {
-  if (partyLoading || !net) return;
+  if (!net || partyLoading === net) return;
   if (!(await preparePartyLevel(index))) return;
   net.send({ t: 'start', level: index });
   startParty(index, 'host');
@@ -164,7 +164,7 @@ async function guestStart(index) {
 }
 
 function lobbyTick() {
-  if (!net || partyLoading) return;
+  if (!net || partyLoading === net) return;
   const msgs = net.take();
   for (let k = 0; k < msgs.length; k++) {
     const m = msgs[k];
@@ -208,6 +208,7 @@ function tick() {
     }
     case 'card':
       if (game.cardMeta.error) { if (sceneTime > 30 && (input.pressed('start') || input.pressed('pause'))) toMenu(); break; }
+      if (!pendingLevel.ready && sceneTime > 30 && input.pressed('pause')) { toMenu(); break; }   // give up on a slow load
       if (pendingLevel.ready && (sceneTime > 170 || (sceneTime > 50 && input.pressed('start')))) startPendingLevel();
       break;
     case 'play':
