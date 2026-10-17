@@ -80,13 +80,18 @@ export async function parseTileset(buffer) {
 export function tilePixels(ts, id, out = new Uint8ClampedArray(4096)) {
   out.fill(0);
   if (id <= 0 || id >= ts.count) return out;
-  const img = ts.imageAt[id];
-  const a = ts.alphaAt[id];
+  const [src, sid, remap] = source(ts, id);
+  if (!src || sid <= 0 || sid >= src.count) return out;
+  const img = src.imageAt[sid];
+  const a = src.alphaAt[sid];
   if (img & 0x80000000) return out;                    // 32-bit tiles (JJ2+): unsupported
+  const pal = ts.palette;
   for (let j = 0; j < 1024; j++) {
-    if (!((ts.alpha[a + (j >> 3)] >> (j & 7)) & 1)) continue;
-    const c = ts.image[img + j] * 4;
-    out[j * 4] = ts.palette[c]; out[j * 4 + 1] = ts.palette[c + 1]; out[j * 4 + 2] = ts.palette[c + 2]; out[j * 4 + 3] = 255;
+    if (!((src.alpha[a + (j >> 3)] >> (j & 7)) & 1)) continue;
+    let ci = src.image[img + j];
+    if (remap) ci = remap[ci];
+    const c = ci * 4;
+    out[j * 4] = pal[c]; out[j * 4 + 1] = pal[c + 1]; out[j * 4 + 2] = pal[c + 2]; out[j * 4 + 3] = 255;
   }
   return out;
 }
@@ -95,8 +100,10 @@ export function tilePixels(ts, id, out = new Uint8ClampedArray(4096)) {
 export function tileMask(ts, id) {
   const out = new Uint8Array(1024);
   if (id <= 0 || id >= ts.count) return out;
-  const m = ts.maskAt[id];
-  for (let j = 0; j < 1024; j++) out[j] = (ts.mask[m + (j >> 3)] >> (j & 7)) & 1;
+  const [src, sid] = source(ts, id);
+  if (!src || sid <= 0 || sid >= src.count) return out;
+  const m = src.maskAt[sid];
+  for (let j = 0; j < 1024; j++) out[j] = (src.mask[m + (j >> 3)] >> (j & 7)) & 1;
   return out;
 }
 
@@ -110,7 +117,7 @@ export async function parseLevel(buffer) {
   const hidden = !!h.u8();
   const title = h.str(32);
   const version = h.u16();
-  const { blocks: [info, events, dict, layout] } = await streams(bytes, HEADER + 50);
+  const { blocks: [info, events, dict, layout], end } = await streams(bytes, HEADER + 50);
   const maxTiles = version <= 0x202 ? 1024 : 4096;
 
   const r = new Reader(info);
@@ -190,16 +197,110 @@ export async function parseLevel(buffer) {
 
   return {
     title, hidden, version, maxTiles, minLight, startLight, tileset, bonus, next, secret, music,
-    texts, tileEvents, tileTypes, anims, layers, events: eventMap, hasMlle: bytes.length > 0 && readMagic(bytes) === 'MLLE',
+    texts, tileEvents, tileTypes, anims, layers, events: eventMap,
+    layerOrder: [0, 1, 2, 3, 4, 5, 6, 7], mlle: await parseMlle(bytes, end),
   };
 }
 
-function readMagic(bytes) {
-  const r = new Reader(bytes, HEADER + 50);
-  const sizes = r.many(8, () => r.i32());
-  let end = HEADER + 82;
-  for (let i = 0; i < 4; i++) end += sizes[i * 2];
-  return end + 4 <= bytes.length ? String.fromCharCode(...bytes.subarray(end, end + 4)) : '';
+// 7-bit encoded length (MLLE strings).
+function u7(r) {
+  let v = 0; let shift = 0; let c;
+  do { c = r.u8(); v |= (c & 0x7f) << shift; shift += 7; } while (c & 0x80);
+  return v;
+}
+
+// JJ2+ / MLLE data after the four streams: a level palette, extra tile sets
+// appended to the base one, and the layer list (more than eight layers live
+// in "-MLLE-Data-N.j2l" files). Returns null for plain levels.
+async function parseMlle(bytes, at) {
+  if (at + 16 > bytes.length || String.fromCharCode(...bytes.subarray(at, at + 4)) !== 'MLLE') return null;
+  const h = new Reader(bytes, at + 4);
+  const version = h.u32();
+  const packed = h.i32();
+  const data = await inflate(bytes.subarray(at + 16, at + 16 + packed));
+  const r = new Reader(data);
+  const out = { version, palette: null, tilesets: [], layers: null };
+  try {
+    r.skip(4 + 2 + 4 + 4 + 4 + 1 + 4 + 1 + 4 + 4 + 4);   // weather, warps, echo, darkness, water
+    if (r.u8()) {
+      out.palette = data.slice(r.p, r.p + 768); r.skip(768);
+      if (version >= 0x106) r.skip(1);
+    }
+    if (version >= 0x106) {
+      for (let n = r.u8(); n > 0; n--) { r.skip(u7(r)); r.skip(768); }
+    }
+    for (let i = version >= 0x105 ? 20 : 11; i > 0; i--) if (r.u8()) r.skip(256);
+    for (let n = r.u8(); n > 0; n--) {
+      const name = r.str(u7(r));
+      const offset = r.u16(); const count = r.u16(); const mode = r.u8();
+      let remap = null;
+      if (mode === 1) { remap = data.slice(r.p, r.p + 256); r.skip(256); }
+      else if (mode === 3) r.skip(1);
+      out.tilesets.push({ name, offset, count, remap });
+    }
+    if (version >= 0x102) {
+      const count = r.i32();
+      out.layers = [];
+      for (let i = 0; i < count; i++) {
+        let id = r.u8(); if (id > 127) id -= 256;
+        r.skip(u7(r));
+        const hidden = !!r.u8();
+        r.skip(2 + 8);                                   // sprite mode/param, rotation
+        if (version >= 0x106) { r.skip(2 + 26); let tex = r.u8(); if (tex > 127) tex -= 256; if (tex < 0) r.skip(65536); }
+        out.layers.push({ id, hidden });
+      }
+    }
+  } catch (e) { /* a newer or odd MLLE stream: keep what was read */ }
+  return out;
+}
+
+// Merge MLLE's extra layers (from the data files, eight each) and its layer
+// order into a parsed level.
+export function applyMlleLayers(level, dataFiles) {
+  const list = level.mlle && level.mlle.layers;
+  if (!list) return;
+  const layers = [...level.layers];
+  for (const f of dataFiles) {
+    for (let i = 0; i < 8; i++) layers.push(f ? f.layers[i] : { used: false, tiles: null });
+  }
+  let next = 8;
+  const order = [];
+  for (const entry of list) {
+    const idx = entry.id >= 0 ? entry.id : next++;
+    if (idx >= layers.length) continue;
+    layers[idx] = { ...layers[idx], index: idx, hidden: entry.hidden };
+    order.push(idx);
+  }
+  if (order.includes(3)) { level.layers = layers; level.layerOrder = order; }
+}
+
+// A tile set made of a base set plus MLLE's extra sets: tile ids past the
+// base continue into each extra set's chosen range.
+export function composeTileset(base, extras, palette) {
+  const parts = [];
+  let count = base.count;
+  for (const x of extras) {
+    parts.push({ start: count, ...x });
+    count += x.count;
+  }
+  const pal = palette ? expandPalette(palette) : base.palette;
+  return { ...base, count, palette: pal, parts, base };
+}
+
+function expandPalette(rgb) {
+  const p = new Uint8Array(1024);
+  for (let i = 0; i < 256; i++) { p[i * 4] = rgb[i * 3]; p[i * 4 + 1] = rgb[i * 3 + 1]; p[i * 4 + 2] = rgb[i * 3 + 2]; p[i * 4 + 3] = 255; }
+  return p;
+}
+
+// Which set and tile a composite id comes from: [tileset, id, remap].
+function source(ts, id) {
+  if (!ts.parts || id < ts.base.count) return [ts.base || ts, id, null];
+  for (let k = ts.parts.length - 1; k >= 0; k--) {
+    const p = ts.parts[k];
+    if (id >= p.start) return [p.ts, id - p.start + p.offset, p.remap];
+  }
+  return [null, 0, null];
 }
 
 // Event word → { id, difficulty, params } (layer events; params are the top 20 bits).

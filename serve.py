@@ -130,7 +130,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 files = sorted(os.listdir(folder))
                 levels = [f for f in files if f.lower().endswith('.j2l') and '-mlle-data-' not in f.lower()]
                 if levels:
-                    packs.append({'dir': name, 'levels': levels, 'tilesets': [f for f in files if f.lower().endswith('.j2t')]})
+                    packs.append({'dir': name, 'levels': levels, 'files': files,
+                                  'tilesets': [f for f in files if f.lower().endswith('.j2t')]})
         body = json.dumps(packs).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')

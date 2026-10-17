@@ -4,7 +4,7 @@
 // like "jj2:xx:2" (pack id, level number).
 
 import { addTrack } from '../audio.js';
-import { parseLevel, parseTileset } from './files.js';
+import { applyMlleLayers, composeTileset, parseLevel, parseTileset } from './files.js';
 import { JJ2Level } from './level.js';
 
 // `music` names the soundtrack of ours a level falls back to when its own
@@ -32,9 +32,23 @@ export const PACKS = [
     levels: [{ file: 'xlmovergrown.j2l', music: 'jungle' }],
   },
   {
+    id: 'episode2',
+    title: 'Episode 2',
+    blurb: "KingofKoopas' long-lost episode: Downtown Chaos, House of the Shells, Chrysalis Caves, Deserto, a shipwreck and Baddy Breeding, with story levels between.",
+    dir: 'Levels/Episode2/',
+    levels: Array.from({ length: 17 }, (_, i) => ({ file: `ep2-${i + 1}.j2l` })),
+  },
+  {
+    id: 'bl18',
+    title: 'BL18',
+    blurb: 'A JJ2+ pack built on scripts and extra tile sets. Many of its tile sets are not in the folder, so most levels show gaps.',
+    dir: 'Levels/BL18/',
+    levels: ['BL18_level01', 'BL18_level02', 'BL18_level03', 'BL18_level04', 'BL18_level05', 'BL18_level06', 'BL18_level07', 'BL18_Guardian', 'BL18_save'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
     id: 'threed',
     title: 'Threed Realms',
-    blurb: 'Needs the retail tile set Jungle1.j2t: copy it into Levels/ThreedRealms v3/ to play.',
+    blurb: 'Needs the retail tile sets Jungle1, Town1 and Diam1 (.j2t) copied into Levels/ThreedRealms v3/ to play.',
     dir: 'Levels/ThreedRealms v3/',
     levels: [{ file: 'ThreedRealms.j2l' }],
   },
@@ -58,7 +72,7 @@ const url = (pack, name) => pack.dir + name.split('/').map(encodeURIComponent).j
 // Find a file in a pack ignoring case (JJ2 names are case-insensitive).
 function packFile(pack, name) {
   const lower = name.toLowerCase();
-  const known = [...pack.levels.map((l) => l.file), ...(pack.tilesets || [])];
+  const known = [...pack.levels.map((l) => l.file), ...(pack.files || pack.tilesets || [])];
   return known.find((f) => f.toLowerCase() === lower) || name;
 }
 
@@ -91,8 +105,22 @@ export function jj2Def(key) {
   def.prepare = async () => {
     if (state.level) return def;
     const level = await fetchParsed(url(pack, entry.file), parseLevel);
-    const tsName = /\.j2t$/i.test(level.tileset) ? level.tileset : `${level.tileset}.j2t`;
-    state.ts = await fetchParsed(url(pack, packFile(pack, tsName)), parseTileset);
+    const j2t = (n) => (/\.j2t$/i.test(n) ? n : `${n}.j2t`);
+    let ts = await fetchParsed(url(pack, packFile(pack, j2t(level.tileset))), parseTileset);
+    if (level.mlle) {
+      // JJ2+ levels: extra tile sets (missing ones leave their tiles empty)
+      // and extra layers from the level's MLLE data files.
+      const extras = await Promise.all(level.mlle.tilesets.map(async (x) => ({
+        ...x, ts: await fetchParsed(url(pack, packFile(pack, j2t(x.name))), parseTileset).catch(() => null),
+      })));
+      def.missing = extras.filter((x) => !x.ts).map((x) => x.name);
+      if (extras.length || level.mlle.palette) ts = composeTileset(ts, extras, level.mlle.palette);
+      const files = Math.ceil(Math.max(0, (level.mlle.layers ? level.mlle.layers.length : 8) - 8) / 8);
+      const base = entry.file.replace(/\.j2l$/i, '');
+      const data = await Promise.all(Array.from({ length: files }, (_, i) => fetchParsed(url(pack, packFile(pack, `${base}-MLLE-Data-${i + 1}.j2l`)), parseLevel).catch(() => null)));
+      applyMlleLayers(level, data);
+    }
+    state.ts = ts;
     state.level = level;
     def.title = level.title || def.title;
     // The level names its successor; follow it when it's in the same pack.
@@ -133,7 +161,8 @@ export async function discoverPacks() {
       PACKS.push(pack);
     }
     pack.tilesets = f.tilesets;
-    for (const file of f.levels) {
+    pack.files = f.files;
+    for (const file of [...f.levels].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))) {
       if (pack.levels.some((l) => l.file.toLowerCase() === file.toLowerCase())) continue;
       pack.levels.push({ file });
       added = true;

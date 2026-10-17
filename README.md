@@ -103,32 +103,52 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 - **Physics**: the original's values (see SPEC.md): floaty 0.125 fall, 0.375
   rise, 8 px/tick movement cap, dash with grace, copter glide 4:1.
 
+## Characters and menus
+
+**New Game** opens JJ2's character select: **Jazz** (copter ears, uppercut),
+**Spaz** (double jump, side kick) or **Lori** (copter ears, flying kick);
+UP + FIRE is the special move, JUMP in the air the second ability. The pick
+is saved, and in party mode your rival sees your character in red. Then the
+**episode select** shows JJ2's episode pictures for this game's nine levels
+and every level pack. The menus use JJ2's own fonts and title screen, the
+level card is JJ2's loading screen and game over asks **Continue?**.
+(Art from `new/New Tilesets/`, cut by `tools/build_sprites.py` with
+`tools/spaz_anims.json`, `lori_anims.json`, `charsel_anims.json`, and by
+`tools/build_font.py`.)
+
 ## Classic JJ2 levels
 
-**CLASSIC JJ2** in the menu plays original Jazz Jackrabbit 2 levels straight
+The episode select also plays original Jazz Jackrabbit 2 levels straight
 from `Levels/`: each folder holds `.j2l` levels with their `.j2t` tile sets
 (and music). Included now:
 
 - **Xenobiotic Xeranthemum 2** (Blade): Oasis, Islands in the Sapphire Sea,
   Twilight Park, Space and Aztec, played in order.
+- **Episode 2** (KingofKoopas): 17 levels in story order. Downtown Chaos (both
+  parts) and Fight Night Street need the retail tile sets `Colon1.j2t` and
+  `Colon2.j2t`; the other 14 play.
 - **Overgrown** (Laro B.): a battle arena, also in PARTY mode.
-- **Threed Realms**: needs the retail tile set `Jungle1.j2t` copied into its
-  folder (it is a JJ2+ scripted level, so its custom weapons won't work).
+- **BL18**: a JJ2+ pack built on scripts and extra tile sets. Valen Village,
+  Chips Challenge and Thermal R.7 load, with gaps where their missing tile
+  sets go; the rest need tile sets that aren't in the folder.
+- **Threed Realms**: needs the retail tile sets `Jungle1`, `Town1` and
+  `Diam1` copied into its folder.
 
-The game reads the files itself (1.20 to TSF/JJ2+): all eight layers with
-their parallax, animated tiles and the warp-horizon sky; collision from the
-tile masks, pixel for pixel; and the events turned into this game's things:
-gems, coins, food, carrots, springs, poles, checkpoints, warps and coin warps,
-text signs, exits, destructible/stomp/speed/collapsing scenery and enemies
-(each JJ2 enemy becomes the closest one we have). Vines, hooks, tubes, water
+The game reads the files itself (1.20 to TSF/JJ2+): all layers with their
+parallax, animated tiles and the warp-horizon sky; JJ2+ (MLLE) levels' extra
+tile sets, palettes and extra layers; collision from the tile masks, pixel
+for pixel; and the events turned into this game's things: gems, coins, food,
+carrots, springs, poles, checkpoints, warps and coin warps, text signs,
+exits, destructible/stomp/speed/collapsing scenery and enemies (each JJ2
+enemy becomes the closest one we have). Vines, hooks, tubes, water
 (swimming), wind, belts, float-up columns, bridges and light zones work as in
-the original. Tracker music (.xm/.mod/.it) plays through libopenmpt
+the original. Tracker music (.xm/.mod/.it/.s3m) plays through libopenmpt
 (`vendor/chiptune3`); .ogg/.mp3 play as they are.
 
-Drop another pack folder into `Levels/` and it appears in the list when you
-run `serve.py`. Not supported yet: bosses (their exit waits where the boss
-stands), moving platforms, triggers, ammo and the other weapons, and JJ2+
-scripts.
+Drop another pack folder into `Levels/` and it appears in the episode select
+when you run `serve.py`. Not supported yet: bosses (their exit waits where
+the boss stands), moving platforms, triggers, the frog/bird morphs, ammo and
+the other weapons, and JJ2+ scripts.
 
 `node tools/check_levels.mjs` checks every level: it searches the spots Kip
 can reach (jumps, super jumps, springs, poles, warps) and lists anything left

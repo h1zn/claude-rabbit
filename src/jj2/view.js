@@ -167,8 +167,9 @@ export class JJ2View {
   drawLayer(ctx, i, cam, time) {
     const layer = this.file.layers[i];
     const cells = this.cells[i];
-    if (!cells) return;
+    if (!cells || layer.hidden) return;
     if (i === 7 && this.texture) { this.drawHorizon(ctx, cam, time); return; }
+    if (layer.index === undefined) layer.index = i;
     const [ox, oy] = this.origin(layer, cam, time);
     const w = layer.w; const h = layer.h;
     const tx0 = Math.floor(ox / 32); const ty0 = Math.floor(oy / 32);
@@ -193,16 +194,20 @@ export class JJ2View {
     }
   }
 
-  // Layers behind the sprites (8 to 4) and in front of them (3 to 1).
+  // Layers behind the sprites (8 to 4, and the sprite layer) and in front of
+  // them (3 to 1). MLLE levels list their layers front to back in any order.
   drawBack(ctx, cam, time) {
     this.tick(time);
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-    for (let i = 7; i >= 3; i--) this.drawLayer(ctx, i, cam, time);
+    const order = this.file.layerOrder;
+    const sprite = order.indexOf(3);
+    for (let k = order.length - 1; k >= sprite; k--) this.drawLayer(ctx, order[k], cam, time);
   }
 
   drawFront(ctx, cam, time) {
-    for (let i = 2; i >= 0; i--) this.drawLayer(ctx, i, cam, time);
+    const order = this.file.layerOrder;
+    for (let k = order.indexOf(3) - 1; k >= 0; k--) this.drawLayer(ctx, order[k], cam, time);
   }
 
   // Warp horizon: the texture laid on a floor and a ceiling meeting at the
