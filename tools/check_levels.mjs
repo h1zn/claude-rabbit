@@ -14,7 +14,7 @@ const OPEN_BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u']);
 const SOLID = new Set(['#', '=', 'i']);
 const SLOPE = new Set(['/', '\\', 'q', 'r', 'y', 'z']);
 // Measured in game with the original physics (tiles of rise): standing jump
-// 4.1, walking jump 4.6, running jump 6.5, super jump 6.5, springs 7.9 /
+// 4.1, walking jump 4.6, running jump 6.8, super jump 8.2, springs 7.9 /
 // 13.2 / 18.5. The search keeps a little margin.
 const JUMP = 3;          // from a standstill
 const WALK_JUMP = 4;     // with 2+ tiles of walk-up

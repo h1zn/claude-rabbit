@@ -77,7 +77,8 @@ running straight to the right:
    and a lava lake, lit by the lava itself.
 9. **Crystal Caverns** (cave): a dark maze of irregular caves.
 
-Levels 5, 6 and 8 recolour existing tilesets with gradient maps (`tilesets.js`).
+Levels 5, 6 and 8 recolour existing tilesets with gradient maps (`gradientMap`
+in `src/art.js`, colour stops in `tilesets.js`).
 
 Every level has three stars to earn (reach the exit, collect 75% of the gems,
 find every secret), two secret areas, a Coin Warp to a bonus room,
@@ -225,7 +226,7 @@ src/sprites.js, paint.js  the few procedural sprites and their painting toolkit
 src/tilesets.js, terrain.js, backdrop.js, sky.js   built-in levels' ground, backdrops, skies, weather
 src/audio.js            JJ2 sound samples, tracker and recorded music, synthesized fallbacks
 src/sfxmap.js           game event -> sound sample number
-src/render.js           drawing, HUD and screens
+src/render.js           world drawing and the in-game HUD
 dev/                    sheet.html (frame viewer), sounds.html (sample listener)
 SPEC.md                 the measured mechanics and where they came from
 ```

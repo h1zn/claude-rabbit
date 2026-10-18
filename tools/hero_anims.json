@@ -1,5 +1,5 @@
 {
-  "sheet": "../../sprites/PC _ Computer - Jazz Jackrabbit 2 _ The Secret Files - Playable Characters - Jazz Jackrabbit.png",
+  "sheet": "../new/New Tilesets/Playable Characters - Jazz Jackrabbit.png",
   "anims": {
     "idle":       { "frames": [0, 26],   "speed": 6, "loop": true },
     "bored":      { "frames": [27, 72],  "speed": 6, "loop": false },

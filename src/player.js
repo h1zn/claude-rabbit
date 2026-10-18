@@ -589,7 +589,7 @@ export class Player {
     this.hoverLeft = PHYS.hoverTicks;
   }
 
-  // An RF blast within 32 px throws the player away (measured: 8 px/tick for
+  // An RF blast within 36 px throws the player away (measured: 8 px/tick for
   // 30 ticks; in the air also up at 12, on the ground a little, growing with range).
   blast(dir, dist) {
     this.rfDir = dir; this.rfBlast = PHYS.rfBlastTicks;

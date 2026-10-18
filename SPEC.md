@@ -39,8 +39,9 @@ step per *game tick*. Values below are converted to pixels per tick.
 | Uppercut | -7.5 px/tick decaying by 0.03125 a tick for 30 ticks | Jazz2 Resurrection | measured |
 | RF blast | an RF missile going off within ~36 px throws the player away at 8 px/tick for 30 ticks (in the air also up at 12) | Jazz2 Resurrection | measured |
 
-Measured in game with these values: standing jump 4.1 tiles, running jump 6.7
-tiles high and about 19 across, super jump 6.7. Checked against the original's
+Measured in game with these values: standing jump 4.1 tiles, running jump 6.8
+tiles high and up to about 24 across (Run held from a full dash), super jump
+about 8.2 (264 px). Checked against the original's
 traces as documented in Jazz2 Resurrection: a held standing jump rises 132 px
 (original 132), a jump released on tick 5 rises 77.1 px (original 77.1), and
 Spaz's double jump adds 84 px (original about 80). Falling is not capped by

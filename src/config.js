@@ -63,7 +63,7 @@ export const PHYS = {
   stompDrift: 12000 / 65536,         // measured: sideways drift during a buttstomp (doubled with Run)
   doubleJump: -8.0,                  // measured: Spaz's double jump launch
   doubleJumpWindow: 30,              // measured: ticks after releasing jump that it stays available
-  rfBlastSpeed: 8.0,                 // measured: an RF blast within 32 px throws the player at 8 px/tick...
+  rfBlastSpeed: 8.0,                 // measured: an RF blast within 36 px throws the player at 8 px/tick...
   rfBlastTicks: 30,                  // ...held for 30 ticks
   rfBlastRise: -12.0,                // measured: rise when blasted in the air
   jumpBufferTicks: 6,                // tuned

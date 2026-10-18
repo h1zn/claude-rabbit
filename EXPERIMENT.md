@@ -40,9 +40,10 @@ owner said so.
   context several times; each time a written summary carried the state
   forward. Commit messages and this file are the durable record.
 
-Sizes at the end: about 12,000 lines of game and tool code in 45 commits,
-17 sprite atlases, 9 hand-built levels and 39 original JJ2 level files the
-game can open.
+Sizes at the end: about 12,000 lines of game and tool code in 23 commits by
+Claude (47 in the history at the merge into main, plus the final audit
+commits), 17 sprite atlases, 9 hand-built levels and 33 original JJ2 levels
+the game can open (39 `.j2l` files, 6 of them MLLE extra-layer data).
 
 ## 2. Timeline
 
@@ -170,9 +171,11 @@ uppercut and kicks moved to the original's real input (crouch, then Jump).
 Speed shoes, the freeze hourglass and the stopwatch became pickups, matching
 JJ2 events the levels already used.
 
-### Phase 9: this document, two more audits, the merge
+### Phase 9: this document, the merge, two more audits
 
-Section 9 records the final audits.
+This file was written and the branch merged into main (`bf2ce1d`, by the
+project owner); the two final audits came after and were merged the same
+way. Section 9 records them.
 
 ## 3. How a frame runs
 
@@ -232,7 +235,8 @@ both.
 
 ### 4.3 Building levels (`src/levels/*.js`, `src/levels/kit.js`)
 
-Levels are code, written with a `Builder`:
+Levels are code, written with a `Builder` (an illustrative mix of calls from
+several levels):
 
 ```js
 const L = new Builder(200, 56);
@@ -240,8 +244,8 @@ L.profile([[0, 22], [26, 22], [30, 18], [40, 18]], 4);   // ground with slopes
 L.carve(115, 46, 11, 4).pool(115, 46, 11, 4);            // a rock pool
 L.weaponBlock(34, 43, 1, 3, 2);                          // bouncer-only door
 L.vine(48, 39, 11).movingPlatform(72, 29, { length: 3 });
-L.put(75, 9, 'Z');                                       // the Queen
-return L.build({ name: 'Shipwreck Shores', theme: 'beach', music: 'beach' });
+L.put(75, 9, 'Z');                                       // a boss (the Queen)
+return L.build({ name: 'Shipwreck Shores', theme: 'meadow', music: 'beach' });
 ```
 
 `kit.js` adds item shapes (arcs, rings, arrows of gems), scenery dressing,
@@ -337,14 +341,18 @@ be cut four ways:
    dizzy stars), which the shape slicer would break into many frames.
 
 Each frame gets an anchor (body centre, feet), so frames from different
-sheets line up. That is how the extra Jazz/Spaz poses from the unused-
-animation sheet merge into the main character atlases. Builds are
-deterministic: rebuilding an unchanged spec gives identical output, which
-was checked before every rebuild.
+sheets line up, as long as the box holds only the body: the final audit
+caught two Spaz animations whose boxes picked up stray pixels from the row
+below (or dizzy stars), which floated him off the ground. That is how the
+extra Jazz/Spaz poses from the unused-animation sheet merge into the main
+character atlases. Builds are deterministic: rebuilding an unchanged spec
+gives identical pixels, checked for every spec in the final audit (which
+also repointed Jazz's spec at the copy of his sheet inside the repo).
 
 Other tools: `build_font.py` (JJ2's fonts into glyph atlases),
-`build_blocks.py` (the shared block tiles), and gradient-map recolouring in
-`tilesets.js` for the three themes without their own tileset.
+`build_blocks.py` (the shared block tiles), and gradient-map recolouring
+(`gradientMap` in `src/art.js`, colour stops in `tilesets.js`) for the three
+themes without their own tileset.
 
 ## 6. Reading original JJ2 levels (`src/jj2/`)
 
