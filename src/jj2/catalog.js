@@ -34,14 +34,14 @@ export const PACKS = [
   {
     id: 'episode2',
     title: 'Episode 2',
-    blurb: "KingofKoopas' long-lost episode: Downtown Chaos, House of the Shells, Chrysalis Caves, Deserto, a shipwreck and Baddy Breeding, with story levels between.",
+    blurb: "KingofKoopas' long-lost episode: House of the Shells, Chrysalis Caves, Deserto, a shipwreck and Baddy Breeding, with story levels between.",
     dir: 'Levels/Episode2/',
     levels: Array.from({ length: 17 }, (_, i) => ({ file: `ep2-${i + 1}.j2l` })),
   },
   {
     id: 'bl18',
     title: 'BL18',
-    blurb: 'A JJ2+ pack built on scripts and extra tile sets. Many of its tile sets are not in the folder, so most levels show gaps.',
+    blurb: 'A JJ2+ pack built on scripts and extra tile sets. Only the levels whose tile sets are in the folder are listed.',
     dir: 'Levels/BL18/',
     levels: ['BL18_level01', 'BL18_level02', 'BL18_level03', 'BL18_level04', 'BL18_level05', 'BL18_level06', 'BL18_level07', 'BL18_Guardian', 'BL18_save'].map((f) => ({ file: `${f}.j2l` })),
   },
@@ -68,6 +68,7 @@ function fetchParsed(url, parse) {
 }
 
 const url = (pack, name) => pack.dir + name.split('/').map(encodeURIComponent).join('/');
+const j2t = (name) => (/\.j2t$/i.test(name) ? name : `${name}.j2t`);
 
 // Find a file in a pack ignoring case (JJ2 names are case-insensitive).
 function packFile(pack, name) {
@@ -102,12 +103,9 @@ export function jj2Def(key) {
   def.tip = pack.blurb;
   def.next = null;
   def.loaded = () => (state.level ? { file: state.level, ts: state.ts } : null);
-  def.prepare = async () => {
-    if (state.level) return def;
-    await discovered();       // the folder listing gives the files' real names
-    const level = await fetchParsed(url(pack, entry.file), parseLevel);
-    // Name and link the level from its own file first, so the menu shows its
-    // real title (and a story chain can skip it) even if a tile set is missing.
+  // Name and link the level from its own file first, so the menu shows its
+  // real title (and a story chain can skip it) even if a tile set is missing.
+  const readHeader = (level) => {
     def.title = (level.title || '').trim() || def.title;
     const bare = (f) => f.toLowerCase().replace(/\.j2l$/, '');
     const j = pack.levels.findIndex((l) => bare(l.file) === bare(level.next || ''));
@@ -116,7 +114,24 @@ export function jj2Def(key) {
     const ids = new Set();
     for (const w of level.events || []) ids.add(w & 0xff);
     def.story = ![63, 64, 65, 66, 44, 45, 72, 73].some((id) => ids.has(id));
-    const j2t = (name) => (/\.j2t$/i.test(name) ? name : `${name}.j2t`);
+  };
+  // Throws when the level can't be played: its file or a tile set it needs
+  // is missing (judged from the folder listing; levels drawn partly from
+  // missing extra sets get the full load's check).
+  def.check = async () => {
+    await discovered();
+    const level = await fetchParsed(url(pack, entry.file), parseLevel);
+    readHeader(level);
+    const known = pack.files || null;
+    const has = (name) => !known || known.some((f) => f.toLowerCase() === name.toLowerCase());
+    if (!has(j2t(level.tileset))) throw new Error(`Needs the tile set ${j2t(level.tileset)}`);
+    if (!known || (level.mlle && level.mlle.tilesets.some((x) => !has(j2t(x.name))))) await def.prepare();
+  };
+  def.prepare = async () => {
+    if (state.level) return def;
+    await discovered();       // the folder listing gives the files' real names
+    const level = await fetchParsed(url(pack, entry.file), parseLevel);
+    readHeader(level);
     let ts = await fetchParsed(url(pack, packFile(pack, j2t(level.tileset))), parseTileset)
       .catch(() => { throw new Error(`Needs the tile set ${j2t(level.tileset)}, which isn't in Levels/${pack.title}/`); });
     if (level.mlle) {
@@ -208,4 +223,32 @@ export function allJJ2() {
   const out = [];
   for (const pack of PACKS) pack.levels.forEach((_, i) => out.push(jj2Def(`jj2:${pack.id}:${i}`)));
   return out;
+}
+
+// Levels that can't be played (a tile set they need isn't in their folder)
+// are left out of the menus. The check runs once, after the folder listing;
+// adding the missing tile set brings a level back.
+let scan = null;
+export function scanPlayable() {
+  if (!scan) {
+    scan = discovered().then(() => Promise.all(allJJ2().map((d) => d.check().then(
+      () => { d.unplayable = false; },
+      () => { d.unplayable = true; },
+    ))));
+  }
+  return scan;
+}
+
+export function playableJJ2() { return allJJ2().filter((d) => !d.unplayable); }
+
+// The level after `key` in its episode's chain, skipping unplayable ones.
+export function nextPlayable(key) {
+  const seen = new Set();
+  while (key && !seen.has(key)) {
+    seen.add(key);
+    const d = jj2Def(key);
+    if (!d || !d.unplayable) return key;
+    key = d.next;
+  }
+  return null;
 }

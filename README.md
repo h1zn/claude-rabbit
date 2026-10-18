@@ -157,19 +157,20 @@ level card is JJ2's loading screen and game over asks **Continue?**.
 
 The episode select also plays original Jazz Jackrabbit 2 levels straight
 from `Levels/`: each folder holds `.j2l` levels with their `.j2t` tile sets
-(and music). Included now:
+(and music). Levels whose tile sets aren't in their folder are left out of
+the menus (adding the missing `.j2t` brings them back). Included now:
 
 - **Xenobiotic Xeranthemum 2** (Blade): Oasis, Islands in the Sapphire Sea,
   Twilight Park, Space and Aztec, played in order.
-- **Episode 2** (KingofKoopas): 17 levels in story order. Downtown Chaos (both
-  parts) and Fight Night Street need the retail tile sets `Colon1.j2t` and
-  `Colon2.j2t`; the other 14 play.
+- **Episode 2** (KingofKoopas): 14 of its 17 levels in story order; Downtown
+  Chaos (both parts) and Fight Night Street need the retail tile sets
+  `Colon1.j2t` and `Colon2.j2t`, and the story skips them.
 - **Overgrown** (Laro B.): a battle arena, also in PARTY mode.
-- **BL18**: a JJ2+ pack built on scripts and extra tile sets. Valen Village,
-  Chips Challenge and Thermal R.7 load, with gaps where their missing tile
-  sets go; the rest need tile sets that aren't in the folder.
-- **Threed Realms**: needs the retail tile sets `Jungle1`, `Town1` and
-  `Diam1` copied into its folder.
+- **BL18**: a JJ2+ pack built on scripts and extra tile sets. Valen Village
+  and Thermal R.7 play (with small gaps where missing extra sets go); the
+  other seven need tile sets that aren't in the folder.
+- **Threed Realms**: hidden until the retail tile sets `Jungle1`, `Town1` and
+  `Diam1` are copied into its folder.
 
 The game reads the files itself (1.20 to TSF/JJ2+): all layers with their
 parallax, animated tiles and the warp-horizon sky; JJ2+ (MLLE) levels' extra

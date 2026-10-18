@@ -8,6 +8,7 @@ import { Audio } from './audio.js';
 import { MAX_CATCHUP_TICKS, TICK_MS, VIEW_H, VIEW_W } from './config.js';
 import { Game } from './game.js';
 import { bindKey, defaultKeys, Input } from './input.js';
+import { nextPlayable } from './jj2/catalog.js';
 import { LEVELS, levelDef } from './levels.js';
 import { Net, Party } from './party.js';
 import { Renderer } from './render.js';
@@ -108,7 +109,7 @@ function showCard(index, fresh) {
       pending.ready = true;
       meta.loading = false;
       meta.title = def.title;
-    }).catch((e) => { meta.error = e.message; meta.loading = false; meta.next = def.next; meta.title = def.title; });
+    }).catch((e) => { meta.error = e.message; meta.loading = false; meta.next = nextPlayable(def.next); meta.title = def.title; });
   }
   audio.stopMusic();
   audio.play('card');
@@ -283,7 +284,7 @@ function tick() {
       if (game.state === 'clear' && game.clearTime > 280 && input.pressed('start')) {
         game.result = null;
         const def = levelDef(game.levelIndex);
-        if (def.jj2) { if (def.next) showCard(def.next, false); else toMenu(); }
+        if (def.jj2) { const next = nextPlayable(def.next); if (next) showCard(next, false); else toMenu(); }
         else if (game.levelIndex + 1 < LEVELS.length) showCard(game.levelIndex + 1, false);
         else game.nextLevel();
       } else if (game.state === 'gameover') {

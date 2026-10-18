@@ -5,7 +5,7 @@
 import { arcadeText, jjText, jjWidth } from './art.js';
 import { VIEW_H, VIEW_W } from './config.js';
 import { ACTION_NAMES, clearKey, defaultKeys, KEY_SLOTS, keyName, REBINDABLE } from './input.js';
-import { allJJ2, discoverPacks, PACKS } from './jj2/catalog.js';
+import { discoverPacks, PACKS, playableJJ2, scanPlayable } from './jj2/catalog.js';
 import { preview } from './jj2/preview.js';
 import { LEVELS, levelDef } from './levels.js';
 import { PARTY_LEVELS } from './party.js';
@@ -52,9 +52,10 @@ export class Screens {
     this.episode = 0;
     this.pack = null;
     this.continueYes = true;
-    this.jj2 = allJJ2();
+    this.jj2 = playableJJ2();
     this.jj2Index = 0;
-    discoverPacks().then((added) => { if (added) this.jj2 = allJJ2(); });
+    // Unplayable levels (missing tile sets) drop out once they're checked.
+    discoverPacks().then(() => scanPlayable()).then(() => { this.jj2 = playableJJ2(); });
     this.pauseIndex = 0;
     this.thumbs = [];
     this.codeBuf = '';
@@ -329,7 +330,8 @@ export class Screens {
   episodes() {
     return [
       { id: 'kip', title: "Kip's Gem Rush", blurb: 'Nine big levels made for this game: beaches, castles, towns, ice, groves, candy clouds, tubes, lava and crystal caves.', count: LEVELS.length },
-      ...PACKS.map((pack) => ({ id: pack.id, title: pack.title, blurb: pack.blurb, pack, count: pack.levels.length })),
+      ...PACKS.map((pack) => ({ id: pack.id, title: pack.title, blurb: pack.blurb, pack, count: this.jj2.filter((d) => d.pack === pack).length }))
+        .filter((ep) => ep.count > 0),
     ];
   }
 
@@ -337,6 +339,7 @@ export class Screens {
     const ctx = this.ctx;
     this.big('EPISODE SELECT', VIEW_W / 2, 14, { align: 'center', scale: 0.5 });
     const eps = this.episodes();
+    this.episode = Math.min(this.episode, eps.length - 1);   // the list can shrink after the check
     eps.forEach((ep, i) => {
       const on = i === this.episode;
       const y = 58 + i * 34;
@@ -470,6 +473,7 @@ export class Screens {
     // Up to 11 rows, scrolling with the selection; the last row is Back.
     const rows = [...list, null];
     const shown = 11;
+    this.jj2Index = Math.min(this.jj2Index, list.length);
     const first = Math.max(0, Math.min(rows.length - shown, this.jj2Index - 5));
     rows.slice(first, first + shown).forEach((def, k) => {
       const n = first + k;
