@@ -4,6 +4,7 @@
 import { ENEMY, PHYS, PLAYER, TILE } from './config.js';
 import { hash2 } from './paint.js';
 import { frameAt } from './sheets.js';
+import { CRATE_WEAPONS, WEAPONS } from './weapons.js';
 
 export function overlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -11,13 +12,14 @@ export function overlap(a, b) {
 
 // ---------------------------------------------------------------- enemies
 
-class Enemy {
+export class Enemy {
   constructor(type, x, y, w, h, hp, score) {
     Object.assign(this, { type, x, y, w, h, hp, score });
     this.prevX = x; this.prevY = y;
     this.vx = 0; this.vy = 0;
     this.facing = -1;
     this.flash = 0;
+    this.frozen = 0;      // ticks left frozen by the frostbiter
     this.dead = false;
     this.onGround = false;
     this.t = Math.floor(Math.random() * 60);
@@ -35,7 +37,7 @@ class Enemy {
   kill(game) {
     if (this.dead) return;
     this.dead = true;
-    game.enemiesKilled++;
+    if (!this.counted) game.enemiesKilled++;   // spawned mid-level: not in the tally
     game.audio.play('kill');
     game.explode(this.cx, this.y + this.h / 2, this.color || '#ffd54a');
     game.addScore(this.score * game.bump(), this.cx, this.y);
@@ -116,7 +118,9 @@ export class Shell extends Enemy {
     if (hit.left || hit.right) { this.vx = -this.vx; game.audio.play('hit'); }
     if (this.vx) {
       for (const e of game.enemies) {
-        if (e !== this && !e.dead && e.type !== 'shell' && overlap(this, e)) e.kill(game);
+        if (e === this || e.dead || e.type === 'shell' || !overlap(this, e)) continue;
+        // Bosses take a knock and send the shell back.
+        if (e.boss) { e.damage(game, 3); this.vx = -this.vx; this.x += this.vx * 2; } else e.kill(game);
       }
     }
   }
@@ -485,10 +489,26 @@ export class Pickup {
     if (ch === '+') return new Pickup('carrot', x - 3, y - 4, { w: 22, h: 22 });
     if (ch === '%') return new Pickup('carrot', x - 3, y - 4, { w: 22, h: 22, full: true });
     if (ch === '1') return new Pickup('life', x - 4, y - 4, { w: 24, h: 22 });
-    if (ch === 'A') return new Pickup('crate', x - 4, ty * TILE + TILE - 22, { w: 24, h: 22, needsHit: true });
+    // Gun crates hold ammo for one weapon, picked by where the crate stands.
+    if (ch === 'A') return Pickup.crate(tx, ty, CRATE_WEAPONS[Math.floor(hash2(tx, ty, 7) * CRATE_WEAPONS.length)], 10);
     if (ch === 'Q') return new Pickup('shield', x - 4, ty * TILE + TILE - 30, { w: 28, h: 30, needsHit: true });
     if (ch === 'F') return new Pickup('fastfire', x - 4, y - 4, { w: 24, h: 22 });
     return null;
+  }
+
+  // Weapon pickups placed as level objects (see Builder.ammo and JJ2Level).
+  static fromObject(o) {
+    const x = o.tx * TILE + 8; const y = o.ty * TILE + 8;
+    if (o.type === 'ammo') return new Pickup('ammo', x - 2, y - 2, { w: 20, h: 20, weapon: o.weapon, amount: o.amount || 3 });
+    if (o.type === 'ammoCrate') return Pickup.crate(o.tx, o.ty, o.weapon, 15);
+    if (o.type === 'powerup') return new Pickup('powerup', x - 6, o.ty * TILE + TILE - 32, { w: 28, h: 32, weapon: o.weapon, needsHit: true });
+    if (o.type === 'item') return new Pickup('item', x - 4, y - 4, { w: 24, h: 24, item: o.kind });
+    if (o.type === 'bombCrate') return new Pickup('crate', x - 4, o.ty * TILE + TILE - 22, { w: 24, h: 22, needsHit: true, bomb: true });
+    return null;
+  }
+
+  static crate(tx, ty, weapon, amount) {
+    return new Pickup('crate', tx * TILE + 4, ty * TILE + TILE - 22, { w: 24, h: 22, needsHit: true, weapon, amount });
   }
 
   update(game) {
@@ -511,7 +531,14 @@ export class Pickup {
     if (this.kind === 'life') return frameAt(a.oneUp, this.t, 5);
     if (this.kind === 'fastfire') return frameAt(a.fastfire, this.t, 4);
     if (this.kind === 'shield') return frameAt(a.shieldMonitor, this.t, 6);
-    return a.ammoCrate.frames[0];
+    if (this.kind === 'ammo') return frameAt(a[WEAPONS[this.weapon].icon], this.t, 5);
+    if (this.kind === 'item') return frameAt(art.beta.anims[{ fastFeet: 'speedShoes', freeze: 'hourglass', stopwatch: 'stopwatch' }[this.item]], this.t, 5);
+    if (this.kind === 'powerup') {
+      const w = WEAPONS[this.weapon];
+      return frameAt(a[this.weapon === 1 && this.spaz ? 'monBlasterSpaz' : w.mon], this.t, 6);
+    }
+    const k = this.bomb ? 5 : this.weapon ? WEAPONS[this.weapon].crate : 0;
+    return a.ammoCrate.frames[k === undefined ? 0 : k];
   }
 
   collect(game) {
@@ -574,11 +601,50 @@ export class Pickup {
       game.audio.play('checkpoint');
       game.banner('SWITCH!', 60);
       game.explode(cx, cy, '#c08a4e');
+    } else if (this.kind === 'crate' && this.bomb) {
+      // A bomb crate goes off like TNT.
+      game.addScore(300, cx, this.y);
+      game.blast(cx, cy, 72, { weapon: 7, damage: 5, big: true });
     } else if (this.kind === 'crate') {
-      p.spreadAmmo += 30;
+      p.addAmmo(this.weapon, this.amount);
       game.addScore(300, cx, this.y);
       game.audio.play('crate');
       game.explode(cx, cy, '#c08a4e');
+      game.banner(`${WEAPONS[this.weapon].name} +${this.amount}`, 50);
+    } else if (this.kind === 'ammo') {
+      p.addAmmo(this.weapon, this.amount);
+      game.addScore(100, cx, this.y);
+      game.audio.play('ammo');
+      game.effect('sparkle', cx, cy);
+    } else if (this.kind === 'item') {
+      game.addScore(500, cx, this.y);
+      game.audio.play('rush');
+      game.effect('sparkle', cx, cy);
+      if (this.item === 'fastFeet') {
+        p.fastFeet = PHYS.fastFeetTicks;
+        game.banner('SPEED SHOES!', 70);
+      } else if (this.item === 'freeze') {
+        // The hourglass freezes every enemy around.
+        for (const e of game.enemies) {
+          if (e.dead || e.freezable === false || Math.hypot(e.cx - p.cx, e.y - p.y) > 400) continue;
+          e.frozen = Math.max(e.frozen, 420);
+        }
+        game.audio.play('freeze');
+        game.flash('#bfe8ff', 8);
+        game.banner('FREEZE!', 70);
+      } else if (this.item === 'stopwatch') {
+        // Extra time for a shield (JJ2 "shield time").
+        if (p.shield > 0) { p.shield += 700; game.banner('+10 SECONDS SHIELD!', 70); } else game.addScore(500, cx, this.y);
+      }
+    } else if (this.kind === 'powerup') {
+      // Manual: a power-up monitor upgrades its gun's shots.
+      p.powered[this.weapon] = true;
+      if (this.weapon !== 1) p.addAmmo(this.weapon, 25);   // measured
+      p.selectWeapon(this.weapon);
+      game.addScore(1000, cx, this.y);
+      game.audio.play('rush');
+      game.banner(`${WEAPONS[this.weapon].name} POWER-UP!`, 80);
+      game.explode(cx, cy, '#ffd54a');
     }
   }
 }
@@ -628,6 +694,8 @@ export class Spring {
       p.vy = PHYS.springs[this.color];
       p.jumping = false; p.jumpCut = false; p.onGround = false; p.stomping = false;
       p.hoverLeft = PHYS.hoverTicks;
+      // Measured: a spring hands Spaz's double jump back, for when its rise is over.
+      p.doubleJumped = false; p.springDj = true;
       p.springLock = 0;
       this.launch(game, p.cx, this.y + 6);
     }
@@ -695,6 +763,9 @@ export class Sign {
         this.speed = 0.6 + Math.abs(game.player.vx) * 0.18;
         game.party.win(game);
       } else if (game.levelTime % 60 === 0) game.banner('NEED 100 GEMS!', 50);
+    } else if (!game.party && game.state === 'play' && !game.player.dead && overlap(this, game.player) && game.bossGuarding()) {
+      // A boss guards the exit.
+      if (game.levelTime % 60 === 0) game.banner('DEFEAT THE BOSS FIRST!', 50);
     } else if (!game.party && game.state === 'play' && !game.player.dead && overlap(this, game.player)) {
       // Measured: the sign spins faster the faster Kip runs into it; 1000 points.
       this.hit = 1;
@@ -808,30 +879,7 @@ export class Hint {
   }
 }
 
-// ---------------------------------------------------------------- shots, effects and particles
-
-export class Shot {
-  constructor(x, y, vx, vy, spread) {
-    Object.assign(this, { x, y, vx, vy, spread, w: 14, h: 8, life: PLAYER.shotLife, dead: false });
-    this.prevX = x; this.prevY = y;
-  }
-
-  update(game) {
-    this.prevX = this.x; this.prevY = this.y;
-    this.vx += Math.sign(this.vx) * PLAYER.shotAccel;
-    this.x += this.vx; this.y += this.vy;
-    if (--this.life <= 0) this.dead = true;
-    const tx = Math.floor((this.x + this.w / 2) / TILE);
-    const ty = Math.floor((this.y + this.h / 2) / TILE);
-    if (game.hitTile(tx, ty)) {
-      this.dead = true;
-    } else if (game.level.shotHits(this.x + this.w / 2, this.y + this.h / 2)) {
-      this.dead = true;
-      game.effect('hitSpark', this.x + this.w / 2, this.y + this.h / 2);
-    }
-    if (game.levelTime % 2 === 0) game.trail(this.x + 4, this.y + 4, this.spread ? '#ffb02e' : '#2ad8ff');
-  }
-}
+// ---------------------------------------------------------------- effects and particles
 
 // A one-shot sprite animation from the effects sheet, centred on (x, y).
 export class Effect {

@@ -1,4 +1,4 @@
-import { Builder, over, shape } from './kit.js';
+import { Builder, over, shape, weaponVault } from './kit.js';
 
 // Town: a street of houses you can enter and climb, rooftops above, a sky
 // garden over the tallest roof, sewers under the street, and the clock tower
@@ -42,7 +42,8 @@ export function carrotusTown() {
   L.put(70, STREET - 1, 'C');
   L.put(160, STREET - 1, 'C');
   L.warp(112, STREET - 1, 'back3');
-  L.on(10, 'A', 30);
+  // Missiles: a crate on the street and more down the road.
+  L.ammoCrate(10, 35, 4).ammo(20, 35, 4).ammo(58, 35, 4);
   // Alleys: springs and poles up to the roofs.
   L.put(39, STREET - 1, 'T').put(69, STREET - 1, 'T').put(132, STREET - 1, 'T').put(177, STREET - 1, 'T');
   L.put(101, 22, 'H').put(163, 22, 'H');
@@ -93,6 +94,12 @@ export function carrotusTown() {
   L.put(80, 54, '1').put(81, 54, '@');
 
   for (const c of [20, 64, 140]) L.on(c, '+', 30);
+  // A sewer vault that only a missile opens.
+  weaponVault(L, 35, 46, 4, { loot: 'b' });
+  L.hint(26, 46, 'This vault opens only to MISSILES.\nSelect them with C or 4.');
+  // Schwartzenguard patrols the east end of the street.
+  L.put(180, 35, 'V');
+  L.item(15, 35, 'fastFeet');                  // speed shoes for the long street
   return L.build({ name: 'Carrotus Town', theme: 'town', music: 'carrotus', horizon: STREET });
 }
 carrotusTown.title = 'Carrotus Town';

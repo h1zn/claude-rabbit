@@ -31,9 +31,20 @@ step per *game tick*. Values below are converted to pixels per tick.
 | Terminal fall speed | 12.0 px/tick | player update | measured |
 | Springs | red -16, green -24, blue -32 (about 8, 13 and 19 tiles with the rise cap) | `sub_404430` | measured |
 | Butt-stomp speed | 10 px/tick | Jazz2 Resurrection | measured |
+| Butt-stomp drift | a flat 12000/65536 px/tick sideways while held (doubled with Run), through the pause and the descent | Jazz2 Resurrection | measured |
+| Butt-stomp enemy bounce | a flat 13 px/tick, rising at the released rate (0.875) even with jump held | Jazz2 Resurrection | measured |
+| Landing allowance | a ledge up to 20 px above falling feet is landed on (the original clears a 2-tile walk-off and a 5-tile dash, not a 3-tile walk or a 6-tile dash); 24 px in JJ2 levels and 22 in ours reproduce that with our narrower feet | Jazz2 Resurrection | measured / fitted |
+| Spaz double jump | a straight 8 px/tick launch, open for 30 ticks after jump is released; a spring hands it back for when its rise is over | Jazz2 Resurrection | measured |
+| Uppercut | -7.5 px/tick decaying by 0.03125 a tick for 30 ticks | Jazz2 Resurrection | measured |
+| RF blast | an RF missile going off within ~36 px throws the player away at 8 px/tick for 30 ticks (in the air also up at 12) | Jazz2 Resurrection | measured |
 
 Measured in game with these values: standing jump 4.1 tiles, running jump 6.7
-tiles high and about 19 across, super jump 6.7. Jazz2 Resurrection
+tiles high and about 19 across, super jump 6.7. Checked against the original's
+traces as documented in Jazz2 Resurrection: a held standing jump rises 132 px
+(original 132), a jump released on tick 5 rises 77.1 px (original 77.1), and
+Spaz's double jump adds 84 px (original about 80). Falling is not capped by
+the 8 px/tick movement cap, only rising and running are, so terminal speed is
+the full 12 px/tick, as in the original. Jazz2 Resurrection
 (github.com/deathkiller/jazz2-native, `Player.h`) documents the original's
 per-tick values from traces of the real game; they agree with the IDA reads
 where both exist.
@@ -85,6 +96,7 @@ Only rules and numbers are used here; no art, names or level data.
 | Powered blaster | 7 px/tick, +0.1875, 30-tick life, 2 damage | measured |
 | Bouncer | 5 px/tick, 105-tick life | measured |
 | Seeker | 2 px/tick, homing, 140-tick life, 2 damage | measured |
+| Ice, RF, toaster, TNT, pepper, electro | speeds, lives and damage in `src/weapons.js` follow the manual's descriptions (frostbiter freezes 210 ticks, 350 powered; TNT 72 px blast, 280-tick fuse) | tuned |
 
 ### Enemies (behaviour routines named by address)
 

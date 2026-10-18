@@ -11,6 +11,8 @@ const BINDINGS = {
   pause: ['KeyP', 'Escape'],
   start: ['Enter', 'Space'],
   mute: ['KeyM'],
+  weapon: ['KeyC', 'Tab'],   // next weapon with ammo
+  ...Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`w${i + 1}`, [`Digit${i + 1}`, `Numpad${i + 1}`]])),
 };
 
 export class Input {

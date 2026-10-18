@@ -1,0 +1,56 @@
+{
+  "sheet": "../new/sprites other movements.png",
+  "minBand": 10,
+  "anims": {
+    "speedShoes": {
+      "cols": [
+        322,
+        886,
+        652,
+        910
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "hourglass": {
+      "cols": [
+        788,
+        783,
+        938,
+        812
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "stopwatch": {
+      "cols": [
+        858,
+        828,
+        1108,
+        860
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "potion": {
+      "cols": [
+        668,
+        862,
+        872,
+        892
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "exitDoor": {
+      "cols": [
+        328,
+        795,
+        618,
+        842
+      ],
+      "speed": 4,
+      "loop": false
+    }
+  }
+}

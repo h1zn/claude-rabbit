@@ -8,6 +8,10 @@ import { TILE } from '../config.js';
 import { Level } from '../level.js';
 import { cleanText, decodeEvent, eventFields, tileMask } from './files.js';
 
+// JJ2 boss events -> our boss characters (src/bosses.js); other bosses stay
+// ordinary enemies.
+const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O' };
+
 // Event ids (JJ2 numbering).
 export const EV = {
   ONE_WAY: 1, HURT: 2, VINE: 3, HOOK: 4, SLIDE: 5, H_POLE: 6, V_POLE: 7, FLY_OFF: 8,
@@ -17,14 +21,14 @@ export const EV = {
   EOL_SIGN: 81, SAVE_POINT: 83, BRIDGE: 153, LIGHT_STEADY: 148, LIGHT_PULSE: 149, LIGHT_FLICKER: 150,
   DESTRUCT: 185, DESTRUCT_BOMB: 186, COLLAPSE: 187, BUTTSTOMP: 188, GEMSTOMP: 189,
   TUBE: 206, TEXT: 207, SET_WATER: 208, GENERATOR: 216, WARP_ORIGIN: 230, WARP_TARGET: 240, GEM_RING: 192,
-  LAVA: 122, TRIGGER_CRATE: 95, WATER_BLOCK: 233, TRIGGER_AREA: 234, TRIGGER_ZONE: 246,
+  LAVA: 122, TRIGGER_CRATE: 95, ACTIVATE_BOSS: 28, WATER_BLOCK: 233, TRIGGER_AREA: 234, TRIGGER_ZONE: 246,
 };
 
 // Events that become an entity character of this game.
 const CHAR = {
   44: '$', 45: '@', 63: '*', 64: 'g', 65: 'b', 66: 'v', 67: 'b', 97: '*', 98: 'g', 99: 'b',
   72: '+', 73: '%', 88: '%', 80: '1', 47: '+', 50: '+', 48: '1', 51: '1',
-  46: 'A', 69: 'A', 53: 'A', 54: 'A', 55: 'A', 56: 'A', 57: 'A', 131: 'A', 132: 'A', 133: 'A', 134: 'A', 135: 'A', 136: 'A', 219: 'A', 220: 'A', 221: 'A',
+  46: 'A', 69: 'A', 219: 'A',
   61: 'F', 74: 'Q', 75: 'Q', 76: 'Q', 227: 'Q', 83: 'C',
   85: 'S', 86: 'T', 87: 'U', 60: 'T',
   // Enemies, by how they move: walkers, hoppers, flyers, shooters.
@@ -38,6 +42,12 @@ const CHAR = {
 for (let id = 141; id <= 147; id++) CHAR[id] = 'o';
 for (let id = 154; id <= 182; id++) CHAR[id] = 'o';
 const BOSSES = new Set([101, 114, 151, 195, 198, 199, 200, 201, 202, 235, 241]);
+// Weapon events -> weapon number (src/weapons.js): ammo (+3), ammo crates
+// and power-up monitors.
+const AMMO_EV = { 33: 2, 34: 3, 35: 4, 36: 5, 37: 6, 38: 7, 39: 8, 40: 9 };
+const CRATE_EV = { 53: 3, 54: 2, 55: 4, 56: 5, 57: 6, 58: 7 };
+const POWER_EV = { 131: 1, 132: 2, 133: 3, 134: 4, 135: 5, 136: 6, 220: 8, 221: 9 };
+const BOMB_CRATE = 52; const BOMB = 43;
 
 // Cell kinds for collision.
 const SOLID = 0; const ONE_WAY = 1; const PASS = 2;
@@ -125,6 +135,7 @@ export class JJ2Level extends Level {
     const starts = {};
     let exits = 0;
     const bosses = [];
+    const armed = new Set([1]);        // weapons the level gives ammo for ('blast': explosives)
     const put = (tx, ty, ch) => { if (tx >= 0 && ty >= 0 && tx < w && ty < h) this.entities.push({ ch, tx, ty }); };
 
     for (let ty = 0; ty < h; ty++) {
@@ -161,8 +172,11 @@ export class JJ2Level extends Level {
             break;
           case EV.DESTRUCT: case EV.DESTRUCT_BOMB: case EV.BUTTSTOMP: case EV.GEMSTOMP: case EV.COLLAPSE: {
             if (!mask) break;
-            const [, speed] = id === EV.DESTRUCT ? eventFields(ev.params, [10, 5]) : [0, 0];
+            const [, speed, weapon] = id === EV.DESTRUCT ? eventFields(ev.params, [10, 5, 4]) : [0, 0, 0];
             ch = speed > 0 ? 'p' : id === EV.BUTTSTOMP || id === EV.GEMSTOMP ? 'm' : 'x';
+            // Weapon blocks: one weapon breaks them; bomb scenery, explosions.
+            const need = id === EV.DESTRUCT_BOMB ? 7 : !speed && weapon > 1 && weapon <= 9 ? weapon : 0;
+            if (need) { ch = 'W'; this.weapons.set(`${tx},${ty}`, need); }
             // Collapsing scenery ('K') only gives way under the player's feet.
             if (id === EV.COLLAPSE) { this.collapse.set(i, 0); ch = 'K'; }
             // Destructible animated tiles hold their first frame until broken,
@@ -268,7 +282,24 @@ export class JJ2Level extends Level {
           case EV.LAVA:
             this.areas[i] = EV.HURT;
             break;
-          case EV.TRIGGER_ZONE: case EV.WATER_BLOCK:
+          case 33: case 34: case 35: case 36: case 37: case 38: case 39: case 40:
+            this.objects.push({ type: 'ammo', tx, ty, weapon: AMMO_EV[id] });
+            armed.add(AMMO_EV[id]);
+            break;
+          case 53: case 54: case 55: case 56: case 57: case 58:
+            this.objects.push({ type: 'ammoCrate', tx, ty, weapon: CRATE_EV[id] });
+            armed.add(CRATE_EV[id]);
+            break;
+          case 131: case 132: case 133: case 134: case 135: case 136: case 220: case 221:
+            this.objects.push({ type: 'powerup', tx, ty, weapon: POWER_EV[id], ev: id });
+            if (id < 220) armed.add(POWER_EV[id]);
+            break;
+          case BOMB_CRATE: this.objects.push({ type: 'bombCrate', tx, ty }); armed.add('blast'); break;
+          case 79: this.objects.push({ type: 'item', tx, ty, kind: 'fastFeet' }); break;
+          case 89: this.objects.push({ type: 'item', tx, ty, kind: 'stopwatch' }); break;
+          case 90: this.objects.push({ type: 'item', tx, ty, kind: 'freeze' }); break;
+          case BOMB: this.objects.push({ type: 'bomb', tx, ty }); armed.add('blast'); break;
+          case EV.TRIGGER_ZONE: case EV.WATER_BLOCK: case EV.ACTIVATE_BOSS:
             this.areas[i] = id; this.areaParams[i] = ev.params;
             break;
           case EV.LIGHT_STEADY: case EV.LIGHT_PULSE: case EV.LIGHT_FLICKER:
@@ -280,11 +311,27 @@ export class JJ2Level extends Level {
             this.areas[i] = id; this.areaParams[i] = ev.params;
             break;
           default:
-            if (BOSSES.has(id)) { bosses.push([tx, ty]); put(tx, ty, 'n'); break; }
+            if (BOSSES.has(id)) { bosses.push([tx, ty]); put(tx, ty, BOSS_CHAR[id] || 'n'); break; }
             if (CHAR[id]) put(tx, ty, CHAR[id]);
         }
         this.tiles[ty][tx] = ch;
       }
+    }
+
+    // Events 220/221 (pepper and electro power-ups) by the dozen are some
+    // JJ2+ script's markers, not monitors.
+    if (this.objects.filter((o) => o.ev >= 220).length > 8) this.objects = this.objects.filter((o) => !(o.ev >= 220));
+    for (const o of this.objects) if (o.ev >= 220) armed.add(o.weapon);
+
+    // A weapon block whose weapon the level never hands out (players carried
+    // ammo between levels in the original) breaks with any shot instead, so
+    // no level is left impassable. Missiles and TNT count as explosives.
+    if ([4, 5, 7].some((n) => armed.has(n))) armed.add('blast');
+    for (const [key, need] of this.weapons) {
+      if (armed.has(need === 7 ? 'blast' : need)) continue;
+      const [tx, ty] = key.split(',').map(Number);
+      this.tiles[ty][tx] = 'x';
+      this.weapons.delete(key);
     }
 
     for (const b of this.bridges) {
@@ -300,7 +347,9 @@ export class JJ2Level extends Level {
     const start = (starts[EV.JAZZ_START] || starts[EV.SPAZ_START] || starts[EV.LORI_START] || starts[EV.MP_START] || [[2, 2]]);
     this.starts = starts[EV.MP_START] || start;
     put(start[0][0], start[0][1], 'P');
-    // A level that ends with a boss fight: the exit waits where the boss was.
+    // A level that ends with a boss fight: beating the boss ends it (the exit
+    // also waits where the boss was).
+    this.bossEnds = !exits && bosses.length > 0;
     if (!exits && !party) {
       const [bx, by] = bosses[0] || start[start.length - 1];
       put(bx, by, 'E');
@@ -374,7 +423,7 @@ export class JJ2Level extends Level {
   }
 
   // Tile-level answers for enemies, shots and the HUD.
-  solid(tx, ty) { const c = this.at(tx, ty); return c === '=' || c === '#' || c === 'x' || c === 'm' || c === 'p' || c === 'K'; }
+  solid(tx, ty) { const c = this.at(tx, ty); return c === '=' || c === '#' || c === 'x' || c === 'm' || c === 'p' || c === 'K' || c === 'W'; }
   slope(tx, ty) { return this.at(tx, ty) === 's'; }
   groundish(tx, ty) { return this.solid(tx, ty) || this.at(tx, ty) === 's' || this.at(tx, ty) === '^'; }
   shotHits(x, y) { return this.solidPx(x, y); }
@@ -431,9 +480,9 @@ export class JJ2Level extends Level {
 
   // Pixel-stepped movement against the masks. Walls block the body above its
   // feet; the feet climb slopes and lips up to `stepH` px per pixel moved.
-  move(body, dx, dy, { dropThrough = false, climb = false } = {}) {
+  move(body, dx, dy, { dropThrough = false, climb = false, land = 0 } = {}) {
     const result = { left: false, right: false, top: false, bottom: false, slope: false };
-    const stepH = climb ? 10 : 3;
+    const stepH = climb ? 10 : Math.max(3, land);
     const enemy = !!body.type && climb;   // stop-enemy areas turn walkers only
     // Feet already inside a one-way tile (dropping through it, or after
     // jumping up into it) don't land on it until they are out. Checked before
@@ -448,6 +497,14 @@ export class JJ2Level extends Level {
       const edge = dir > 0 ? nx + body.w - 0.001 : nx;
       let blocked = !this.columnClear(edge, body.y, body.y + body.h - stepH);
       if (!blocked && enemy && this.areaAt(edge, body.y + body.h - 4) === EV.STOP_ENEMY) blocked = true;
+      if (!blocked && land && !climb) {
+        // Landing allowance: falling onto a ledge's edge lifts the body
+        // over it, as long as the leading edge clears within `land` px.
+        let u = 0;
+        while (u <= land && !this.columnClear(edge, body.y - u, body.y + body.h - u)) u++;
+        if (u > land || (u > 0 && !this.headClear(body, body.y - u))) blocked = true;
+        else { body.x = nx; body.y -= u; left -= step; continue; }
+      }
       if (!blocked) {
         const ox = body.x; const oy = body.y;
         body.x = nx;

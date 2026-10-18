@@ -3,18 +3,43 @@
 import { arcadeText } from './art.js';
 import { PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import { frameAt } from './sheets.js';
-import { BLOCKS } from './level.js';
+import { AREA, BLOCKS } from './level.js';
 import { THEME_TILESET } from './tilesets.js';
+import { TNT, WEAPONS } from './weapons.js';
 
 // Block tile -> index in the shared block sheet (tools/build_blocks.py).
-const BLOCK_SPRITE = { x: 0, m: 5, p: 6, Y: 7, u: 8, i: 8 };
+const BLOCK_SPRITE = { x: 0, m: 5, p: 6, Y: 7, u: 8, i: 8, W: 6 };
 
 function lerp(a, b, t) { return a + (b - a) * t; }
+
+// Poses only Jazz and Spaz have (new/sprites other movements.png): what
+// Lori shows instead.
+const HERO_FALLBACK = { shootUp: 'look', shootDiag: 'run', shootDiagAir: 'shootAir', shootRun: 'run', fidget: 'idle', knockdown: 'dead', dizzy: 'hurt' };
+
+// A sheet frame washed in ice blue, for frozen enemies (made once per frame).
+const icedFrames = new WeakMap();
+function iced(f) {
+  if (icedFrames.has(f)) return icedFrames.get(f);
+  const wash = (src) => {
+    const c = document.createElement('canvas');
+    c.width = f.w; c.height = f.h;
+    const g = c.getContext('2d');
+    g.drawImage(src, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = 'rgba(140,215,255,0.62)';
+    g.fillRect(0, 0, f.w, f.h);
+    return c;
+  };
+  const out = { ...f, right: wash(f.right), left: wash(f.left) };
+  icedFrames.set(f, out);
+  return out;
+}
 
 export class Renderer {
   constructor(ctx, art) {
     this.ctx = ctx;
     this.art = art;
+    this.iced = iced;
     ctx.imageSmoothingEnabled = false;
   }
 
@@ -78,6 +103,7 @@ export class Renderer {
     this.debris(game);
     this.popups(game);
     this.decor(game, cam, true);
+    this.pools(game, cam);
     ctx.restore();
 
     if (view) {
@@ -128,7 +154,7 @@ export class Renderer {
       if (color) glows.push([x, y, r * 0.8, color, strength]);
     };
     light(lerp(p.prevX, p.x, alpha) + p.w / 2, lerp(p.prevY, p.y, alpha) + p.h / 2, 150 * flicker);
-    for (const s of game.shots) light(s.x + s.w / 2, s.y + s.h / 2, 56, 0.8, '255,220,120');
+    for (const s of game.shots) light(s.x + s.w / 2, s.y + s.h / 2, s.weapon === 6 ? 40 : 56, 0.8, WEAPONS[s.weapon].glow);
     for (const b of game.enemyShots) light(b.x + 8, b.y + 8, 40, 0.6, '255,140,60');
     const GEM = { red: '255,60,110', green: '60,255,140', blue: '80,150,255', purple: '200,90,255' };
     for (const k of game.pickups) if (k.kind === 'gem') light(k.x + k.w / 2, k.y + k.h / 2, 34, 0.5, GEM[k.color]);
@@ -233,6 +259,8 @@ export class Renderer {
     const ty0 = Math.max(0, Math.floor(cam.y / TILE)); const ty1 = Math.min(level.h - 1, Math.floor((cam.y + VIEW_H) / TILE));
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
+        const area = level.areas[ty * level.w + tx];
+        if (area === AREA.VINE || area === AREA.HOOK) this.vine(game, tx, ty, area === AREA.HOOK);
         const ch = level.tiles[ty][tx];
         if (ch === '~') { this.lava(game, tx, ty); continue; }
         if (!BLOCKS.has(ch)) continue;
@@ -241,10 +269,58 @@ export class Renderer {
         if (ch === 'i') ctx.globalAlpha = 0.3 + Math.sin(game.time / 10) * 0.08;
         ctx.drawImage(this.art.blocks[k], tx * TILE, ty * TILE);
         ctx.globalAlpha = 1;
+        if (ch === 'W') {
+          // Manual: the weapon that breaks it is pictured on its face.
+          const n = level.weapons.get(`${tx},${ty}`) || 1;
+          const f = this.art.items.anims[WEAPONS[n].icon].frames[0];
+          const s = Math.min(1, 24 / Math.max(f.w, f.h));
+          ctx.drawImage(f.right, Math.round(tx * TILE + 16 - (f.w * s) / 2), Math.round(ty * TILE + 16 - (f.h * s) / 2), Math.round(f.w * s), Math.round(f.h * s));
+        }
       }
     }
   }
 
+
+  // A vine strung across a tile (leaves sway), or a hook hanging from above.
+  vine(game, tx, ty, hook) {
+    const ctx = this.ctx;
+    const x = tx * TILE; const y = ty * TILE + 8;
+    if (hook) {
+      ctx.fillStyle = '#7a7f8a'; ctx.fillRect(x + 15, ty * TILE, 2, 8);
+      ctx.fillStyle = '#c8ccd8'; ctx.fillRect(x + 12, y, 8, 2); ctx.fillRect(x + 12, y - 3, 2, 3);
+      return;
+    }
+    ctx.fillStyle = '#3c6a1e'; ctx.fillRect(x, y, TILE, 3);
+    ctx.fillStyle = '#6ab83a'; ctx.fillRect(x, y, TILE, 1);
+    for (let k = 0; k < 3; k++) {
+      const lx = x + 4 + k * 11; const sway = Math.round(Math.sin(game.time / 20 + tx * 1.7 + k) * 1.5);
+      ctx.fillStyle = k % 2 ? '#4f9a2c' : '#78c848';
+      ctx.fillRect(lx + sway, y + 3, 4, 3); ctx.fillRect(lx + 1 + sway, y + 6, 2, 3);
+    }
+  }
+
+  // Water pools in our levels: a tint over everything in them, and a moving
+  // shine along the top.
+  pools(game, cam) {
+    const level = game.level;
+    if (level.jj2) return;
+    const ctx = this.ctx;
+    const tx0 = Math.max(0, Math.floor(cam.x / TILE)); const tx1 = Math.min(level.w - 1, Math.floor((cam.x + VIEW_W) / TILE));
+    const ty0 = Math.max(0, Math.floor(cam.y / TILE)); const ty1 = Math.min(level.h - 1, Math.floor((cam.y + VIEW_H) / TILE));
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        if (level.areas[ty * level.w + tx] !== AREA.WATER) continue;
+        const x = tx * TILE; const y = ty * TILE;
+        const top = ty === 0 || level.areas[(ty - 1) * level.w + tx] !== AREA.WATER;
+        ctx.fillStyle = 'rgba(30,110,230,0.34)';
+        ctx.fillRect(x, y + (top ? 4 : 0), TILE, TILE - (top ? 4 : 0));
+        if (top) {
+          ctx.fillStyle = 'rgba(200,236,255,0.75)';
+          for (let k = 0; k < TILE; k += 4) ctx.fillRect(x + k, Math.round(y + 4 + Math.sin((x + k) / 18 + game.time / 9) * 2), 4, 2);
+        }
+      }
+    }
+  }
 
   props(game) {
     const ctx = this.ctx;
@@ -355,8 +431,11 @@ export class Renderer {
   enemies(game, alpha) {
     for (const e of game.enemies) {
       if (e.flash > 0 && e.flash % 2) continue;
+      if (e.draw) { e.draw(this, alpha); continue; }
       if (e.onGround) this.footShadow(lerp(e.prevX, e.x, alpha) + e.w / 2, e.y + e.h, e.w * 0.9);
-      const f = e.sprite(this.art);
+      let f = e.sprite(this.art);
+      // Frozen: ice blue, blinking as it is about to thaw.
+      if (e.frozen > 0 && (e.frozen > 50 || e.frozen % 8 < 5)) f = iced(f);
       const x = lerp(e.prevX, e.x, alpha) + e.w / 2;
       const y = lerp(e.prevY, e.y, alpha) + e.h + 2;
       // Sheet sprites face right; flying enemies hang from their centre.
@@ -368,6 +447,7 @@ export class Renderer {
 
   enemyShots(game, alpha) {
     for (const b of game.enemyShots) {
+      if (b.draw) { b.draw(this, alpha); continue; }
       const f = b.sprite(this.art);
       const x = lerp(b.prevX, b.x, alpha) + 8; const y = lerp(b.prevY, b.y, alpha) + 8;
       if (b.kind === 'banana') {
@@ -390,24 +470,53 @@ export class Renderer {
 
 
   shots(game, alpha) {
-    for (const s of game.shots) {
-      const a = this.art.fx.anims[s.spread ? 'blasterPower' : 'blaster'];
-      const f = frameAt(a, s.life, a.speed);
-      const x = lerp(s.prevX, s.x, alpha) + s.w / 2;
-      const y = lerp(s.prevY, s.y, alpha) + s.h / 2;
-      this.glow(x, y, 12, s.spread ? 'rgba(255,190,60,0.5)' : 'rgba(255,240,160,0.45)');
-      this.centred(f, x, y, s.vx > 0);
-    }
+    for (const s of game.shots) this.shot(game, s, alpha);
   }
 
+  // One projectile (ours, or with `rival` a party rival's in red).
+  shot(game, s, alpha, rival = false) {
+    const ctx = this.ctx;
+    const x = lerp(s.prevX, s.x, alpha) + s.w / 2;
+    const y = lerp(s.prevY, s.y, alpha) + s.h / 2;
+    const w = WEAPONS[s.weapon];
+    if (s.weapon === TNT) {
+      // TNT blinks faster as its fuse burns down.
+      const f = frameAt(this.art.items.anims.ammoTNT, s.t, 4);
+      const soon = s.fuse > 0 || (!s.placed && s.life < 70);
+      if (soon ? s.t % 4 < 2 : s.t % 30 < 4) this.glow(x, y, 18, 'rgba(255,90,40,0.7)');
+      this.sprite(f, x, lerp(s.prevY, s.y, alpha) + s.h + 1);
+      return;
+    }
+    const a = this.art.fx.anims[s.powered ? w.shotP : w.shot];
+    // A flame grows and dies over its life; other shots loop.
+    const f = s.weapon === 6 ? a.frames[Math.min(a.frames.length - 1, Math.floor((s.t / (s.t + s.life)) * a.frames.length))] : frameAt(a, s.life, a.speed);
+    this.glow(x, y, s.weapon === 6 ? 16 : 12, rival ? 'rgba(255,80,60,0.6)' : `rgba(${w.glow},${s.weapon === 6 ? 0.35 : 0.5})`);
+    const aimed = s.weapon !== 2 && s.weapon !== 6 && Math.abs(s.vy) > Math.abs(s.vx) * 0.5;
+    if (s.weapon === 4 || s.weapon === 5 || aimed) {
+      // Missiles (and shots fired upward) point where they fly.
+      ctx.save();
+      ctx.translate(Math.round(x), Math.round(y));
+      ctx.rotate(s.weapon === 4 || s.weapon === 5 ? s.angle : Math.atan2(s.vy, s.vx));
+      ctx.drawImage(f.right, -f.w / 2, -f.h / 2);
+      ctx.restore();
+      return;
+    }
+    this.centred(f, x, y, s.vx >= 0);
+  }
 
   // Which hero animation fits the player's current state.
   heroAnim(p) {
     const speed = Math.abs(p.vx);
-    if (p.dead) return 'dead';
+    if (p.dead) return 'knockdown';
     if (p.celebrate) return 'victory';
     if (p.pole || p.hang) return 'spring';
     if (p.knock > 0) return 'hurt';
+    if (p.dizzy > 0) return 'dizzy';
+    // Aiming up: straight up standing (or in the air), diagonally while moving.
+    if (p.shootPose > 0 && p.aim && !p.hovering && !p.stomping && p.special === 0 && !p.swimming) {
+      if (!p.onGround) return p.aim === 'up' ? 'shootUp' : 'shootDiagAir';
+      return p.aim === 'up' ? 'shootUp' : 'shootDiag';
+    }
     if (p.swimming && !p.onGround) return Math.abs(p.vx) > 0.6 ? 'jumpFwd' : 'fall';
     if (p.special > 0) return p.special <= p.windup ? 'uppercutWindup' : 'uppercut';
     if (p.stomping) return 'stomp';
@@ -419,10 +528,12 @@ export class Renderer {
       return speed > 2 ? 'fallFwd' : 'fall';
     }
     if (p.anim === 'skid') return 'skid';
-    if (p.anim === 'run') return speed > 4.2 ? 'run' : 'walk';
+    if (p.anim === 'run') return p.shootPose > 0 ? 'shootRun' : speed > 4.2 ? 'run' : 'walk';
     if (p.anim === 'crouch') return p.shootPose > 0 ? 'crouchShoot' : 'crouch';
     if (p.anim === 'look') return 'look';
     if (p.shootPose > 0) return 'shoot';
+    // Standing around: a fidget after about 2.5 s, then the bored animation.
+    if (p.idleTime >= 180 && p.idleTime < 272) return 'fidget';
     return p.idleTime > 420 ? 'bored' : 'idle';
   }
 
@@ -430,9 +541,10 @@ export class Renderer {
     const ctx = this.ctx;
     const p = game.player;
     if (p.invuln > 0 && !p.dead && p.rush === 0 && Math.floor(p.invuln / 4) % 2) return;
-    const name = this.heroAnim(p);
-    if (!this.heroState || this.heroState.name !== name) this.heroState = { name, start: game.time };
     const sheet = this.art.heroes[p.character] || this.art.hero;
+    let name = this.heroAnim(p);
+    if (!sheet.anims[name]) name = HERO_FALLBACK[name] || 'idle';
+    if (!this.heroState || this.heroState.name !== name) this.heroState = { name, start: game.time };
     const anim = sheet.anims[name] || sheet.anims.idle;
     const t = game.time - this.heroState.start;
     // Walk and run cycles speed up with the player.
@@ -473,12 +585,7 @@ export class Renderer {
   rival(game, alpha) {
     const r = game.party.rival;
     if (!r.seen) return;
-    for (const s of game.party.shots) {
-      const a = this.art.fx.anims[s.spread ? 'blasterPower' : 'blaster'];
-      const x = lerp(s.prevX, s.x, alpha) + 7; const y = lerp(s.prevY, s.y, alpha) + 4;
-      this.glow(x, y, 12, 'rgba(255,80,60,0.6)');
-      this.centred(frameAt(a, s.life, a.speed), x, y, s.vx > 0);
-    }
+    for (const s of game.party.shots) this.shot(game, s, alpha, true);
     if (r.dead) return;
     const speed = Math.abs(r.vx);
     const sheet = this.art.heroesRed[r.character] || this.art.heroRed;
@@ -600,6 +707,10 @@ export class Renderer {
     arcadeText(ctx, `${game.gems}`, 32, 32, { size: 12, top: '#ffffff', bottom: '#ffb0c0' });
     this.centred(items.coinSilver.frames[0], 84, 40);
     arcadeText(ctx, `${game.coins}`, 96, 32, { size: 12, top: '#ffffff', bottom: '#ffe08a' });
+    if (p.fastFeet > 0) {
+      this.centred(this.art.beta.anims.speedShoes.frames[0], 210, 40);
+      arcadeText(ctx, `${Math.ceil(p.fastFeet / 70)}`, 226, 32, { size: 12, top: '#ffffff', bottom: '#7ae8ff' });
+    }
     if (p.shield > 0) {
       this.centred(items.shieldMonitor.frames[0], 146, 40);
       arcadeText(ctx, `${Math.ceil(p.shield / 70)}`, 162, 32, { size: 12, top: '#ffffff', bottom: '#ff9a3a' });
@@ -624,15 +735,20 @@ export class Renderer {
     const face = (this.art.heroes[p.character] || this.art.hero).anims.icon.frames[0].right;
     ctx.drawImage(face, 6, VIEW_H - face.height - 6);
     if (!game.party) arcadeText(ctx, `x${Math.max(0, game.lives)}`, 44, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: '#ffb04a' });
-    // Weapon and ammo, bottom-right.
-    const spread = p.spreadAmmo > 0;
-    this.centred(this.art.fx.anims[spread ? 'blasterPower' : 'blaster'].frames[0], VIEW_W - 84, VIEW_H - 20);
+    // Weapon and ammo, bottom-right (the name shows for a moment after a switch).
+    const wpn = WEAPONS[p.weapon];
+    const iconName = p.weapon === 1 && p.character === 'spaz' ? (p.powered[1] ? 'ammoBlasterSpazP' : 'ammoBlasterSpaz') : p.powered[p.weapon] ? wpn.iconP : wpn.icon;
+    this.centred(frameAt(this.art.items.anims[iconName], game.time, 6), VIEW_W - 86, VIEW_H - 22);
     if (p.shotDelay < PLAYER.shotDelay) {
       // One gun icon per Fastfire collected.
       const n = Math.round((PLAYER.shotDelay - p.shotDelay) / PLAYER.fastfireStep);
       for (let i = 0; i < Math.min(n, 10); i++) ctx.drawImage(this.art.items.anims.fastfire.frames[0].right, VIEW_W - 100 - i * 9, VIEW_H - 50, 12, 12);
     }
-    arcadeText(ctx, spread ? `x${p.spreadAmmo}` : 'x∞', VIEW_W - 70, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: spread ? '#ffd54a' : '#7ae8ff' });
+    const ammo = p.weapon === 1 ? 'x∞' : `x${p.ammo[p.weapon]}`;
+    arcadeText(ctx, ammo, VIEW_W - 70, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: p.powered[p.weapon] ? '#ffd54a' : '#7ae8ff' });
+    if (p.weaponShown > 0) {
+      arcadeText(ctx, wpn.name, VIEW_W - 8, VIEW_H - 66, { size: 12, align: 'right', alpha: Math.min(1, p.weaponShown / 20), top: '#ffffff', bottom: '#ffd54a' });
+    }
     // Combo meter while a combo is running.
     if (game.comboMult > 1 && game.comboTimer > 0) {
       const a = Math.min(1, game.comboTimer / 30);
@@ -653,6 +769,15 @@ export class Renderer {
       lines.forEach((l, i) => arcadeText(ctx, l, VIEW_W / 2, VIEW_H - 48 - h + i * 16, { size: 12, align: 'center', shadow: false, top: '#ffffff', bottom: '#cfe6ff' }));
     }
     if (game.party) this.partyHud(game);
+    // Boss health, top centre, while a boss fight is on.
+    const boss = game.activeBoss;
+    if (boss && !boss.dead && boss.maxHp > 1) {
+      const w = 200; const x = VIEW_W / 2 - w / 2; const y = 26;
+      ctx.fillStyle = 'rgba(10,4,26,0.8)'; ctx.fillRect(x - 3, y - 3, w + 6, 12);
+      const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, '#ff3a5a'); g.addColorStop(1, '#ffb02e');
+      ctx.fillStyle = g; ctx.fillRect(x, y, Math.round((w * Math.max(0, boss.hp)) / boss.maxHp), 6);
+      arcadeText(ctx, boss.name.replace('!', ''), VIEW_W / 2, y + 10, { size: 10, align: 'center', top: '#ffffff', bottom: '#ffb0c0' });
+    }
     // Level banner.
     if (game.bannerTime > 0 && game.state === 'play') {
       const a = Math.min(1, game.bannerTime / 30);

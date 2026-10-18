@@ -1,10 +1,11 @@
 // Game world: level setup, entity updates, interactions, objectives, camera.
 
 import { Backdrop, BACKDROP_SKY, BACKDROPS } from './backdrop.js';
+import { BOSS_CHARS } from './bosses.js';
 import { THEME_TILESET } from './tilesets.js';
 import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import {
-  Checkpoint, Effect, Hint, makeEnemy, overlap, Particle, Pickup, Pole, SecretZone, Shot, Sign, Spring, SPRING_CHARS, Warp,
+  Checkpoint, Effect, Hint, makeEnemy, overlap, Particle, Pickup, Pole, SecretZone, Sign, Spring, SPRING_CHARS, Warp,
 } from './entities.js';
 import { jj2Tick } from './jj2/play.js';
 import { Platform } from './jj2/platforms.js';
@@ -14,6 +15,7 @@ import { PARTY_GOAL, PARTY_RESPAWN } from './party.js';
 import { Player } from './player.js';
 import { Sky, Weather } from './sky.js';
 import { TerrainRenderer } from './terrain.js';
+import { Bullet, TNT, touches } from './weapons.js';
 
 const WEATHER = { meadow: 'leaves', winter: 'snow', crystal: 'motes', grove: 'fireflies', candy: 'sparkles', forge: 'embers' };
 
@@ -73,7 +75,7 @@ export class Game {
       enemies: [], enemyShots: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
       platforms: (this.level.platforms || []).map((o) => new Platform(o)),
       levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null,
-      combo: 0, comboTimer: 0, comboMult: 1,
+      combo: 0, comboTimer: 0, comboMult: 1, activeBoss: null, bossCall: false, bossEnd: 0,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,
     });
     let start = { x: 64, y: 64 };
@@ -81,8 +83,12 @@ export class Game {
     for (const e of this.level.entities) {
       const px = e.tx * TILE;
       const py = e.ty * TILE;
-      const enemy = makeEnemy(e.ch, px, py);
-      if (enemy) { this.enemies.push(enemy); totals.enemies++; continue; }
+      const enemy = makeEnemy(e.ch, px, py) || (BOSS_CHARS[e.ch] && new BOSS_CHARS[e.ch](px, py));
+      if (enemy) {
+        // In an original level, only a final boss (no other exit) locks the way out.
+        if (enemy.boss && this.level.jj2 && !this.level.bossEnds) enemy.guard = false;
+        this.enemies.push(enemy); totals.enemies++; continue;
+      }
       if (SPRING_CHARS.includes(e.ch)) { this.props.push(new Spring(e.tx, e.ty, e.ch)); continue; }
       switch (e.ch) {
         case 'P': start = { x: px + (TILE - PLAYER.w) / 2, y: py + TILE - playerH }; break;
@@ -106,11 +112,15 @@ export class Game {
       if (o.type === 'hint') this.props.push(new Hint(o));
       if (o.type === 'exit') this.props.push(new Sign(o.tx, o.ty, true));
       if (o.type === 'pole') this.props.push(new Pole(o.tx, o.ty, o.vertical, true));
+      // JJ2 bombs: TNT lying in wait.
+      if (o.type === 'bomb') { const t = new Bullet(TNT, false, o.tx * TILE + 9, o.ty * TILE + 18, 0, 0); t.placed = true; t.armed = 0; this.shots.push(t); }
+      const k = Pickup.fromObject(o);
+      if (k) { if (o.weapon === 1) k.spaz = this.character === 'spaz'; this.pickups.push(k); }
     }
     // JJ2 trigger crates: shoot one to switch its trigger.
     for (const c of this.level.triggerCrates || []) {
       const k = Pickup.fromChar('A', c.tx, c.ty);
-      k.trigger = c;
+      k.trigger = c; k.weapon = null;
       this.pickups.push(k);
     }
     // Pickups placed off the grid (JJ2 gem rings and barrels).
@@ -140,6 +150,22 @@ export class Game {
 
   // Undo a level's progress before restarting it.
   restoreStart() { if (this.startStats) Object.assign(this, this.startStats); }
+
+  // A boss still standing between the player and the exit.
+  bossGuarding() { return this.enemies.some((e) => e.guard && !e.dead); }
+
+  bossDefeated(boss) {
+    if (this.activeBoss === boss) this.activeBoss = null;
+    this.explode(boss.cx, boss.y + boss.h / 2, '#ffd54a');
+    this.shake(14);
+    this.flash('#ffffff', 6);
+    this.audio.play('fanfare');
+    // An original level that ends with its boss: beating it ends the level
+    // (the original's ExitType::Boss), however many others are about.
+    if (this.level.bossEnds) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); this.bossEnd = 160; return; }
+    if (this.bossGuarding()) return;
+    this.banner(`${boss.name.replace('!', '')} DEFEATED! EXIT OPEN!`, 140);
+  }
 
   // ---------------------------------------------------------------- effects and helpers
 
@@ -224,17 +250,43 @@ export class Game {
     this.particles.push(new Particle(p.cx + (Math.random() - 0.5) * 10, p.y + 10 + Math.random() * 26, -p.vx * 0.1, 0, `hsl(${hue},100%,65%)`, 18, 4, 0, true));
   }
 
-  fire(player, spread) {
-    const dir = player.facing;
-    const x = dir > 0 ? player.x + player.w + 8 : player.x - 22;
-    const y = player.y + player.h - 18;
-    // Measured: blaster speed plus the player's own speed in the firing direction.
-    const speed = PLAYER.shotSpeed + Math.max(0, Math.min(PHYS.moveCap, player.vx * dir));
-    const made = spread ? [-1.6, 0, 1.6].map((vy) => new Shot(x, y, dir * speed, vy, true)) : [new Shot(x, y, dir * speed, 0, false)];
-    this.shots.push(...made);
-    this.audio.play(spread ? 'spread' : 'shoot');
-    if (this.party) for (const s of made) this.party.fire(s);
-    this.particles.push(new Particle(x + (dir > 0 ? 4 : 10), y + 4, 0, 0, spread ? '#fff2a0' : '#d8fbff', 4, 8, 0, true));
+  // Muzzle flash of a shot.
+  muzzle(x, y, glow) { return new Particle(x, y, 0, 0, `rgb(${glow})`, 4, 8, 0, true); }
+
+  // An explosion (missiles, TNT, bomb crates): hurts enemies, breaks blocks
+  // and crates, and sets off other TNT within `r` px. Our own blasts never
+  // hurt us; a party rival's (`remote`) can.
+  blast(x, y, r, { weapon = TNT, damage = 5, remote = false, big = false } = {}) {
+    this.effect('explosion', x, y, big ? 4 : 3);
+    if (big) {
+      for (const [dx, dy] of [[-22, -10], [20, -14], [0, 16]]) this.effect('explosion', x + dx, y + dy, 4);
+      this.flash('#ffd890', 4);
+    }
+    this.audio.play(big ? 'boom' : 'kill');
+    this.shake(big ? 12 : 5);
+    const inside = (o) => Math.hypot(o.x + o.w / 2 - x, o.y + o.h / 2 - y) < r + Math.min(o.w, o.h) / 2;
+    if (remote) {
+      if (this.party && inside(this.player)) this.party.hit(this, x);
+      return;
+    }
+    // An RF missile going off right by the player throws them away from it.
+    const p = this.player;
+    const d = Math.hypot(p.cx - x, p.cy - y);
+    if (weapon === 5 && d <= 36 && !p.dead) p.blast(p.cx < x ? -1 : 1, d);
+    for (const e of this.enemies) if (!e.dead && inside(e)) e.damage(this, damage);
+    for (const b of this.enemyShots) if (!b.dead && inside(b)) b.kind === 'bomb' ? b.explode(this) : b.pop(this);
+    for (const s of this.shots) if (s.weapon === TNT && inside(s)) s.detonate();
+    for (const k of this.pickups) {
+      if (k.taken || k.pending || !k.needsHit || !inside(k)) continue;
+      if (this.party) this.party.touch(this, k); else k.collect(this);
+    }
+    const tx0 = Math.floor((x - r) / TILE); const tx1 = Math.floor((x + r) / TILE);
+    const ty0 = Math.floor((y - r) / TILE); const ty1 = Math.floor((y + r) / TILE);
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        if (Math.hypot(tx * TILE + TILE / 2 - x, ty * TILE + TILE / 2 - y) < r + TILE / 2) this.hitTile(tx, ty, { weapon, blast: true });
+      }
+    }
   }
 
   // ---------------------------------------------------------------- objectives
@@ -288,7 +340,7 @@ export class Game {
   hitTile(tx, ty, opts = {}) {
     const r = this.level.breakTile(tx, ty, opts);
     if (!r) return false;
-    if (this.party && !opts.remote) this.party.tile(tx, ty);
+    if (this.party && !opts.remote) this.party.tile(tx, ty, opts);
     if (r === 'dent') {
       this.audio.play('hit');
       this.effect('hitSpark', tx * TILE + TILE / 2, ty * TILE + TILE / 2);
@@ -382,6 +434,7 @@ export class Game {
     }
 
     this.levelTime++;
+    if (this.bossEnd > 0 && --this.bossEnd === 0) { this.completeLevel(); return; }
     if (this.comboTimer > 0 && --this.comboTimer === 0) { this.combo = 0; this.comboMult = 1; }
     if (this.bannerTime > 0) this.bannerTime--;
     if (this.shakeTime > 0) this.shakeTime--;
@@ -403,10 +456,18 @@ export class Game {
       p.spawn(this.respawn.x, this.respawn.y);
       p.health = PLAYER.maxHealth;
       p.invuln = 100;
+      // Bosses start their fight over.
+      for (const e of this.enemies) if (e.boss && !e.dead) e.reset();
+      this.enemyShots = this.enemyShots.filter((b) => !b.solid);
+      this.activeBoss = null;
       this.audio.startMusic(this.level.meta.music);
     }
 
-    for (const e of this.enemies) e.update(this);
+    for (const e of this.enemies) {
+      // Frozen enemies hang still until the ice wears off.
+      if (e.frozen > 0) { e.frozen--; e.prevX = e.x; e.prevY = e.y; continue; }
+      e.update(this);
+    }
     for (const s of this.shots) s.update(this);
     for (const s of this.enemyShots) s.update(this);
     for (const k of this.pickups) k.update(this);
@@ -437,22 +498,23 @@ export class Game {
     const p = this.player;
     for (const s of this.shots) {
       for (const e of this.enemies) {
-        if (!s.dead && !e.dead && overlap(s, e)) {
-          s.dead = true;
-          e.damage(this, 1);
-          this.spark(s.x + 7, s.y + 4, '#ffffff');
-        }
+        if (!s.dead && !e.dead && touches(s, e)) s.strike(this, e);
       }
       // Measured: crates only break when attacked (a shot, stomp or special).
       for (const k of this.pickups) {
-        if (s.dead || k.taken || k.pending || !k.needsHit || !overlap(s, k)) continue;
+        if (s.dead || k.taken || k.pending || !k.needsHit || !touches(s, k)) continue;
+        if (s.explosive) { s.burst(this); continue; }
         s.dead = true;
         if (this.party) this.party.touch(this, k); else k.collect(this);
+      }
+      // Manual: TNT can be set off by shooting it.
+      if (!s.dead && s.weapon !== TNT) {
+        for (const t of this.shots) if (t.weapon === TNT && !t.dead && overlap(s, t)) { t.detonate(); s.dead = true; }
       }
     }
     for (const s of this.shots) {
       for (const b of this.enemyShots) {
-        if (!s.dead && !b.dead && overlap(s, b)) { s.dead = true; b.kind === 'bomb' ? b.explode(this) : b.pop(this); this.addScore(50, b.x, b.y); }
+        if (!s.dead && !b.dead && !b.solid && touches(s, b)) { s.dead = true; b.kind === 'bomb' ? b.explode(this) : b.pop(this); this.addScore(50, b.x, b.y); }
       }
     }
     if (p.dead || p.pole) return;
@@ -464,6 +526,9 @@ export class Game {
     for (const e of this.enemies) {
       if (e.dead || !overlap(p, e)) continue;
       const fromAbove = p.vy > 0 && p.prevY + p.h <= e.prevY + 10;
+      if (e.touch) { e.touch(this, p, fromAbove, input); continue; }
+      // A frozen enemy shatters at a touch.
+      if (e.frozen > 0) { e.kill(this); this.audio.play('break'); continue; }
       if (e.type === 'shell') {
         this.touchShell(e, fromAbove, input);
         continue;
@@ -471,7 +536,10 @@ export class Game {
       if (p.attacking || fromAbove) {
         if (e.stomped && !p.rush) e.stomped(this);
         else e.kill(this);
-        if (fromAbove || p.stomping) {
+        if (p.stomping) {
+          p.stompBounce();
+          this.audio.play('stomp');
+        } else if (fromAbove) {
           p.bounce(input.held('jump'));
           if (fromAbove) p.y = e.y - p.h;
           this.audio.play('stomp');

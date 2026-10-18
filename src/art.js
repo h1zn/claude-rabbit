@@ -75,8 +75,14 @@ export async function buildArt() {
   const [jazz, spaz, lori] = await Promise.all(['hero', 'spaz', 'lori'].map((n) => loadSheet(`assets/${n}.json`)));
   art.hero = jazz;
   art.heroes = { jazz, spaz, lori };
-  [art.items, art.enemy, art.turtle, art.fx] = await Promise.all(
-    ['items', 'enemies', 'turtles', 'fx'].map((n) => loadSheet(`assets/${n}.json`)),
+  // Jazz's and Spaz's extra moves (new/sprites other movements.png): aiming
+  // up, fidgets, dizzy, knocked down. Lori falls back to her own poses.
+  const [jazzX, spazX, beta] = await Promise.all(['jazz_extra', 'spaz_extra', 'beta_items'].map((n) => loadSheet(`assets/${n}.json`)));
+  Object.assign(jazz.anims, jazzX.anims);
+  Object.assign(spaz.anims, spazX.anims);
+  art.beta = beta;
+  [art.items, art.enemy, art.turtle, art.fx, art.queen, art.bilsy, art.robot, art.uterus] = await Promise.all(
+    ['items', 'enemies', 'turtles', 'fx', 'queen', 'bilsy', 'robot', 'uterus'].map((n) => loadSheet(`assets/${n}.json`)),
   );
   // Special blocks (see tools/build_blocks.py for the order).
   const blocks = await loadTileset('assets/blocks.png');

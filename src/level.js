@@ -9,6 +9,7 @@ import { TILE } from './config.js';
 //   p  speed block (only running into it at full speed breaks it)
 //   Y  switch crate (break it to flip every switch block in the level)
 //   u  switch block (solid until flipped)   i  ghost switch block (solid once flipped)
+//   W  weapon block (only the weapon pictured on it breaks it; see Builder.weaponBlock)
 //   -  one-way platform          ^  spikes (hurt, not solid)   ~  lava (hurts, not solid)
 //   /  45° slope rising right    \  45° slope falling right
 //   q  gentle rise, lower half   r  gentle rise, upper half
@@ -18,14 +19,21 @@ import { TILE } from './config.js';
 //   S red spring  T green spring  U blue spring  > <  side springs (push right / left)
 //   H horizontal pole  I vertical pole
 //   * red gem  g green gem  b blue gem  v purple gem  $ silver coin  @ gold coin
-//   o food  + carrot  % full carrot  1 extra life  A spread-shot crate
+//   o food  + carrot  % full carrot  1 extra life  A ammo crate (weapon picked by position)
 //   F fastfire  Q fire-shield monitor (shoot or stomp it open)
 //   w turtle  k lizard  n demon  h frog  f bat  d dragonfly  J monkey (throws)  G bomb lizard
-// Warps and hint signs carry data, so they are objects (Builder.warp/hint).
-const SOLID = new Set(['#', '=', 'x', 'm', 'c', 'p', 'Y', 'u']);
+//   Bosses (they lock the exit until beaten): Z the Queen  V Schwartzenguard
+//   B Bilsy  R Robot  O Uterus
+// Warps, hint signs and weapon pickups carry data, so they are objects
+// (Builder.warp/hint/ammo/ammoCrate/powerup/bomb).
+const SOLID = new Set(['#', '=', 'x', 'm', 'c', 'p', 'Y', 'u', 'W']);
 // Blocks drawn from the shared block sheet instead of the terrain.
-export const BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u', 'i']);
-const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQwknhfdJG'.split(''));
+export const BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u', 'i', 'W']);
+const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQwknhfdJGZVBRO'.split(''));
+
+// Area cells (JJ2 event numbers, as EV in src/jj2/level.js): the player's
+// swimming, vine and hook code reads these in our levels as in JJ2 levels.
+export const AREA = { VINE: 3, HOOK: 4, FLOAT_UP: 20, WATER: 233 };
 
 // Surface height (pixels from the tile's top) at local x in [0, TILE].
 export const SLOPES = {
@@ -45,6 +53,9 @@ export class Builder {
     this.decor = [];
     this.objects = [];
     this.hits = new Map();
+    this.weapons = new Map();     // "x,y" -> weapon a weapon block needs
+    this.areas = new Uint8Array(width * height);   // AREA cells (water, vines)
+    this.platforms = [];          // moving platforms (src/jj2/platforms.js)
     this.tops = new Array(width).fill(null);   // surface row per column (may be .5)
     // Cells with a back wall: carved caves show rock behind them, not sky.
     this.back = Array.from({ length: height }, () => new Uint8Array(width));
@@ -86,6 +97,52 @@ export class Builder {
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.hits.set(`${x + i},${y + j}`, hits);
     return this;
   }
+
+  // Weapon blocks (manual): only `weapon` (1-9, src/weapons.js) breaks them;
+  // TNT blocks (7) give way to any explosion.
+  weaponBlock(x, y, w, h, weapon) {
+    this.fill(x, y, w, h, 'W');
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.weapons.set(`${x + i},${y + j}`, weapon);
+    return this;
+  }
+
+  // A pool of water filling a rectangle (carve the basin first): Kip swims
+  // in it and leaps out at the surface.
+  pool(x, y, w, h) {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (y + j < this.h && x + i < this.w) this.areas[(y + j) * this.w + x + i] = AREA.WATER;
+    return this;
+  }
+
+  // A vine along row y (Kip hangs from it hand over hand); `hook` makes
+  // hooks instead, which hold him in place.
+  vine(x, y, len, hook = false) {
+    for (let i = 0; i < len; i++) this.areas[y * this.w + x + i] = hook ? AREA.HOOK : AREA.VINE;
+    return this;
+  }
+
+  // A column of rising air (an updraft) carrying Kip up through it.
+  updraft(x, y, w, h) {
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.areas[(y + j) * this.w + x + i] = AREA.FLOAT_UP;
+    return this;
+  }
+
+  // A moving platform circling (or, with `swing`, swinging below) the cell
+  // (x, y) on a chain of `length` links; `speed` about 1-6, `type` its look
+  // (1 fruit, 2 boll, 3 grass, 4 pink, 5 sonic, 6 spikes underneath).
+  movingPlatform(x, y, { length = 4, speed = 3, sync = 0, swing = false, type = 3 } = {}) {
+    this.platforms.push({ x: x * TILE + 16, y: y * TILE + 16, type, sync, speed, length, swing });
+    return this;
+  }
+
+  // Weapon pickups: ammo (+3), an ammo crate (+15, shoot it open), a power-up
+  // monitor, or a TNT bomb lying in wait.
+  ammo(x, y, weapon, amount = 3) { this.objects.push({ type: 'ammo', tx: x, ty: y, weapon, amount }); return this; }
+  ammoCrate(x, y, weapon) { this.objects.push({ type: 'ammoCrate', tx: x, ty: y, weapon }); return this; }
+  powerup(x, y, weapon) { this.objects.push({ type: 'powerup', tx: x, ty: y, weapon }); return this; }
+  bomb(x, y) { this.objects.push({ type: 'bomb', tx: x, ty: y }); return this; }
+  // Power-up items: 'fastFeet' (speed shoes), 'freeze' (hourglass: freezes the
+  // enemies around), 'stopwatch' (extra shield time).
+  item(x, y, kind) { this.objects.push({ type: 'item', tx: x, ty: y, kind }); return this; }
 
   // Warp standing on the cell (x, y). It sends Kip to the warp with id `to`;
   // `cost` coins makes it a coin warp. Arrival-only warps have no `to`.
@@ -263,6 +320,9 @@ export class Builder {
     level.objects = this.objects;
     level.back = this.back;
     level.hits = this.hits;
+    level.weapons = this.weapons;
+    level.areas = this.areas;
+    level.platforms = this.platforms;
     return level;
   }
 }
@@ -278,6 +338,13 @@ export class Level {
     this.objects = [];
     this.back = Array.from({ length: this.h }, () => new Uint8Array(this.w));
     this.hits = new Map();
+    this.weapons = new Map();
+    this.areas = new Uint8Array(this.w * this.h);
+    this.areaParams = new Uint32Array(this.w * this.h);
+    this.vineY = new Map();       // vine cell -> the vine's row inside it (default 8 px)
+    this.platforms = [];
+    this.water = Infinity;        // level-wide water line (JJ2 levels); pools are areas
+    this.waterTarget = Infinity;
     for (let y = 0; y < this.h; y++) {
       for (let x = 0; x < this.w; x++) {
         const ch = this.tiles[y][x];
@@ -298,6 +365,17 @@ export class Level {
   }
 
   solid(tx, ty) { return SOLID.has(this.at(tx, ty)); }
+
+  areaAt(x, y) {
+    const tx = Math.floor(x / TILE); const ty = Math.floor(y / TILE);
+    if (tx < 0 || ty < 0 || tx >= this.w || ty >= this.h) return 0;
+    return this.areas[ty * this.w + tx];
+  }
+
+  areaParam(x, y) {
+    const tx = Math.floor(x / TILE); const ty = Math.floor(y / TILE);
+    return this.areaParams[ty * this.w + tx] || 0;
+  }
   slope(tx, ty) { return SLOPES[this.at(tx, ty)] !== undefined; }
   platform(tx, ty) { return this.at(tx, ty) === '-'; }
   spike(tx, ty) { return this.at(tx, ty) === '^'; }
@@ -310,10 +388,14 @@ export class Level {
 
   // Shots and attacks break 'x' blocks and switch crates, and wear down
   // countdown blocks; a stomp also breaks 'm' blocks; `speed` (running at
-  // full tilt, an uppercut or a sugar rush) breaks 'p' blocks.
-  breakTile(tx, ty, { stomp = false, speed = false } = {}) {
+  // full tilt, an uppercut or a sugar rush) breaks 'p' blocks. A weapon
+  // block ('W') needs its own `weapon`, or for TNT blocks any `blast`.
+  breakTile(tx, ty, { stomp = false, speed = false, weapon = 0, blast = false } = {}) {
     const ch = this.at(tx, ty);
-    if (ch === 'c') {
+    if (ch === 'W') {
+      const need = this.weapons.get(`${tx},${ty}`);
+      if (need === 7 ? !blast : weapon !== need) return false;
+    } else if (ch === 'c') {
       const key = `${tx},${ty}`;
       const left = (this.hits.get(key) || 1) - 1;
       this.hits.set(key, left);
@@ -352,9 +434,9 @@ export class Level {
   // (`climb`) may step over lips where slopes meet blocks: on a 45° slope the
   // leading edge is half a body-width plus this step's travel above the feet.
   // The allowance stays below a full tile, so real walls still block.
-  move(body, dx, dy, { dropThrough = false, climb = false } = {}) {
+  move(body, dx, dy, { dropThrough = false, climb = false, land = 0 } = {}) {
     const result = { left: false, right: false, top: false, bottom: false, slope: false };
-    const stepUp = climb ? Math.min(TILE - 4, 6 + Math.abs(dx) + body.w / 2) : 0;
+    const stepUp = climb ? Math.min(TILE - 4, 6 + Math.abs(dx) + body.w / 2) : land;
     // Horizontal: only full solids block (slopes are walkable).
     body.x += dx;
     const y0 = Math.floor(body.y / TILE);

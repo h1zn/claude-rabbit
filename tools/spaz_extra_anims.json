@@ -1,0 +1,87 @@
+{
+  "sheet": "../new/sprites other movements.png",
+  "minBand": 10,
+  "anims": {
+    "shootUp": {
+      "cols": [
+        745,
+        295,
+        915,
+        360
+      ],
+      "speed": 4,
+      "loop": false
+    },
+    "shootDiag": {
+      "cols": [
+        645,
+        380,
+        1015,
+        436
+      ],
+      "speed": 4,
+      "loop": true
+    },
+    "shootDiagAir": {
+      "cols": [
+        640,
+        158,
+        1030,
+        212
+      ],
+      "speed": 4,
+      "loop": true
+    },
+    "shootRun": {
+      "cols": [
+        660,
+        493,
+        970,
+        538
+      ],
+      "speed": 4,
+      "loop": true
+    },
+    "fidget": {
+      "cols": [
+        730,
+        428,
+        930,
+        482
+      ],
+      "speed": 7,
+      "loop": false
+    },
+    "knockdown": {
+      "cols": [
+        615,
+        538,
+        1055,
+        592
+      ],
+      "speed": 5,
+      "loop": false
+    },
+    "lying": {
+      "cols": [
+        790,
+        603,
+        885,
+        652
+      ],
+      "speed": 30,
+      "loop": true
+    },
+    "dizzy": {
+      "cols": [
+        568,
+        666,
+        1112,
+        737
+      ],
+      "speed": 5,
+      "loop": true,
+      "minW": 20
+    }
+  }
+}

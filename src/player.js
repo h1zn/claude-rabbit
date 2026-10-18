@@ -5,6 +5,7 @@
 import { PHYS, PLAYER, TILE } from './config.js';
 import { eventFields } from './jj2/files.js';
 import { EV } from './jj2/level.js';
+import { AMMO_MAX, fire, fireDelay, WEAPONS } from './weapons.js';
 
 const HANG = 14;         // px from a vine down to the top of a hanging body
 const KICK_WINDUP = 8;   // tuned: Spaz's and Lori's kicks
@@ -16,8 +17,34 @@ export class Player {
     this.h = PLAYER.h;
     this.spawn(x, y);
     this.health = PLAYER.maxHealth;
-    this.spreadAmmo = 0;
     this.shotDelay = PLAYER.shotDelay;
+    // Weapons 1-9 (src/weapons.js): the blaster never runs out.
+    this.weapon = 1;
+    this.ammo = new Array(WEAPONS.length).fill(0);
+    this.powered = new Array(WEAPONS.length).fill(false);
+    this.toast = 0;
+  }
+
+  // Ammo from a pickup or crate. Switches to the weapon when it is new and
+  // only the blaster was in hand.
+  addAmmo(n, amount) {
+    const fresh = this.ammo[n] <= 0;
+    this.ammo[n] = Math.min(AMMO_MAX, this.ammo[n] + amount);
+    if (fresh && this.weapon === 1 && n !== 1) this.weapon = n;
+  }
+
+  // Next (dir 1) or previous (dir -1) weapon that has ammo.
+  nextWeapon(dir = 1) {
+    const count = WEAPONS.length - 1;
+    for (let k = 1; k <= count; k++) {
+      const n = ((this.weapon - 1 + dir * k + count * 2) % count) + 1;
+      if (n === 1 || this.ammo[n] > 0) { this.weapon = n; this.weaponShown = 70; return; }
+    }
+  }
+
+  selectWeapon(n) {
+    if (n === 1 || this.ammo[n] > 0) { this.weapon = n; this.weaponShown = 70; return true; }
+    return false;
   }
 
   spawn(x, y) {
@@ -29,7 +56,7 @@ export class Player {
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
       hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
-      dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0,
+      dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0, dizzy: 0, aim: null, fastFeet: 0,
     });
   }
 
@@ -47,7 +74,7 @@ export class Player {
     this.prevX = this.x;
     this.prevY = this.y;
     this.animTime++;
-    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube']) if (this[k] > 0) this[k]--;
+    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube', 'weaponShown', 'djWindow', 'rfBlast', 'dizzy', 'fastFeet']) if (this[k] > 0) this[k]--;
     if (this.rush > 0 && --this.rush === 0) game.endRush();
     if (this.shield > 0) this.shield--;
 
@@ -57,6 +84,10 @@ export class Player {
       this.y += this.vy;
       this.anim = 'hurt';
       return;
+    }
+    if (input.pressed('weapon')) { this.nextWeapon(1); game.audio.play('weapon'); }
+    for (let n = 1; n < WEAPONS.length; n++) {
+      if (input.pressed(`w${n}`)) game.audio.play(this.selectWeapon(n) ? 'weapon' : 'denied');
     }
     if (this.celebrate) {
       this.vx = 0;
@@ -79,7 +110,7 @@ export class Player {
     if (input.held('run') || this.rush > 0) this.dash = PHYS.dashGrace;
     else if (this.dash > 0 && --this.dash === 0 && Math.abs(this.vx) > PHYS.walkMax) this.vx = Math.sign(this.vx) * PHYS.walkMax;
     const dashing = this.dash > 0;
-    const boost = this.rush > 0 ? PHYS.rushSpeedScale : 1;
+    const boost = this.rush > 0 ? PHYS.rushSpeedScale : this.fastFeet > 0 ? PHYS.fastFeetScale : 1;
     const accel = (dashing ? PHYS.runAccel : PHYS.walkAccel) * boost;
     const max = this.swimming ? (dashing ? 4 : 2.5) : (dashing && !this.hovering ? PHYS.runMax : PHYS.walkMax) * boost;
     const crouching = controlled && this.onGround && input.held('down') && !dir;
@@ -96,18 +127,27 @@ export class Player {
     if (this.hovering && Math.abs(this.vx) > PHYS.walkMax) this.vx = approach(this.vx, Math.sign(this.vx) * PHYS.walkMax, PHYS.dashDecel);
     // ---- horizontal: one table for ground and air (original). Input
     // accelerates toward the cap; speed above it (springs, poles) bleeds off.
-    if (dir) {
+    if (this.rfBlast > 0) {
+      // Thrown by an RF blast: a flat speed held for its 30 ticks.
+      this.vx = this.rfDir * PHYS.rfBlastSpeed;
+    } else if (dir) {
       this.vx = accelerate(this.vx, dir, accel, max, PHYS.walkDecel);
     } else if (this.knock === 0 && this.springLock === 0) {
       this.vx = approach(this.vx, 0, dashing ? PHYS.dashDecel : PHYS.walkDecel);
     }
 
-    // ---- special: uppercut (hold Up + Shoot). Measured timing: 16-tick
-    // wind-up, then rise with vy = (t - 256) * 2048 / 65536 until tick 45.
-    if (this.special === 0 && this.knock === 0 && input.held('up') && input.pressed('shoot')) {
+    // ---- special: uppercut (Jazz) or kick (Spaz, Lori). The original's
+    // input: crouch first, standing still, then Jump (Down and Jump together,
+    // or a crouch still sliding, give a jump instead). Measured timing:
+    // 16-tick wind-up, then rise with vy = (t - 256) * 2048 / 65536 until tick 45.
+    if (this.special === 0 && this.knock === 0 && controlled && this.onGround && input.pressed('jump')
+      && this.crouchT >= PHYS.superJumpCoil && Math.abs(this.vx) < PHYS.specialStillSpeed
+      && !level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE))) {   // one-way: drop through instead
       this.special = 1;
       this.stomping = false;
       this.hovering = false;
+      this.jumpBuffer = 0;
+      this.crouchT = 0;
       audio.play('uppercutCharge');
     }
     if (this.special > 0 && this.windup === KICK_WINDUP) {
@@ -144,6 +184,10 @@ export class Player {
     }
 
     // ---- jump, drop-through, hover and buttstomp
+    // Original: Spaz's double jump is open for 30 ticks after jump is let go.
+    if (input.released('jump') && !this.onGround) this.djWindow = PHYS.doubleJumpWindow;
+    if (this.springDj && this.vy >= 0) { this.springDj = false; this.djWindow = PHYS.doubleJumpWindow; }
+    if (this.onGround) this.springDj = false;
     if (controlled && input.pressed('jump')) this.jumpBuffer = PHYS.jumpBufferTicks;
     else if (this.jumpBuffer > 0) this.jumpBuffer--;
     const onPlatform = this.onGround && level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE));
@@ -155,6 +199,7 @@ export class Player {
       } else if (this.jumpBuffer > 0 && (this.onGround || this.coyote > 0)) {
         // Measured: vy = jumpBase - |vx| / 4 (running jumps go higher). From a
         // full crouch it is a super jump (manual: 60% higher, smashes blocks).
+        // A crouched jump while still sliding is the super jump.
         this.superJump = this.onGround && this.crouchT >= PHYS.superJumpCoil;
         this.vy = PHYS.jumpBase * (this.superJump ? PHYS.superJumpScale : 1) - Math.abs(this.vx) / PHYS.jumpRunBonusDivisor;
         this.jumpCut = false;
@@ -167,10 +212,11 @@ export class Player {
         audio.play('jump');
         game.dust(this.cx, this.y + this.h, 4);
       } else if (this.character === 'spaz' && controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && !this.launched) {
-        // Spaz: one extra jump in the air instead of the copter ears.
-        if (!this.doubleJumped) {
+        // Spaz: one extra jump in the air instead of the copter ears
+        // (measured: a straight 8 px/tick launch, within the window).
+        if (!this.doubleJumped && this.djWindow > 0) {
           this.doubleJumped = true;
-          this.vy = PHYS.jumpBase * 0.85;
+          this.vy = PHYS.doubleJump;
           this.jumping = true; this.jumpCut = false; this.launched = true;
           this.jumpBuffer = 0;
           audio.play('jump');
@@ -221,7 +267,10 @@ export class Player {
       this.vy = Math.max(this.vy - 0.5, -8);
       this.stomping = false;
     } else if (this.stomping) {
-      this.vx = 0;
+      // Measured: a stomp drops its speed, then drifts at a flat rate the way
+      // you hold (doubled with Run), through the pause and the descent.
+      const drift = (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0);
+      this.vx = drift * PHYS.stompDrift * (input.held('run') ? 2 : 1);
       this.vy = Math.min(this.vy + PHYS.stompAccel, PHYS.stompFall);
     } else if (this.hovering) {
       this.hoverLeft--;
@@ -250,12 +299,15 @@ export class Player {
     // ---- shooting. Measured timing: holding fire shoots every 35 ticks, but
     // releasing the button cuts the wait to 5 ticks, so tapping fires faster.
     if (input.released('shoot')) this.shotCooldown = Math.min(this.shotCooldown, PLAYER.tapDelay);
-    if (controlled && !input.held('up') && input.held('shoot') && this.shotCooldown === 0 && !this.stomping) {
-      this.shotCooldown = this.shotDelay;
+    if (controlled && input.held('shoot') && this.shotCooldown === 0 && !this.stomping) {
+      if (this.weapon !== 1 && this.ammo[this.weapon] <= 0) this.nextWeapon(-1);
+      this.shotCooldown = fireDelay(this);
       this.shootPose = 8;
-      const spread = this.spreadAmmo > 0;
-      if (spread) this.spreadAmmo--;
-      game.fire(this, spread);
+      // Up aims: straight up standing still (or in the air with no direction
+      // held), diagonally up while moving.
+      const still = this.onGround ? Math.abs(this.vx) < 0.5 && !dir : !dir;
+      this.aim = input.held('up') ? (still ? 'up' : 'diag') : null;
+      fire(game, this);
     }
 
     // ---- hazards
@@ -431,10 +483,13 @@ export class Player {
     const vx = this.vx;
     // Original: speed is momentum; movement is capped at 8 px/tick (rising
     // too). A dash reads 16 but travels 8; the extra still boosts jumps.
-    const cap = PHYS.moveCap * (this.rush > 0 ? PHYS.rushSpeedScale : 1);
+    const cap = PHYS.moveCap * (this.rush > 0 ? PHYS.rushSpeedScale : this.fastFeet > 0 ? PHYS.fastFeetScale : 1);
     const dx = Math.max(-cap, Math.min(cap, this.vx));
     const dy = Math.max(-PHYS.moveCap, this.vy);
-    const hit = level.move(this, dx, dy, { dropThrough: this.dropThrough > 0, climb: grounded });
+    // Original landing allowance: coming down onto a ledge up to 20 px above
+    // the feet still lands on top of it (a real descent only, not the apex).
+    const land = !grounded && this.vy > 0.5 ? PHYS.landingTolerance[level.jj2 ? 'jj2' : 'ours'] : 0;
+    const hit = level.move(this, dx, dy, { dropThrough: this.dropThrough > 0, climb: grounded, land });
     if (hit.left || hit.right) {
       // Speed blocks only give way to a full-speed run (or a sugar rush).
       const fast = Math.abs(vx) >= PHYS.moveCap * 0.95 || this.rush > 0;
@@ -520,6 +575,25 @@ export class Player {
     game.shake(6);
     game.flash('#ff2a4a', 6);
     if (this.health <= 0) game.killPlayer();
+  }
+
+  // Measured: a buttstomp leaves an enemy at a flat 13 px/tick, its rise
+  // decaying at the released rate whatever the jump key does.
+  stompBounce() {
+    this.vy = PHYS.stompEnemyBounce;
+    this.jumping = true;
+    this.jumpCut = true;
+    this.stomping = false;
+    this.hoverLeft = PHYS.hoverTicks;
+  }
+
+  // An RF blast within 32 px throws the player away (measured: 8 px/tick for
+  // 30 ticks; in the air also up at 12, on the ground a little, growing with range).
+  blast(dir, dist) {
+    this.rfDir = dir; this.rfBlast = PHYS.rfBlastTicks;
+    this.vy = this.onGround ? -(0.646 + 0.1732 * dist) : PHYS.rfBlastRise;
+    this.onGround = false;
+    this.jumping = true; this.jumpCut = true; this.stomping = false;
   }
 
   // Measured stomp bounce: vy = -8 - vy/2 with jump held, -4 - vy/2 without.
