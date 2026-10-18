@@ -7,7 +7,7 @@ import { buildArt } from './art.js';
 import { Audio } from './audio.js';
 import { MAX_CATCHUP_TICKS, TICK_MS, VIEW_H, VIEW_W } from './config.js';
 import { Game } from './game.js';
-import { Input } from './input.js';
+import { bindKey, defaultKeys, Input } from './input.js';
 import { LEVELS, levelDef } from './levels.js';
 import { Net, Party } from './party.js';
 import { Renderer } from './render.js';
@@ -18,12 +18,35 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const art = await buildArt();
 const audio = new Audio();
-const input = new Input(window);
+let save = loadSave();
+const input = new Input(window, save.options.keys);
 const game = new Game(audio, art);
 const renderer = new Renderer(ctx, art);
 const screens = new Screens(ctx, art, audio);
-let save = loadSave();
 audio.setVolumes(save.options.music, save.options.sfx);
+game.video = save.options.video;
+
+// ---------------------------------------------------------------- video options
+
+// Size the canvas: fill the window at 16:9, or (pixel perfect) the largest
+// whole multiple of 640x360 that fits; sharp or smooth scaling.
+function layout() {
+  const v = save.options.video;
+  let k = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H);
+  if (v.scale === 'pixel' && k >= 1) k = Math.floor(k);
+  canvas.style.width = `${Math.floor(VIEW_W * k)}px`;
+  canvas.style.height = `${Math.floor(VIEW_H * k)}px`;
+  canvas.style.imageRendering = v.filter === 'smooth' ? 'auto' : 'pixelated';
+}
+window.addEventListener('resize', layout);
+document.addEventListener('fullscreenchange', layout);
+layout();
+
+function toggleFullscreen() {
+  const req = document.documentElement.requestFullscreen;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else if (req) document.documentElement.requestFullscreen().catch(() => audio.play('denied'));
+}
 game.unlocked = save.unlocked;
 game.character = save.character || 'jazz';
 
@@ -201,6 +224,18 @@ function tick() {
       const action = screens.titleInput(input, save) || '';
       if (action.startsWith('level:')) showCard(levelKey(action.slice(6)), true);
       else if (action === 'options') { audio.setVolumes(save.options.music, save.options.sfx); writeSave(save); }
+      else if (action === 'keys') { input.setKeys(save.options.keys); writeSave(save); }
+      else if (action === 'capture') {
+        // The next key press rebinds the chosen slot (Escape cancels).
+        input.capture((code) => {
+          const c = screens.capturing;
+          screens.capturing = null;
+          if (!c || code === 'Escape') return;
+          if (!save.options.keys) save.options.keys = defaultKeys();
+          if (bindKey(save.options.keys, c.action, c.col, code)) { audio.play('select'); input.setKeys(save.options.keys); writeSave(save); } else audio.play('denied');
+        });
+      } else if (action === 'video') { game.video = save.options.video; layout(); writeSave(save); }
+      else if (action === 'fullscreen') toggleFullscreen();
       else if (action === 'save') { writeSave(save); game.character = save.character; }
       else if (action === 'reset') { save = { ...save, unlocked: 1, levels: {} }; writeSave(save); game.unlocked = 1; }
       else if (action === 'host') hostParty();

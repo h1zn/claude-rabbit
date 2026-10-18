@@ -208,8 +208,9 @@ export class Game {
   }
 
   banner(text, ticks) { this.bannerText = text; this.bannerTime = ticks; }
-  shake(ticks) { this.shakeTime = Math.max(this.shakeTime, ticks); }
-  flash(color, ticks) { this.flashColor = color; this.flashTime = ticks; }
+  // Both can be turned off in OPTIONS > VIDEO.
+  shake(ticks) { if (!this.video || this.video.shake !== false) this.shakeTime = Math.max(this.shakeTime, ticks); }
+  flash(color, ticks) { if (!this.video || this.video.flash !== false) { this.flashColor = color; this.flashTime = ticks; } }
 
   dust(x, y, n) {
     const color = this.level.meta.theme === 'winter' ? '#eef4ff' : this.level.meta.theme === 'crystal' ? '#a8f4ff' : '#e6d6b8';

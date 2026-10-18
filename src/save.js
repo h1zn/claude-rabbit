@@ -1,5 +1,5 @@
 // Progress saved in the browser: unlocked levels, each level's best stars,
-// score and time, and the sound options. Storage can be unavailable (private
+// score and time, and the options (volumes, keys, video). Storage can be unavailable (private
 // windows, blocked site data), so every access is guarded and the game works
 // without it.
 
@@ -8,14 +8,22 @@ const KEY = 'gemrush.save.v1';
 // The three stars of every level.
 export const MISSIONS = ['Reach the exit', 'Collect 75% of the gems', 'Find every secret'];
 
+// Video: `scale` fit (fill the window) or pixel (whole multiples only);
+// `filter` sharp or smooth; shake and flashes can be turned off.
+export const VIDEO_DEFAULTS = { scale: 'fit', filter: 'sharp', shake: true, flash: true };
+
 function defaults() {
-  return { unlocked: 1, levels: {}, options: { music: 0.7, sfx: 0.9 } };
+  return { unlocked: 1, levels: {}, options: { music: 0.7, sfx: 0.9, keys: null, video: { ...VIDEO_DEFAULTS } } };
 }
 
 export function loadSave() {
   try {
     const data = JSON.parse(localStorage.getItem(KEY));
-    if (data && typeof data === 'object') return { ...defaults(), ...data, options: { ...defaults().options, ...data.options } };
+    if (data && typeof data === 'object') {
+      const options = { ...defaults().options, ...data.options };
+      options.video = { ...VIDEO_DEFAULTS, ...(data.options && data.options.video) };
+      return { ...defaults(), ...data, options };
+    }
   } catch (e) { /* no storage: play without saving */ }
   return defaults();
 }

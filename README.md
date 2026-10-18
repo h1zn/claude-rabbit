@@ -38,6 +38,11 @@ not work, because browsers block JavaScript modules on `file://`.)
 | Let go of a swinging pole | Jump |
 | Pause / Mute | P / M |
 
+All play keys can be changed in **OPTIONS > KEYBOARD** (up to three keys per
+action; a key already in use swaps over). **OPTIONS > VIDEO** has fullscreen,
+fit-window or pixel-perfect scaling, sharp or smooth filtering, and switches
+for screen shake and flashes.
+
 ## Party mode (2 players)
 
 Double-click **`party.bat`** (or `python serve.py 8870 --lan`) on one computer.

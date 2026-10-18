@@ -4,6 +4,7 @@
 
 import { arcadeText, jjText, jjWidth } from './art.js';
 import { VIEW_H, VIEW_W } from './config.js';
+import { ACTION_NAMES, clearKey, defaultKeys, KEY_SLOTS, keyName, REBINDABLE } from './input.js';
 import { allJJ2, discoverPacks, PACKS } from './jj2/catalog.js';
 import { preview } from './jj2/preview.js';
 import { LEVELS, levelDef } from './levels.js';
@@ -56,6 +57,8 @@ export class Screens {
     this.lobby = { status: 'idle' };   // filled in by main.js for the party lobby
     this.partyLevel = 0;
     this.resetArmed = false;
+    this.keyCol = 0;           // keyboard screen: which key slot
+    this.capturing = null;     // keyboard screen: waiting for a key { action, col }
     window.addEventListener('keydown', (e) => {
       if (this.sub !== 'join') return;
       if (/^Key[A-Z]$/.test(e.code) && this.codeBuf.length < 4) this.codeBuf += e.code.slice(3);
@@ -232,8 +235,10 @@ export class Screens {
       else if (this.sub === 'episodes') this.episodeSelect(t, save);
       else if (this.sub === 'levels') this.levelGrid(t, save);
       else if (this.sub === 'jj2') this.jj2List(t, save);
-      else if (this.sub === 'help') this.help(t);
+      else if (this.sub === 'help') this.help(t, save);
       else if (this.sub === 'options') this.options(t, save);
+      else if (this.sub === 'keys') this.keysScreen(t, save);
+      else if (this.sub === 'video') this.videoScreen(t, save);
       else this.lobbyScreen(t);
     }
     arcadeText(ctx, 'Fan project - sprites, tiles, sounds and music (c) Epic MegaGames, not for distribution', VIEW_W / 2, VIEW_H - 12, { size: 8, align: 'center', shadow: false, top: '#c8b8e8', bottom: '#9a8ab0' });
@@ -468,21 +473,25 @@ export class Screens {
     }
   }
 
-  help(t) {
+  // The controls, naming the keys actually bound (OPTIONS > KEYBOARD).
+  help(t, save) {
     this.big('HOW TO PLAY', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
     this.panel(28, 40, VIEW_W - 56, 284, 0.85);
+    const keys = save.options.keys || defaultKeys();
+    const n = (a) => keyName(keys[a][0]);
+    const n2 = (a) => keys[a].slice(0, 2).map(keyName).join(' / ');
     const lines = [
-      ['ARROWS / WASD', 'move - hold SHIFT to run'],
-      ['SPACE / Z', 'jump - hold for higher; again in the air:'],
+      [`${n('left')} / ${n('right')}`, `move - hold ${n('run')} to run`],
+      [n2('jump'), 'jump - hold for higher; again in the air:'],
       ['', 'Jazz and Lori hover on their ears, Spaz jumps again'],
-      ['DOWN, then JUMP', 'uppercut, Jazz / kick; sliding: super jump'],
-      ['DOWN in the air', 'butt-stomp: breaks stomp blocks, kills enemies'],
-      ['X / J', 'fire    UP and X: aim up, diagonal while moving'],
-      ['C / TAB, 1-9', 'change weapon: bouncer, frostbiter, missiles, TNT...'],
+      [`${n('down')}, then ${n('jump')}`, 'uppercut, Jazz / kick; sliding: super jump'],
+      [`${n('down')} in the air`, 'butt-stomp: breaks stomp blocks, kills enemies'],
+      [n2('shoot'), `fire    ${n('up')} and ${n('shoot')}: aim up, diagonal while moving`],
+      [`${n('weapon')}, 1-9`, 'change weapon: bouncer, frostbiter, missiles, TNT...'],
       ['Poles and vines', 'touch a pole to spin and fly; hang from vines'],
       ['Blocks', 'star: shoot  number: N shots  arrow: stomp  gun: that gun'],
       ['Stars', 'exit  /  75% of gems  /  every secret'],
-      ['P / M', 'pause / mute'],
+      [`${n('pause')} / M`, 'pause / mute    Keys can be changed in OPTIONS'],
     ];
     lines.forEach(([a, b], i) => {
       this.med(a, 46, 54 + i * 21, { scale: 0.5 });
@@ -491,24 +500,91 @@ export class Screens {
     this.blink(t, 'Press ENTER', 300, 0.6);
   }
 
+  // A list of rows in the JJ2 font, the chosen one gold with a gem; `value`
+  // (optional) is drawn right-aligned.
+  rows(list, index, x0, x1, y0, gap, t) {
+    list.forEach(([label, value], i) => {
+      const on = i === index;
+      const y = y0 + i * gap;
+      this.med(label, x0, y, { scale: on ? 0.66 : 0.6, color: on ? null : '#b8a8e0', wave: on ? 2 : 0, t });
+      if (on) this.ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], x0 - 26, y);
+      if (value !== undefined && value !== null) this.med(value, x1, y, { align: 'right', scale: 0.6, color: on ? '#ffffff' : '#d8ccf4' });
+    });
+  }
+
   options(t, save) {
     const ctx = this.ctx;
-    this.dim(0.5);
-    this.panel(VIEW_W / 2 - 160, 100, 320, 170, 0.85);
-    arcadeText(ctx, 'OPTIONS', VIEW_W / 2, 108, { size: 18, align: 'center' });
-    const rows = [['MUSIC', save.options.music], ['EFFECTS', save.options.sfx]];
-    rows.forEach(([label, v], i) => {
+    this.big('OPTIONS', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    this.panel(130, 46, VIEW_W - 260, 262, 0.85);
+    const list = [['MUSIC'], ['EFFECTS'], ['KEYBOARD', '>'], ['VIDEO', '>'],
+      [this.resetArmed ? 'PRESS AGAIN TO ERASE' : 'RESET PROGRESS'], ['BACK']];
+    this.rows(list, this.menu, 180, VIEW_W - 170, 66, 38, t);
+    [save.options.music, save.options.sfx].forEach((v, i) => {
+      const y = 66 + i * 38 + 3;
       const on = this.menu === i;
-      const y = 146 + i * 30;
-      arcadeText(ctx, label, VIEW_W / 2 - 130, y, { size: 14, top: on ? '#ffffff' : '#b8a8d8', bottom: on ? '#ffb02e' : '#7a6aa0' });
-      ctx.fillStyle = '#1a0b1e'; ctx.fillRect(VIEW_W / 2 - 10, y + 3, 124, 12);
-      ctx.fillStyle = on ? '#ffd54a' : '#9a7ad0'; ctx.fillRect(VIEW_W / 2 - 8, y + 5, Math.round(120 * v), 8);
+      ctx.fillStyle = '#1a0b1e'; ctx.fillRect(330, y, 124, 12);
+      ctx.fillStyle = on ? '#ffd54a' : '#9a7ad0'; ctx.fillRect(332, y + 2, Math.round(120 * v), 8);
     });
-    const reset = this.menu === 2;
-    arcadeText(ctx, this.resetArmed ? 'PRESS AGAIN TO ERASE' : 'RESET PROGRESS', VIEW_W / 2, 210, { size: reset ? 15 : 13, align: 'center', top: reset ? '#ffd0d8' : '#b8a8d8', bottom: reset ? '#e8244a' : '#7a6aa0' });
-    const back = this.menu === 3;
-    arcadeText(ctx, 'BACK', VIEW_W / 2, 240, { size: back ? 16 : 13, align: 'center', top: back ? '#ffffff' : '#b8a8d8', bottom: back ? '#ffb02e' : '#7a6aa0' });
-    arcadeText(ctx, 'LEFT / RIGHT to change', VIEW_W / 2, 284, { size: 10, align: 'center', shadow: false, top: '#c8b8e8', bottom: '#9a8ab0' });
+    const hint = this.menu < 2 ? 'LEFT / RIGHT to change' : 'ENTER to choose   ESC to go back';
+    this.med(hint, VIEW_W / 2, 290, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+  }
+
+  // Rebind the play keys: up to three per action. ENTER waits for a key,
+  // BACKSPACE clears one, a key already in use swaps over.
+  keysScreen(t, save) {
+    const ctx = this.ctx;
+    const keys = save.options.keys || defaultKeys();
+    this.big('KEYBOARD', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    this.panel(28, 40, VIEW_W - 56, 282, 0.88);
+    const colX = [252, 368, 484];
+    const head = { scale: 0.48, color: '#8a7ab0' };
+    this.med('ACTION', 62, 50, head);
+    colX.forEach((x, c) => this.med(`KEY ${c + 1}`, x + 50, 50, { ...head, align: 'center' }));
+    REBINDABLE.forEach((a, i) => {
+      const y = 70 + i * 21;
+      const on = this.menu === i;
+      if (on) { ctx.fillStyle = 'rgba(255,214,90,0.10)'; ctx.fillRect(40, y - 3, VIEW_W - 80, 20); }
+      this.med(ACTION_NAMES[a], 62, y, { scale: 0.55, color: on ? null : '#d8ccf4' });
+      for (let c = 0; c < KEY_SLOTS; c++) {
+        const cell = on && this.keyCol === c;
+        const waiting = cell && this.capturing;
+        if (cell) {
+          ctx.strokeStyle = '#ffd54a'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.roundRect(colX[c], y - 3, 100, 19, 4); ctx.stroke();
+        }
+        const label = waiting ? (Math.floor(t / 20) % 2 ? 'PRESS A KEY' : '') : keyName(keys[a][c]);
+        this.med(label, colX[c] + 50, y, { align: 'center', scale: 0.5, color: waiting ? '#ffd54a' : keys[a][c] ? '#ffffff' : '#6a5a8a' });
+      }
+    });
+    const n = REBINDABLE.length;
+    this.rows([['RESET TO DEFAULTS'], ['BACK']], this.menu - n, 62, 0, 70 + n * 21 + 6, 21, t);
+    const hint = this.capturing ? 'Press the new key   ESC cancels' : 'ENTER change   BACKSPACE clear   ESC back';
+    this.med(hint, VIEW_W / 2, 302, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+  }
+
+  videoScreen(t, save) {
+    const v = save.options.video;
+    this.big('VIDEO', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    this.panel(100, 46, VIEW_W - 200, 262, 0.85);
+    const onOff = (b) => (b ? 'ON' : 'OFF');
+    const list = [
+      ['FULLSCREEN', onOff(!!document.fullscreenElement)],
+      ['SCALING', v.scale === 'pixel' ? 'PIXEL PERFECT' : 'FIT WINDOW'],
+      ['FILTER', v.filter === 'smooth' ? 'SMOOTH' : 'SHARP'],
+      ['SCREEN SHAKE', onOff(v.shake)],
+      ['FLASHES', onOff(v.flash)],
+      ['BACK'],
+    ];
+    this.rows(list, this.menu, 150, VIEW_W - 140, 66, 36, t);
+    const tips = [
+      'Fill the screen (F11 works too)',
+      'Fit: fill the window   Pixel perfect: whole-number scale, no uneven pixels',
+      'Sharp: crisp pixels   Smooth: softened',
+      'Shake the screen on explosions and stomps',
+      'Flash the screen on big hits and explosions',
+      '',
+    ];
+    this.wrapTo(tips[this.menu], VIEW_W - 240, 0.5).forEach((line, i) => this.med(line, VIEW_W / 2, 282 + i * 12, { align: 'center', scale: 0.5, color: '#c8b8e8' }));
   }
 
   lobbyScreen(t) {
@@ -619,20 +695,61 @@ export class Screens {
       case 'help':
         if (choose || back) { this.sub = null; this.menu = 2; this.audio.play('select'); }
         return null;
-      case 'options':
-        if (input.pressed('up')) { move(-1, 4); this.resetArmed = false; }
-        if (input.pressed('down')) { move(1, 4); this.resetArmed = false; }
+      case 'options': {
+        if (input.pressed('up')) { move(-1, 6); this.resetArmed = false; }
+        if (input.pressed('down')) { move(1, 6); this.resetArmed = false; }
         if (this.menu < 2) {
           const key = this.menu === 0 ? 'music' : 'sfx';
           const d = (input.pressed('right') ? 0.1 : 0) - (input.pressed('left') ? 0.1 : 0);
           if (d) { save.options[key] = Math.round(Math.max(0, Math.min(1, save.options[key] + d)) * 10) / 10; this.audio.play('menu'); return 'options'; }
         }
-        if (back || (choose && this.menu === 3)) { this.sub = null; this.menu = 3; this.resetArmed = false; return 'options'; }
-        if (choose && this.menu === 2) {
+        if (back || (choose && this.menu === 5)) { this.sub = null; this.menu = 3; this.resetArmed = false; return 'options'; }
+        if (choose && this.menu === 2) { this.audio.play('select'); this.sub = 'keys'; this.menu = 0; this.keyCol = 0; return null; }
+        if (choose && this.menu === 3) { this.audio.play('select'); this.sub = 'video'; this.menu = 0; return null; }
+        if (choose && this.menu === 4) {
           if (this.resetArmed) { this.resetArmed = false; this.audio.play('denied'); return 'reset'; }
           this.resetArmed = true; this.audio.play('menu');
         }
         return null;
+      }
+      case 'keys': {
+        if (this.capturing) return null;
+        const n = REBINDABLE.length;
+        if (input.pressed('up')) move(-1, n + 2);
+        if (input.pressed('down')) move(1, n + 2);
+        if (this.menu < n) {
+          const d = (input.pressed('right') ? 1 : 0) - (input.pressed('left') ? 1 : 0);
+          if (d) { this.keyCol = (this.keyCol + d + KEY_SLOTS) % KEY_SLOTS; this.audio.play('menu'); }
+        }
+        if (back || (choose && this.menu === n + 1)) { this.sub = 'options'; this.menu = 2; return null; }
+        if (!save.options.keys) save.options.keys = defaultKeys();
+        const keys = save.options.keys;
+        if (this.menu < n && input.pressed('clear')) {
+          if (clearKey(keys, REBINDABLE[this.menu], this.keyCol)) { this.audio.play('menu'); return 'keys'; }
+          this.audio.play('denied');
+          return null;
+        }
+        if (!choose) return null;
+        if (this.menu === n) { save.options.keys = defaultKeys(); this.audio.play('select'); return 'keys'; }
+        this.capturing = { action: REBINDABLE[this.menu], col: Math.min(this.keyCol, keys[REBINDABLE[this.menu]].length) };
+        this.audio.play('select');
+        return 'capture';
+      }
+      case 'video': {
+        if (input.pressed('up')) move(-1, 6);
+        if (input.pressed('down')) move(1, 6);
+        if (back || (choose && this.menu === 5)) { this.sub = 'options'; this.menu = 3; return null; }
+        const flip = choose || input.pressed('left') || input.pressed('right');
+        if (!flip) return null;
+        this.audio.play('menu');
+        const v = save.options.video;
+        if (this.menu === 0) return 'fullscreen';
+        if (this.menu === 1) v.scale = v.scale === 'pixel' ? 'fit' : 'pixel';
+        if (this.menu === 2) v.filter = v.filter === 'smooth' ? 'sharp' : 'smooth';
+        if (this.menu === 3) v.shake = !v.shake;
+        if (this.menu === 4) v.flash = !v.flash;
+        return 'video';
+      }
       case 'party':
         if (input.pressed('up')) move(-1, 3);
         if (input.pressed('down')) move(1, 3);
