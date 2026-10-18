@@ -465,15 +465,60 @@ Each "audit twice" request was handled the same way:
 
 ## 9. The final audit (this phase)
 
-See the commit messages after this file was added for the findings and fixes
-of the last two audit passes. The summary is added here at the end of the
-work.
+Two passes, each with independent reviewers (subagents given one area and
+told to trace a real path from input to failure before reporting) plus the
+full regression set: the scripted mechanics tests, the stepped fuzz over
+all 32 playable levels with every hero, the boss fights, the physics
+reference traces and `check_levels`.
+
+**Pass 1** (`8d900ef`), four reviewers: weapons, physics, bosses, app.
+
+- Weapons: explosive shots hit twice (direct plus blast); the frostbiter
+  froze bosses that were meant to be immune; missiles homed on hidden
+  bosses; TNT ignored the party rival and went off on one screen only;
+  blaster-only weapon blocks in JJ2 levels never broke.
+- Physics: the landing allowance could lift a falling hero into a
+  ceiling over a ledge; stale super-jump state survived springs, poles
+  and bounces; a special could start while swimming.
+- Bosses: an uppercut overlapping a boss for several ticks counted every
+  tick; the Queen could stall mid-fall; Bilsy could teleport over a
+  bottomless drop; the boss-end countdown ran while the player was dead.
+- App: a slow level load could overwrite a newer level card; the relay
+  server trusted frame lengths and message shapes; the character select
+  still named the old special-move input; docs had drifted.
+
+**Pass 2** (`6005843`, `b057152`, `813fd6e`), three reviewers: one
+re-verified every pass 1 fix, one re-read the gameplay code, one the art,
+levels and docs.
+
+- One pass 1 fix was itself a bug: letting the Queen wake from either
+  side turned her away from her pit when the player jumped beneath her,
+  so she could never be pushed in and Dungeon Escape's exit stayed
+  locked. She wakes only from in front again.
+- Robot and Bilsy stayed "visible" to shots after a reset; Dungeon
+  Escape's spring was buried inside rock.
+- A JJ2 moving platform sinking past a wall could bury the player
+  (found by riding every platform in every level from 6-12 boarding
+  points); checkpoints and secrets triggered on the dead player's fall;
+  the surface leap failed one press in five; Restart Level let lives and
+  ammo be farmed.
+- Art: Jazz's sprite spec pointed outside the repo; two Spaz animations
+  had anchors on stray pixels; the Uterus frames caught pieces of the row
+  above. Docs: counts, examples and a few numbers corrected.
+
+After pass 2 the whole regression set runs clean: no page errors or NaN
+in any level, all five bosses beaten by the scripted fights with the exit
+locking and unlocking correctly, and the physics traces still matching
+the original (132 px jump, 77.1 px early release, the walk/dash gap
+pattern).
 
 ## 10. Bugs worth remembering
 
 | Bug | Lesson |
 | --- | --- |
 | Level 1 froze on the first frame (a frog read a timer before setting it) | One exception in a draw loop freezes the game; render behind a try/catch that shows the error |
+| The Queen fix that made her unbeatable | Re-verify fixes as hard as the original code: a "more forgiving" wake rule broke the one geometry her fight depends on |
+| A platform buried the player in rock | Anything that moves the player must go through collision, both ways; a sweep of every platform from many boarding points found the one case |
 | Boss timers never fired | Durations converted from 60 fps were fractional, so `st === 0` was never true; clamp at zero |
 | The Robot spawned inside rock | The built-in level's `move()` doesn't sweep large steps, so a 300 px move went straight through the ceiling |
 | Some level files "weren't JJ2 levels" in a test | Node's small Buffers share a pool; `buf.buffer` needs `byteOffset` |
