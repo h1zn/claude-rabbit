@@ -725,7 +725,8 @@ export class Checkpoint {
 
   update(game) {
     if (this.active) this.t++;
-    if (!this.active && overlap(this, game.player)) {
+    // A dead player's fall doesn't count as reaching it.
+    if (!this.active && !game.player.dead && overlap(this, game.player)) {
       this.active = true;
       game.respawn = { x: this.x, y: this.y + this.h - game.player.h };
       game.audio.play('checkpoint');
@@ -792,7 +793,7 @@ export class SecretZone {
   }
 
   update(game) {
-    if (!this.found && overlap(this, game.player)) {
+    if (!this.found && !game.player.dead && overlap(this, game.player)) {
       this.found = true;
       game.secretsFound++;
       game.addScore(5000, this.x + this.w / 2, this.y);

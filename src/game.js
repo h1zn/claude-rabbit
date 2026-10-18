@@ -55,7 +55,9 @@ export class Game {
   loadLevel(index, freshPlayer = false) {
     this.levelIndex = index;
     // What the player brought into the level, for RESTART LEVEL.
-    this.startStats = { score: this.score, gems: this.gems, coins: this.coins, food: this.food || 0 };
+    this.startStats = { score: this.score, gems: this.gems, coins: this.coins, food: this.food || 0, lives: this.lives };
+    const kp = !freshPlayer && this.player;
+    this.startKit = kp ? { ammo: [...kp.ammo], powered: [...kp.powered], shotDelay: kp.shotDelay, weapon: kp.weapon } : null;
     this.level = levelDef(index)(this.party ? { party: true } : {});
     const theme = this.level.meta.theme;
     if (this.level.jj2) {
@@ -149,7 +151,17 @@ export class Game {
   }
 
   // Undo a level's progress before restarting it.
-  restoreStart() { if (this.startStats) Object.assign(this, this.startStats); }
+  // Lives, ammo and power-ups too, so a restart can't farm them.
+  restoreStart() {
+    if (this.startStats) Object.assign(this, this.startStats);
+    if (this.player) {
+      const k = this.startKit;
+      const p = this.player;
+      if (k) { p.ammo = [...k.ammo]; p.powered = [...k.powered]; p.shotDelay = k.shotDelay; p.weapon = k.weapon; } else {
+        p.ammo = p.ammo.map(() => 0); p.powered = p.powered.map(() => false); p.shotDelay = PLAYER.shotDelay; p.weapon = 1;
+      }
+    }
+  }
 
   // A boss still standing between the player and the exit.
   bossGuarding() { return this.enemies.some((e) => e.guard && !e.dead); }
@@ -273,7 +285,8 @@ export class Game {
     const p = this.player;
     const d = Math.hypot(p.cx - x, p.cy - y);
     if (weapon === 5 && d <= 36 && !p.dead) p.blast(p.cx < x ? -1 : 1, d);
-    for (const e of this.enemies) if (!e.dead && inside(e)) e.damage(this, damage);
+    // A copy: a kill can add enemies (Schwartzenguard's shell) mid-loop.
+    for (const e of [...this.enemies]) if (!e.dead && inside(e)) e.damage(this, damage);
     for (const b of this.enemyShots) if (!b.dead && !b.solid && inside(b)) b.kind === 'bomb' ? b.explode(this) : b.pop(this);
     for (const s of this.shots) if (s.weapon === TNT && inside(s)) s.detonate();
     for (const k of this.pickups) {

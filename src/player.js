@@ -190,12 +190,16 @@ export class Player {
     if (this.onGround) this.springDj = false;
     if (controlled && this.special === 0 && input.pressed('jump')) this.jumpBuffer = PHYS.jumpBufferTicks;
     else if (this.jumpBuffer > 0) this.jumpBuffer--;
+    if (this.surfaceGrace > 0 && !this.swimming) this.surfaceGrace--;
     const onPlatform = this.onGround && level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE));
     if (this.special === 0 && !this.swimming) {
       if (this.jumpBuffer > 0 && input.held('down') && onPlatform) {
         this.dropThrough = 10;
         this.jumpBuffer = 0;
         this.onGround = false;
+      } else if (controlled && input.pressed('jump') && this.surfaceGrace > 0 && !this.onGround) {
+        // Bobbing just above the surface still counts as at the surface.
+        this.surfaceLeap(audio);
       } else if (this.jumpBuffer > 0 && (this.onGround || this.coyote > 0)) {
         // Measured: vy = jumpBase - |vx| / 4 (running jumps go higher). From a
         // full crouch it is a super jump (manual: 60% higher, smashes blocks).
@@ -256,12 +260,8 @@ export class Player {
       const surf = level.areaAt(this.cx, this.cy) === EV.WATER_BLOCK
         ? level.areaAt(this.cx, this.cy - 20) !== EV.WATER_BLOCK
         : this.cy - level.water < 20;
-      if (input.pressed('jump') && surf) {
-        this.vy = PHYS.jumpBase;
-        this.jumping = true; this.jumpCut = false;
-        this.swimming = false;
-        audio.play('jump');
-      }
+      if (surf) this.surfaceGrace = 10;
+      if (input.pressed('jump') && surf) this.surfaceLeap(audio);
     } else if (this.floatUp) {
       // Updraft: carried up to 8 px/tick (original float-up speed).
       this.vy = Math.max(this.vy - 0.5, -8);
@@ -440,6 +440,15 @@ export class Player {
     game.audio.play('uppercutCharge');
   }
 
+  // Jump at the water's surface: leap out.
+  surfaceLeap(audio) {
+    this.vy = PHYS.jumpBase;
+    this.jumping = true; this.jumpCut = false;
+    this.swimming = false;
+    this.surfaceGrace = 0; this.jumpBuffer = 0;
+    audio.play('jump');
+  }
+
   // Spinning on a pole: steer with left/right, jump lets go early.
   swing(game, input) {
     const pole = this.pole;
@@ -519,6 +528,8 @@ export class Player {
     // Riding a moving platform: gravity's pull below its top doesn't unground.
     if (!this.onGround && this.platform && this.vy >= 0) { this.y = this.platform.y - this.h; this.vy = 0; this.onGround = true; }
     this.onSlope = hit.slope;
+    // Walking off a ledge opens Spaz's double jump as a released jump would.
+    if (grounded && !this.onGround && !this.jumping && this.vy >= 0) this.djWindow = PHYS.doubleJumpWindow;
     if (this.onGround) {
       if (this.stomping) {
         this.stomping = false;

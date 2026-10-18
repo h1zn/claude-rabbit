@@ -48,9 +48,11 @@ export class Platform {
     if (p.platform === this && !p.dead) {
       const dx = this.x - this.prevX;
       game.level.move(p, dx, 0, { climb: true });
-      // Rising into a ceiling knocks the rider off rather than through it.
-      const want = this.y - p.h;
-      if (want < p.y) { if (game.level.move(p, 0, want - p.y).top) p.platform = null; } else p.y = want;
+      // Rising into a ceiling or sinking onto ground leaves the rider there
+      // rather than pushing them through it.
+      const dy = this.y - p.h - p.y;
+      const hit = game.level.move(p, 0, dy);
+      if (dy < 0 ? hit.top : hit.bottom) p.platform = null;
     }
   }
 
