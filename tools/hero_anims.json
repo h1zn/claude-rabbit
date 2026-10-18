@@ -3,6 +3,7 @@
   "anims": {
     "idle":       { "frames": [0, 26],   "speed": 6, "loop": true },
     "bored":      { "frames": [27, 72],  "speed": 6, "loop": false },
+    "push":       { "cols": [410, 1060, 885, 1104], "speed": 5, "loop": true },
     "walk":       { "frames": [159, 166], "speed": 5, "loop": true },
     "run":        { "frames": [167, 174], "speed": 4, "loop": true },
     "skid":       { "frames": [196, 198], "speed": 4, "loop": true },

@@ -119,8 +119,18 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 - **Pickups**: speed shoes (15 s faster), the freeze hourglass (freezes the
   enemies around) and the stopwatch (+10 s of shield), as JJ2's Fast Feet,
   Freeze and Shield Time events; silver/gold coins, 4 gem colours, 38 foods, carrot, super carrot,
-  1-up, Fastfire (fire delay -3, down to 6), fire-shield monitor (30 s, each hit
-  costs 5 s), ammo, ammo crates, power-up monitors.
+  1-up, Fastfire (fire delay -3, down to 6; also dropped at random by beaten
+  enemies), ammo, ammo crates, power-up monitors.
+- **Shields** (manual): fire, bubble and plasma monitors. Each shield lasts
+  30 s, soaks hits (5 s off per hit) and gives the Blaster its Whammo Ammo:
+  wobbling bubbles that bounce off walls, flaming missiles, or a three-way
+  plasma spray that goes through enemies. The fire shield also scorches
+  enemies that touch you.
+- **Quick Change monitor**: shoot it to switch hero on the spot (Jazz, Spaz,
+  Lori, and round again).
+- **Pushable boxes and rocks**: walk into one to push it (the heroes have
+  their pushing animation), stand on it to reach higher, drop it on enemies.
+  JJ2 levels' pushable boxes and rocks (events 231/232) work too.
 - **Bosses** guard the exits of five levels; the exit stays locked until the
   boss is beaten, and dying starts the fight over. The Queen (Dungeon Escape:
   she can't be hurt; shoot her while she screams to push her back, then off

@@ -54,7 +54,7 @@ export class Player {
       invuln: 0, knock: 0, dropThrough: 0, shotCooldown: 0, shootPose: 0,
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
-      crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
+      crouchT: 0, superJump: false, shield: 0, shieldType: 'fire', pushing: 0, dash: 0, jumpCut: false,
       hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0, dizzy: 0, aim: null, fastFeet: 0,
     });
@@ -77,6 +77,7 @@ export class Player {
     for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube', 'weaponShown', 'djWindow', 'rfBlast', 'dizzy', 'fastFeet']) if (this[k] > 0) this[k]--;
     if (this.rush > 0 && --this.rush === 0) game.endRush();
     if (this.shield > 0) this.shield--;
+    if (this.pushing > 0) this.pushing--;
 
     if (this.dead) {
       this.deadTimer++;

@@ -200,7 +200,7 @@ export class Party {
   boom(x, y) { this.net.send({ t: 'boom', x: Math.round(x), y: Math.round(y) }); }
 
   tile(tx, ty, opts = {}) { this.net.send({ t: 'tile', x: tx, y: ty, w: opts.weapon || 0, b: opts.blast ? 1 : 0 }); }
-  fire(shot) { this.net.send({ t: 'shot', x: Math.round(shot.x), y: Math.round(shot.y), vx: +shot.vx.toFixed(2), vy: +shot.vy.toFixed(2), w: shot.weapon, p: shot.powered ? 1 : 0, l: shot.life }); }
+  fire(shot) { this.net.send({ t: 'shot', x: Math.round(shot.x), y: Math.round(shot.y), vx: +shot.vx.toFixed(2), vy: +shot.vy.toFixed(2), w: shot.weapon, p: shot.powered ? 1 : 0, l: shot.life, h: shot.whammo || undefined }); }
 
   win(game) {
     this.result = 'win';
@@ -226,6 +226,7 @@ export class Party {
       case 'shot': {
         // The rival's shot flies here as well, but only hurts us.
         const b = new Bullet(m.w || 1, !!m.p, m.x, m.y, m.vx, m.vy, { remote: true });
+        if (m.h && m.w === 1) b.setWhammo(String(m.h));
         if (m.l) b.life = m.l;
         this.shots.push(b);
         game.audio.play(b.weapon === 6 ? 'flame' : 'shoot');

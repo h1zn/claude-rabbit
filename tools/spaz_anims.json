@@ -216,6 +216,16 @@
    ],
    "speed": 3,
    "loop": false
+  },
+  "push": {
+   "cols": [
+    355,
+    1000,
+    885,
+    1043
+   ],
+   "speed": 5,
+   "loop": true
   }
  }
 }

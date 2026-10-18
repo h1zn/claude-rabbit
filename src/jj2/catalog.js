@@ -69,6 +69,8 @@ function fetchParsed(url, parse) {
 
 const url = (pack, name) => pack.dir + name.split('/').map(encodeURIComponent).join('/');
 const j2t = (name) => (/\.j2t$/i.test(name) ? name : `${name}.j2t`);
+// Is `name` in the pack's folder? (Unknown without the folder listing.)
+const inPack = (pack, name) => !pack.files || pack.files.some((f) => f.toLowerCase() === name.toLowerCase());
 
 // Find a file in a pack ignoring case (JJ2 names are case-insensitive).
 function packFile(pack, name) {
@@ -122,10 +124,8 @@ export function jj2Def(key) {
     await discovered();
     const level = await fetchParsed(url(pack, entry.file), parseLevel);
     readHeader(level);
-    const known = pack.files || null;
-    const has = (name) => !known || known.some((f) => f.toLowerCase() === name.toLowerCase());
-    if (!has(j2t(level.tileset))) throw new Error(`Needs the tile set ${j2t(level.tileset)}`);
-    if (!known || (level.mlle && level.mlle.tilesets.some((x) => !has(j2t(x.name))))) await def.prepare();
+    if (!inPack(pack, j2t(level.tileset))) throw new Error(`Needs the tile set ${j2t(level.tileset)}`);
+    if (!pack.files || (level.mlle && level.mlle.tilesets.some((x) => !inPack(pack, j2t(x.name))))) await def.prepare();
   };
   def.prepare = async () => {
     if (state.level) return def;
@@ -138,7 +138,7 @@ export function jj2Def(key) {
       // JJ2+ levels: extra tile sets (missing ones leave their tiles empty)
       // and extra layers from the level's MLLE data files.
       const extras = await Promise.all(level.mlle.tilesets.map(async (x) => ({
-        ...x, ts: await fetchParsed(url(pack, packFile(pack, j2t(x.name))), parseTileset).catch(() => null),
+        ...x, ts: inPack(pack, j2t(x.name)) ? await fetchParsed(url(pack, packFile(pack, j2t(x.name))), parseTileset).catch(() => null) : null,
       })));
       def.missing = extras.filter((x) => !x.ts).map((x) => x.name);
       if (extras.length || level.mlle.palette || level.mlle.edited) ts = composeTileset(ts, extras, level.mlle.palette, level.mlle.edited);
@@ -158,7 +158,8 @@ export function jj2Def(key) {
       }
       const files = Math.ceil(Math.max(0, (level.mlle.layers ? level.mlle.layers.length : 8) - 8) / 8);
       const base = entry.file.replace(/\.j2l$/i, '');
-      const data = await Promise.all(Array.from({ length: files }, (_, i) => fetchParsed(url(pack, packFile(pack, `${base}-MLLE-Data-${i + 1}.j2l`)), parseLevel).catch(() => null)));
+      const dataFile = (i) => `${base}-MLLE-Data-${i + 1}.j2l`;
+      const data = await Promise.all(Array.from({ length: files }, (_, i) => (inPack(pack, dataFile(i)) ? fetchParsed(url(pack, packFile(pack, dataFile(i))), parseLevel).catch(() => null) : null)));
       applyMlleLayers(level, data);
     }
     state.ts = ts;

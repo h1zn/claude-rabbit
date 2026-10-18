@@ -41,6 +41,10 @@ export class Enemy {
     game.sound('kill', this.cx, this.y + this.h / 2);
     game.explode(this.cx, this.y + this.h / 2, this.color || '#ffd54a');
     game.addScore(this.score * game.bump(), this.cx, this.y);
+    // Manual: Fastfire pickups appear randomly when you kill baddies.
+    if (!game.party && !this.boss && Math.random() < ENEMY.fastfireDrop) {
+      game.pickups.push(new Pickup('fastfire', this.cx - 12, this.y + this.h / 2 - 11, { w: 24, h: 22, dropped: true }));
+    }
   }
 
   begin() {
@@ -483,6 +487,15 @@ const GEMS = {
   v: { color: 'purple', value: 20, score: 2000 },
 };
 const GEM_ANIM = { red: 'gemRed', green: 'gemGreen', blue: 'gemBlue', purple: 'gemPurple' };
+// The manual's three shields: each soaks hits (5 s off per hit) and gives
+// the Blaster its own Whammo Ammo (src/weapons.js).
+export const SHIELDS = {
+  fire: { name: 'FIRE SHIELD', monitor: 'shieldMonitor', color: '#ff9a3a' },
+  bubble: { name: 'BUBBLE SHIELD', monitor: 'monShieldWater', color: '#6ac8ff' },
+  plasma: { name: 'PLASMA SHIELD', monitor: 'monShieldPlasma', color: '#ffe85a' },
+};
+const SHIELD_OF = { Q: 'fire', L: 'bubble', N: 'plasma' };
+const HEROES = ['jazz', 'spaz', 'lori'];
 const RING = { red: '#ff6a8a', green: '#5ae08a', blue: '#6aa8ff', purple: '#c48aff' };
 
 export class Pickup {
@@ -503,7 +516,10 @@ export class Pickup {
     if (ch === '1') return new Pickup('life', x - 4, y - 4, { w: 24, h: 22 });
     // Gun crates hold ammo for one weapon, picked by where the crate stands.
     if (ch === 'A') return Pickup.crate(tx, ty, CRATE_WEAPONS[Math.floor(hash2(tx, ty, 7) * CRATE_WEAPONS.length)], 10);
-    if (ch === 'Q') return new Pickup('shield', x - 4, ty * TILE + TILE - 30, { w: 28, h: 30, needsHit: true });
+    // Shield monitors (shoot or stomp them open): fire, bubble, plasma.
+    if (ch === 'Q' || ch === 'L' || ch === 'N') return new Pickup('shield', x - 4, ty * TILE + TILE - 30, { w: 28, h: 30, needsHit: true, shield: SHIELD_OF[ch] });
+    // Quick Change monitor: switches the hero.
+    if (ch === 'M') return new Pickup('morph', x - 4, ty * TILE + TILE - 30, { w: 28, h: 30, needsHit: true });
     if (ch === 'F') return new Pickup('fastfire', x - 4, y - 4, { w: 24, h: 22 });
     return null;
   }
@@ -542,7 +558,8 @@ export class Pickup {
     if (this.kind === 'carrot') return this.full ? frameAt(a.carrotFull, this.t, 5) : a.carrot.frames[0];
     if (this.kind === 'life') return frameAt(a.oneUp, this.t, 5);
     if (this.kind === 'fastfire') return frameAt(a.fastfire, this.t, 4);
-    if (this.kind === 'shield') return frameAt(a.shieldMonitor, this.t, 6);
+    if (this.kind === 'shield') return frameAt(a[SHIELDS[this.shield || 'fire'].monitor], this.t, 6);
+    if (this.kind === 'morph') return frameAt(a.monChange, this.t, 5);
     if (this.kind === 'ammo') return frameAt(a[WEAPONS[this.weapon].icon], this.t, 5);
     if (this.kind === 'item') return frameAt(art.beta.anims[{ fastFeet: 'speedShoes', freeze: 'hourglass', stopwatch: 'stopwatch' }[this.item]], this.t, 5);
     if (this.kind === 'powerup') {
@@ -603,11 +620,25 @@ export class Pickup {
       game.audio.play('crate');
       game.banner('FASTFIRE!', 50);
     } else if (this.kind === 'shield') {
+      const s = SHIELDS[this.shield || 'fire'];
       p.shield = PLAYER.shieldTicks;
+      p.shieldType = this.shield || 'fire';
       game.addScore(500, cx, this.y);
       game.audio.play('rush');
-      game.banner('FIRE SHIELD!', 80);
-      game.explode(cx, cy, '#ff9a3a');
+      game.banner(`${s.name}!`, 80);
+      game.explode(cx, cy, s.color);
+    } else if (this.kind === 'morph') {
+      // Manual: a Quick Change Monitor turns Jazz into Spaz (and here on to
+      // Lori, then back to Jazz) on the spot.
+      const next = HEROES[(HEROES.indexOf(p.character) + 1) % HEROES.length];
+      p.character = next;
+      game.character = next;
+      p.doubleJumped = false; p.hovering = false; p.special = 0;
+      game.addScore(500, cx, this.y);
+      game.audio.play('rank');
+      game.banner(`QUICK CHANGE: ${next.toUpperCase()}!`, 90);
+      game.effect('poof', p.cx, p.cy);
+      game.ring(p.cx, p.cy, '#ffffff');
     } else if (this.kind === 'crate' && this.trigger) {
       const t = this.trigger;
       game.level.setTrigger(t.id, t.toggle ? !game.level.triggerState.has(t.id) : t.on);

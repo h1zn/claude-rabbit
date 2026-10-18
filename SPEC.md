@@ -144,6 +144,10 @@ From IDA (the level event handlers) and the manual.
 | Switch blocks | breaking a switch crate removes solid switch blocks and makes ghost ones solid | manual |
 | Fastfire | each one cuts the fire delay by 3 ticks, down to 6 | IDA |
 | Shields | last 2100 ticks (30 s); each hit takes 5 s off instead of a heart | IDA, manual |
+| Shield types | fire, bubble (water) and plasma (lightning) monitors; while one is up the Blaster fires its Whammo Ammo (bubbles: 2 damage, drift and bounce; flaming missile: 3; plasma: three shots of 3 that pierce); the fire shield scorches enemies that touch you (2 damage) | manual (tuned) |
+| Quick Change monitor | switches the hero (JJ2 event 71) | manual |
+| Fastfire drops | 8% of beaten enemies leave a Fastfire | manual (tuned) |
+| Pushables | box pushed at up to 1.6 px/tick, rock 1.0; they fall, stack, carry the player and flatten enemies they land on | tuned |
 | Super carrot | full health, 350 ticks of invulnerability | IDA |
 
 ## Shooters (loop 5)

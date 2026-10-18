@@ -9,6 +9,7 @@ import {
 } from './entities.js';
 import { jj2Tick } from './jj2/play.js';
 import { Platform } from './jj2/platforms.js';
+import { Pushable } from './pushables.js';
 import { JJ2View } from './jj2/view.js';
 import { LEVELS, levelDef } from './levels.js';
 import { PARTY_GOAL, PARTY_RESPAWN } from './party.js';
@@ -75,7 +76,8 @@ export class Game {
     const playerH = this.level.meta.playerH || PLAYER.h;
     Object.assign(this, {
       enemies: [], enemyShots: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
-      platforms: (this.level.platforms || []).map((o) => new Platform(o)),
+      platforms: [...(this.level.platforms || []).map((o) => new Platform(o)),
+        ...this.level.objects.filter((o) => o.type === 'push').map((o) => new Pushable(o))],
       levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null, hintHold: null,
       combo: 0, comboTimer: 0, comboMult: 1, activeBoss: null, bossCall: false, bossEnd: 0,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,
@@ -582,6 +584,8 @@ export class Game {
           this.audio.play('stomp');
         }
       } else {
+        // Manual: the fire shield scorches anything that tries to harm you.
+        if (p.shield > 0 && p.shieldType === 'fire' && p.invuln === 0 && !e.boss) { e.damage(this, 2); this.effect('hitSpark', e.cx, e.y + e.h / 2); }
         p.hurt(this, e.x + e.w / 2);
       }
     }

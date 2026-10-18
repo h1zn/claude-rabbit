@@ -14,7 +14,7 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 
 // Poses only Jazz and Spaz have (new/sprites other movements.png): what
 // Lori shows instead.
-const HERO_FALLBACK = { shootUp: 'look', shootDiag: 'run', shootDiagAir: 'shootAir', shootRun: 'run', fidget: 'idle', knockdown: 'dead', dizzy: 'hurt' };
+const HERO_FALLBACK = { shootUp: 'look', shootDiag: 'run', shootDiagAir: 'shootAir', shootRun: 'run', fidget: 'idle', knockdown: 'dead', dizzy: 'hurt', push: 'walk' };
 
 // A sheet frame washed in ice blue, for frozen enemies (made once per frame).
 const icedFrames = new WeakMap();
@@ -88,7 +88,7 @@ export class Renderer {
     ctx.save();
     ctx.translate(-cam.x, -cam.y);
     if (view) view.drawBridges(ctx, game.time);
-    for (const pl of game.platforms || []) pl.draw(ctx);
+    for (const pl of game.platforms || []) pl.draw(ctx, this.art);
     this.decor(game, cam, false);
     this.blocks(game, cam);
     this.props(game);
@@ -154,7 +154,7 @@ export class Renderer {
       if (color) glows.push([x, y, r * 0.8, color, strength]);
     };
     light(lerp(p.prevX, p.x, alpha) + p.w / 2, lerp(p.prevY, p.y, alpha) + p.h / 2, 150 * flicker);
-    for (const s of game.shots) light(s.x + s.w / 2, s.y + s.h / 2, s.weapon === 6 ? 40 : 56, 0.8, WEAPONS[s.weapon].glow);
+    for (const s of game.shots) light(s.x + s.w / 2, s.y + s.h / 2, s.weapon === 6 ? 40 : 56, 0.8, s.glow || WEAPONS[s.weapon].glow);
     for (const b of game.enemyShots) light(b.x + 8, b.y + 8, 40, 0.6, '255,140,60');
     const GEM = { red: '255,60,110', green: '60,255,140', blue: '80,150,255', purple: '200,90,255' };
     for (const k of game.pickups) if (k.kind === 'gem') light(k.x + k.w / 2, k.y + k.h / 2, 34, 0.5, GEM[k.color]);
@@ -487,6 +487,7 @@ export class Renderer {
       this.sprite(f, x, lerp(s.prevY, s.y, alpha) + s.h + 1);
       return;
     }
+    if (s.whammo) { this.whammoShot(s, x, y, rival); return; }
     const a = this.art.fx.anims[s.powered ? w.shotP : w.shot];
     // A flame grows and dies over its life; other shots loop.
     const f = s.weapon === 6 ? a.frames[Math.min(a.frames.length - 1, Math.floor((s.t / (s.t + s.life)) * a.frames.length))] : frameAt(a, s.life, a.speed);
@@ -502,6 +503,31 @@ export class Renderer {
       return;
     }
     this.centred(f, x, y, s.vx >= 0);
+  }
+
+  // Whammo Ammo: a wobbling bubble, a flaming missile or a plasma bolt.
+  whammoShot(s, x, y, rival) {
+    const ctx = this.ctx;
+    if (s.whammo === 'bubble') {
+      this.glow(x, y, 12, rival ? 'rgba(255,80,60,0.5)' : 'rgba(110,190,255,0.5)');
+      const r = 5.5 + Math.sin(s.t * 0.4) * 0.8;
+      ctx.save();
+      ctx.fillStyle = rival ? 'rgba(255,120,110,0.35)' : 'rgba(140,210,255,0.35)';
+      ctx.strokeStyle = rival ? '#ffc0b8' : '#dff4ff'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(Math.round(x), Math.round(y), r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(Math.round(x - r * 0.5), Math.round(y - r * 0.6), 2, 2);
+      ctx.restore();
+      return;
+    }
+    const a = this.art.fx.anims[s.whammo === 'fire' ? 'rfP' : 'electroP'];
+    const f = frameAt(a, s.life, a.speed);
+    this.glow(x, y, s.whammo === 'fire' ? 16 : 18, rival ? 'rgba(255,80,60,0.6)' : `rgba(${s.glow},0.6)`);
+    ctx.save();
+    ctx.translate(Math.round(x), Math.round(y));
+    ctx.rotate(Math.atan2(s.vy, s.vx));
+    ctx.drawImage(f.right, -f.w / 2, -f.h / 2);
+    ctx.restore();
   }
 
   // Which hero animation fits the player's current state.
@@ -527,6 +553,7 @@ export class Renderer {
       if (p.shootPose > 0) return 'shootAir';
       return speed > 2 ? 'fallFwd' : 'fall';
     }
+    if (p.pushing > 0) return 'push';
     if (p.anim === 'skid') return 'skid';
     if (p.anim === 'run') return p.shootPose > 0 ? 'shootRun' : speed > 4.2 ? 'run' : 'walk';
     if (p.anim === 'crouch') return p.shootPose > 0 ? 'crouchShoot' : 'crouch';
@@ -557,7 +584,7 @@ export class Renderer {
     if (p.rush > 0) this.glow(x + f.w / 2, y + f.h / 2, 34, `hsla(${(game.time * 12) % 360},100%,60%,0.45)`);
     if (p.special > 0 && p.special > p.windup) this.glow(x + f.w / 2, y + 12, 22, 'rgba(255,214,90,0.5)');
     if (p.stomping) this.glow(x + f.w / 2, y + f.h, 20, 'rgba(255,255,255,0.4)');
-    if (p.shield > 0 && (p.shield > 210 || game.time % 8 < 5)) this.shieldRing(game, x + f.w / 2, y + f.h / 2);
+    if (p.shield > 0 && (p.shield > 210 || game.time % 8 < 5)) this.shieldRing(game, x + f.w / 2, y + f.h / 2, p.shieldType);
     if (p.pole) {
       // Spinning round the pole, hands on the bar.
       ctx.save();
@@ -570,12 +597,46 @@ export class Renderer {
     ctx.drawImage(right ? f.right : f.left, x, y);
   }
 
-  // Fire shield: flames circling Kip.
-  shieldRing(game, cx, cy) {
+  // The shield around Kip: circling flames (fire), a wobbling gel sphere
+  // (bubble) or a crackling energy field (plasma).
+  shieldRing(game, cx, cy, type = 'fire') {
     const ctx = this.ctx;
+    const t = game.time;
+    if (type === 'bubble') {
+      this.glow(cx, cy, 34, 'rgba(90,180,255,0.25)');
+      ctx.save();
+      ctx.strokeStyle = 'rgba(170,225,255,0.85)'; ctx.lineWidth = 2;
+      ctx.fillStyle = 'rgba(90,170,255,0.18)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 24 + Math.sin(t * 0.15) * 1.5, 28 + Math.cos(t * 0.13) * 1.5, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.beginPath(); ctx.ellipse(cx - 9, cy - 14, 5, 3, -0.6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      return;
+    }
+    if (type === 'plasma') {
+      this.glow(cx, cy, 36, 'rgba(255,240,120,0.3)');
+      ctx.save();
+      ctx.strokeStyle = t % 4 < 2 ? '#fff8c0' : '#ffe040'; ctx.lineWidth = 1.5;
+      for (let k = 0; k < 3; k++) {
+        // Jagged arcs round the body, redrawn every few ticks.
+        const seed = Math.floor(t / 3) * 7 + k * 13;
+        ctx.beginPath();
+        for (let i = 0; i <= 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + k * 2.1;
+          const r = 24 + ((seed * (i + 3)) % 7) - 3;
+          const px = cx + Math.cos(a) * r; const py = cy + Math.sin(a) * (r + 4);
+          if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
     this.glow(cx, cy, 34, 'rgba(255,120,40,0.35)');
     for (let i = 0; i < 8; i++) {
-      const a = game.time * 0.12 + (i / 8) * Math.PI * 2;
+      const a = t * 0.12 + (i / 8) * Math.PI * 2;
       ctx.fillStyle = ['#fff2a0', '#ffb02e', '#ff5a2a'][i % 3];
       ctx.fillRect(Math.round(cx + Math.cos(a) * 22) - 2, Math.round(cy + Math.sin(a) * 26) - 2, 4, 4);
     }
@@ -712,7 +773,7 @@ export class Renderer {
       arcadeText(ctx, `${Math.ceil(p.fastFeet / 70)}`, 226, 32, { size: 12, top: '#ffffff', bottom: '#7ae8ff' });
     }
     if (p.shield > 0) {
-      this.centred(items.shieldMonitor.frames[0], 146, 40);
+      this.centred(items[{ fire: 'shieldMonitor', bubble: 'monShieldWater', plasma: 'monShieldPlasma' }[p.shieldType] || 'shieldMonitor'].frames[0], 146, 40);
       arcadeText(ctx, `${Math.ceil(p.shield / 70)}`, 162, 32, { size: 12, top: '#ffffff', bottom: '#ff9a3a' });
     }
     // Food meter toward a sugar rush.

@@ -16,7 +16,8 @@ export function tubelectric() {
   const cps = [mid[12], mid[30]];
   for (const R of cps) at(R, 'C', 2);
   L.warp(M.spot(cps[0], 5), cps[0].floor - 1, 'back5');
-  at(mid[20], 'Q', 3);
+  at(mid[20], 'N', 3);                         // plasma shield: Whammo Ammo sprays
+  at(mid[15], 'M', 3);                         // Quick Change monitor
   at(mid[8], 'F', 3);
   at(mid[25], '%', 3);
   L.warp(M.spot(mid[5], 2), mid[5].floor - 1, 'coin5', 'bonus5', { cost: 25, label: 'COIN WARP!' });

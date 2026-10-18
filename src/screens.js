@@ -545,12 +545,13 @@ export class Screens {
       [`${n('weapon')}, 1-9`, 'change weapon: bouncer, frostbiter, missiles, TNT...'],
       ['Poles and vines', 'touch a pole to spin and fly; hang from vines'],
       ['Blocks', 'star: shoot  number: N shots  arrow: stomp  gun: that gun'],
+      ['Monitors', 'shields power up the Blaster; the swirl one switches hero'],
       ['Stars', 'exit  /  75% of gems  /  every secret'],
       [`${n('pause')} / M`, 'pause / mute    Keys can be changed in OPTIONS'],
     ];
     lines.forEach(([a, b], i) => {
-      this.med(a, 46, 54 + i * 21, { scale: 0.5 });
-      this.med(b, 190, 54 + i * 21, { scale: 0.5, color: '#ece4ff' });
+      this.med(a, 46, 52 + i * 20, { scale: 0.5 });
+      this.med(b, 190, 52 + i * 20, { scale: 0.5, color: '#ece4ff' });
     });
     this.blink(t, 'Press ENTER', 300, 0.6);
   }

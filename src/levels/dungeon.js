@@ -36,6 +36,7 @@ export function dungeonEscape() {
 
   // Dungeon (stand row 73).
   L.put(4, 73, 'P');
+  L.pushable(14, 73, 'box');                   // walk into it to push it
   L.hint(7, 73, 'Thrown in the dungeon! Climb out of the castle.\nHoles in the ceiling lead up a floor.');
   corridor(66, 8, 120);
   L.on(30, 'w', 68).on(60, 'h', 68).on(91, 'w', 69).put(80, 68, 'f');
