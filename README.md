@@ -98,6 +98,10 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
   pepper spray (short range) and electro-blaster (goes through enemies).
   Ammo pickups give +3, ammo crates +15, and power-up monitors +25 and the
   powered-up shot. Ammo carries over between levels.
+- **Water, vines and moving platforms** in our own levels too: a rock pool to
+  dive into in Shipwreck Shores (Up / Down swim, Jump at the surface leaps
+  out), vines through Firefly Grove's canopy, and moving platforms between
+  Candy Clouds' islands. Builder: `pool`, `vine`, `updraft`, `movingPlatform`.
 - **Things to use**: red, green and blue springs, side springs, swinging poles
   (measured: held up to 70 ticks, flung at up to 20 px/tick), warps and coin
   warps (they show `xN` when you are N coins short), lava (burns).
@@ -210,6 +214,5 @@ SPEC.md                 the measured mechanics and where they came from
 ## Ideas for the next pass
 
 - More of JJ2 in the classic levels: the remaining bosses and the frog/bird morphs.
-- Water, vines and moving platforms in our own levels too.
 - A save file for high scores.
 - Gamepad support and touch controls.

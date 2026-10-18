@@ -142,6 +142,12 @@ export function sunnySpires() {
   dress(L, BEACH, 2, 150, 0, 11, 7);
   dress(L, BEACH, 12, 165, 27, 12, 8);
   dress(L, BEACH, 2, 186, 37, 13, 8);
+  // A rock pool on the bottom floor with treasure on its floor: dive in,
+  // swim (Up / Down, Run to go faster) and leap out at the surface.
+  L.carve(115, 46, 11, 4).pool(115, 46, 11, 4);
+  for (let x = 116; x <= 124; x += 2) L.put(x, 49, 'b');
+  L.put(120, 48, '%');
+  L.hint(112, 45, 'A rock pool! Dive in and swim (UP / DOWN).\nJUMP at the surface to leap out.');
   return L.build({ name: 'Shipwreck Shores', theme: 'meadow', music: 'beach', horizon: 22 });
 }
 sunnySpires.title = 'Shipwreck Shores';

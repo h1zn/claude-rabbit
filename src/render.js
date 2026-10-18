@@ -3,7 +3,7 @@
 import { arcadeText } from './art.js';
 import { PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import { frameAt } from './sheets.js';
-import { BLOCKS } from './level.js';
+import { AREA, BLOCKS } from './level.js';
 import { THEME_TILESET } from './tilesets.js';
 import { TNT, WEAPONS } from './weapons.js';
 
@@ -99,6 +99,7 @@ export class Renderer {
     this.debris(game);
     this.popups(game);
     this.decor(game, cam, true);
+    this.pools(game, cam);
     ctx.restore();
 
     if (view) {
@@ -254,6 +255,8 @@ export class Renderer {
     const ty0 = Math.max(0, Math.floor(cam.y / TILE)); const ty1 = Math.min(level.h - 1, Math.floor((cam.y + VIEW_H) / TILE));
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
+        const area = level.areas[ty * level.w + tx];
+        if (area === AREA.VINE || area === AREA.HOOK) this.vine(game, tx, ty, area === AREA.HOOK);
         const ch = level.tiles[ty][tx];
         if (ch === '~') { this.lava(game, tx, ty); continue; }
         if (!BLOCKS.has(ch)) continue;
@@ -273,6 +276,47 @@ export class Renderer {
     }
   }
 
+
+  // A vine strung across a tile (leaves sway), or a hook hanging from above.
+  vine(game, tx, ty, hook) {
+    const ctx = this.ctx;
+    const x = tx * TILE; const y = ty * TILE + 8;
+    if (hook) {
+      ctx.fillStyle = '#7a7f8a'; ctx.fillRect(x + 15, ty * TILE, 2, 8);
+      ctx.fillStyle = '#c8ccd8'; ctx.fillRect(x + 12, y, 8, 2); ctx.fillRect(x + 12, y - 3, 2, 3);
+      return;
+    }
+    ctx.fillStyle = '#3c6a1e'; ctx.fillRect(x, y, TILE, 3);
+    ctx.fillStyle = '#6ab83a'; ctx.fillRect(x, y, TILE, 1);
+    for (let k = 0; k < 3; k++) {
+      const lx = x + 4 + k * 11; const sway = Math.round(Math.sin(game.time / 20 + tx * 1.7 + k) * 1.5);
+      ctx.fillStyle = k % 2 ? '#4f9a2c' : '#78c848';
+      ctx.fillRect(lx + sway, y + 3, 4, 3); ctx.fillRect(lx + 1 + sway, y + 6, 2, 3);
+    }
+  }
+
+  // Water pools in our levels: a tint over everything in them, and a moving
+  // shine along the top.
+  pools(game, cam) {
+    const level = game.level;
+    if (level.jj2) return;
+    const ctx = this.ctx;
+    const tx0 = Math.max(0, Math.floor(cam.x / TILE)); const tx1 = Math.min(level.w - 1, Math.floor((cam.x + VIEW_W) / TILE));
+    const ty0 = Math.max(0, Math.floor(cam.y / TILE)); const ty1 = Math.min(level.h - 1, Math.floor((cam.y + VIEW_H) / TILE));
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        if (level.areas[ty * level.w + tx] !== AREA.WATER) continue;
+        const x = tx * TILE; const y = ty * TILE;
+        const top = ty === 0 || level.areas[(ty - 1) * level.w + tx] !== AREA.WATER;
+        ctx.fillStyle = 'rgba(30,110,230,0.34)';
+        ctx.fillRect(x, y + (top ? 4 : 0), TILE, TILE - (top ? 4 : 0));
+        if (top) {
+          ctx.fillStyle = 'rgba(200,236,255,0.75)';
+          for (let k = 0; k < TILE; k += 4) ctx.fillRect(x + k, Math.round(y + 4 + Math.sin((x + k) / 18 + game.time / 9) * 2), 4, 2);
+        }
+      }
+    }
+  }
 
   props(game) {
     const ctx = this.ctx;

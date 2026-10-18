@@ -96,6 +96,13 @@ export function fireflyGrove() {
   // Pepper spray: ammo by the start, a crate, and a vault under the canopy.
   L.ammo(9, 49, 8).ammo(11, 49, 8).ammoCrate(14, 49, 8);
   weaponVault(L, 84, 49, 8, { loot: 'b' });
+  // Vines through the canopy: hang on (jump into one) and climb hand over
+  // hand, Run to go faster, Down to drop, Jump to leap off.
+  L.vine(48, 39, 11);
+  shape(L, 49, 40, 'line5', 'b');
+  shape(L, 54, 40, 'line5', 'b');
+  L.vine(88, 41, 9);
+  L.hint(44, 41, 'VINES: jump up to grab one, then move along.\nDOWN lets go, JUMP leaps off.');
   return L.build({ name: 'Firefly Grove', theme: 'grove', music: 'jungle', horizon: 50, dark: { color: '8,4,32', amount: 0.5 } });
 }
 fireflyGrove.title = 'Firefly Grove';
