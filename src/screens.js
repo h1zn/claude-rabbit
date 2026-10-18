@@ -10,7 +10,10 @@ import { preview } from './jj2/preview.js';
 import { LEVELS, levelDef } from './levels.js';
 import { PARTY_LEVELS } from './party.js';
 import { MISSIONS, totalStars } from './save.js';
-import { frameAt } from './sheets.js';
+import { AREA } from './level.js';
+import { frameAt, tilePixel } from './sheets.js';
+import { TERRAIN_THEMES } from './terrain.js';
+import { THEME_TILESET } from './tilesets.js';
 import { Sky, Weather } from './sky.js';
 
 const MAIN = ['New Game', 'Party', 'How to Play', 'Options'];
@@ -355,7 +358,24 @@ export class Screens {
     wrap(ep.blurb, 34).slice(0, 5).forEach((line, i) => this.med(line, 470, y + h + 10 + i * 14, { align: 'center', scale: 0.55 }));
   }
 
-  // Minimap of a level for its select card.
+  // Average colour of some tileset tiles (rows y0..y1 of each), as [r, g, b].
+  tileColor(ts, ids, y0 = 0, y1 = 32) {
+    let r = 0; let g = 0; let b = 0; let n = 0;
+    for (const id of ids) {
+      for (let y = y0; y < y1; y += 2) {
+        for (let x = 0; x < 32; x += 2) {
+          const k = tilePixel(ts, id, x, y);
+          if (ts.data[k + 3] < 128) continue;
+          r += ts.data[k]; g += ts.data[k + 1]; b += ts.data[k + 2]; n++;
+        }
+      }
+    }
+    return n ? [r / n, g / n, b / n] : null;
+  }
+
+  // Minimap of a level for its select card, coloured like the level: the
+  // ground's surface and fill from its tileset (or palette), sky, back wall,
+  // water and lava, with the start (green) and exit (pink).
   thumb(i) {
     if (this.thumbs[i]) return this.thumbs[i];
     const level = LEVELS[i]();
@@ -364,16 +384,37 @@ export class Screens {
     c.width = W; c.height = H;
     const x2 = c.getContext('2d');
     const img = x2.createImageData(W, H);
-    const [sky, ground, back] = (THUMB[level.meta.theme] || THUMB.meadow).map((h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16)));
+    const hex = (h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16));
+    const theme = level.meta.theme;
+    const [sky, , back] = (THUMB[theme] || THUMB.meadow).map(hex);
+    const ts = this.art.tilesets[THEME_TILESET[theme]];
+    const pal = TERRAIN_THEMES[theme] || TERRAIN_THEMES.meadow;
+    let cap = hex(pal.cap[Math.floor(pal.cap.length * 0.6)]);
+    let rock = hex(pal.rock[Math.floor(pal.rock.length * 0.5)]);
+    if (ts) {
+      const fill = ts.fillList || (ts.fillBlock ? ts.fillBlock.flat() : null);
+      cap = this.tileColor(ts.pixels, ts.cap, 0, 10) || cap;
+      if (fill) rock = this.tileColor(ts.pixels, fill) || rock;
+    }
+    const mix = (a, b, k) => [0, 1, 2].map((j) => a[j] + (b[j] - a[j]) * k);
     const sx = level.w / W; const sy = level.h / H;
+    const solidAt = (x, y) => {
+      if (y < 0) return false;
+      const ch = level.tiles[Math.floor(y * sy)][Math.floor(x * sx)];
+      return ch === '#' || ch === '=' || '/\\qryz'.includes(ch);
+    };
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         const tx = Math.floor(x * sx); const ty = Math.floor(y * sy);
         const ch = level.tiles[ty][tx];
-        let col = level.back[ty][tx] ? back : sky;
-        if (ch === '#' || ch === '=' || '/\\qryz'.includes(ch)) col = ground;
-        else if (ch === '~') col = [255, 120, 30];
-        else if (ch === '-') col = [230, 210, 160];
+        let col = level.back[ty][tx] ? back : mix(sky, [255, 255, 255], 0.25 * (y / H));
+        if (solidAt(x, y)) {
+          let depth = 0;
+          while (depth < 4 && solidAt(x, y - depth - 1)) depth++;
+          col = depth === 0 ? cap : mix(rock, [0, 0, 0], Math.min(0.35, depth * 0.06) + ((x * 7 + y * 13) % 5) * 0.02);
+        } else if (ch === '~') col = [255, 120, 30];
+        else if (ch === '-') col = mix(cap, [255, 255, 255], 0.3);
+        else if (level.areas && level.areas[ty * level.w + tx] === AREA.WATER) col = mix(col, [40, 120, 255], 0.6);
         const k = (y * W + x) * 4;
         img.data[k] = col[0]; img.data[k + 1] = col[1]; img.data[k + 2] = col[2]; img.data[k + 3] = 255;
       }
