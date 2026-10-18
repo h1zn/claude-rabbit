@@ -481,7 +481,11 @@ export class Game {
     this.interact(input);
 
     // A boss knocked out of the world starts over rather than vanishing.
-    for (const e of this.enemies) if (e.boss && !e.dead && e.y >= this.level.pixelH + 200) e.reset();
+    for (const e of this.enemies) {
+      if (!e.boss || e.dead || e.y < this.level.pixelH + 200) continue;
+      e.reset();
+      if (this.activeBoss === e) this.activeBoss = null;
+    }
     this.enemies = this.enemies.filter((e) => !e.dead && e.y < this.level.pixelH + 200);
     this.shots = this.shots.filter((s) => !s.dead);
     this.enemyShots = this.enemyShots.filter((s) => !s.dead);

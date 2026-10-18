@@ -175,7 +175,7 @@ export class Bullet {
     // A rival close by sets it off too (party mode has no enemies).
     const rival = game.party && game.party.rival;
     const close = this.remote ? !game.player.dead && near(game.player)
-      : game.enemies.some((e) => !e.dead && !e.hidden && near(e)) || (rival && rival.seen && !rival.dead && near(rival));
+      : game.enemies.some((e) => !e.dead && !e.hidden && near(e)) || (!this.placed && rival && rival.seen && !rival.dead && near(rival));
     if (close) this.burst(game);
   }
 

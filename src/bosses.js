@@ -166,6 +166,8 @@ export class Schwartzenguard extends Boss {
 
   activate(game) { this.walk(game, 'walk1', rand(120, 160) * T); }
 
+  reset() { super.reset(); if (this.mace) this.mace.dead = true; this.mace = null; this.facing = -1; }
+
   walk(game, state, time) {
     this.state = state; this.st = time;
     this.facePlayer(game);
@@ -280,14 +282,17 @@ export class Queen extends Boss {
     this.step = 0.3 * V;
   }
 
+  reset() { super.reset(); this.facing = -1; this.hits = 0; }
+
   wake(game) {
     if (this.active) return true;
     const p = game.player;
-    if (p.dead || Math.abs(p.cx - this.cx) > 300 || Math.abs(p.cy - this.cy) > 120) return false;
+    // Only from in front: she backsteps away from the way she faces, towards
+    // her ledge, so turning her round would make her unbeatable.
+    const ahead = (p.cx - this.cx) * this.facing;
+    if (p.dead || ahead < -60 || ahead > 300 || Math.abs(p.cy - this.cy) > 120) return false;
     this.active = true;
-    this.facePlayer(game);
     game.activeBoss = this;
-    game.bossCall = false;
     game.banner(this.name, 120);
     game.audio.play('rush');
     this.state = 'idle'; this.st = Math.round(260 * T * 0.5);
@@ -432,6 +437,8 @@ export class Bilsy extends Boss {
     this.hidden = true;
   }
 
+  reset() { super.reset(); this.hidden = true; this.harmless = false; this.freezable = true; }
+
   activate(game) { this.teleport(game); }
 
   teleport(game) {
@@ -537,6 +544,8 @@ export class Robot extends Boss {
     super('robot', x, y - 54 + TILE, 30, 54, 100, 2000, 'ROBOT!');
     this.hidden = true;
   }
+
+  reset() { super.reset(); this.hidden = true; }
 
   activate(game) {
     this.hidden = false;
