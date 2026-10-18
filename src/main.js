@@ -207,6 +207,23 @@ function lobbyTick() {
   }
 }
 
+// The options screens' actions (from the title or the pause menu). True
+// when `action` was one of them.
+function optionsAction(action) {
+  if (action === 'options') { audio.setVolumes(save.options.music, save.options.sfx); writeSave(save); } else if (action === 'keys') { input.setKeys(save.options.keys); writeSave(save); } else if (action === 'capture') {
+    // The next key press rebinds the chosen slot (Escape cancels).
+    input.capture((code) => {
+      const c = screens.capturing;
+      screens.capturing = null;
+      if (!c || code === 'Escape') return;
+      if (!save.options.keys) save.options.keys = defaultKeys();
+      if (bindKey(save.options.keys, c.action, c.col, code)) { audio.play('select'); input.setKeys(save.options.keys); writeSave(save); } else audio.play('denied');
+    });
+  } else if (action === 'video') { game.video = save.options.video; layout(); writeSave(save); } else if (action === 'fullscreen') toggleFullscreen();
+  else if (action === 'reset') { save = { ...save, unlocked: 1, levels: {} }; writeSave(save); game.unlocked = 1; } else if (action === 'options-closed') { /* back to the pause menu */ } else return false;
+  return true;
+}
+
 // ---------------------------------------------------------------- tick
 
 function tick() {
@@ -222,22 +239,9 @@ function tick() {
       lobbyTick();
       if (scene !== 'title') break;
       const action = screens.titleInput(input, save) || '';
+      if (optionsAction(action)) break;
       if (action.startsWith('level:')) showCard(levelKey(action.slice(6)), true);
-      else if (action === 'options') { audio.setVolumes(save.options.music, save.options.sfx); writeSave(save); }
-      else if (action === 'keys') { input.setKeys(save.options.keys); writeSave(save); }
-      else if (action === 'capture') {
-        // The next key press rebinds the chosen slot (Escape cancels).
-        input.capture((code) => {
-          const c = screens.capturing;
-          screens.capturing = null;
-          if (!c || code === 'Escape') return;
-          if (!save.options.keys) save.options.keys = defaultKeys();
-          if (bindKey(save.options.keys, c.action, c.col, code)) { audio.play('select'); input.setKeys(save.options.keys); writeSave(save); } else audio.play('denied');
-        });
-      } else if (action === 'video') { game.video = save.options.video; layout(); writeSave(save); }
-      else if (action === 'fullscreen') toggleFullscreen();
       else if (action === 'save') { writeSave(save); game.character = save.character; }
-      else if (action === 'reset') { save = { ...save, unlocked: 1, levels: {} }; writeSave(save); game.unlocked = 1; }
       else if (action === 'host') hostParty();
       else if (action.startsWith('join:')) joinParty(action.slice(5));
       else if (action === 'leave') { if (net) net.close(); net = null; }
@@ -259,6 +263,7 @@ function tick() {
       }
       if (game.state === 'play' && input.pressed('pause')) {
         screens.pauseIndex = 0;
+        screens.sub = null;
         audio.hover(false);
         audio.play('pause');
         go('paused');
@@ -289,7 +294,8 @@ function tick() {
       }
       break;
     case 'paused': {
-      const action = screens.pauseInput(input);
+      const action = screens.pauseInput(input, save) || '';
+      if (optionsAction(action)) break;
       if (action === 'resume') go('play');
       else if (action === 'restart') { game.restoreStart(); showCard(game.levelIndex, false); }
       else if (action === 'quit') toMenu();
@@ -309,7 +315,7 @@ function render(alpha) {
   if (game.state !== 'clear' || game.clearTime < 70) renderer.hud(game);
   if (game.state === 'clear') screens.tally(game);
   if (game.state === 'gameover') screens.gameOver(game, game.overTime || 0);
-  if (scene === 'paused') screens.pause(sceneTime);
+  if (scene === 'paused') screens.pause(sceneTime, save);
   if (irisTime < 45) {
     const p = game.player;
     const cx = p.cx - game.cam.x;

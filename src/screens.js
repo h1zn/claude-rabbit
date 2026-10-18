@@ -21,6 +21,7 @@ const MAIN_INFO = [
   'Volume, keyboard and video',
 ];
 const SUBS = ['char', 'party', 'help', 'options'];
+const PAUSE_ITEMS = ['RESUME', 'OPTIONS', 'RESTART LEVEL', 'QUIT TO TITLE'];
 const CHARACTERS = [
   { id: 'jazz', moves: ['Copter ears: JUMP again in the air', 'Uppercut: DOWN, then JUMP'] },
   { id: 'spaz', moves: ['Double jump: JUMP again in the air', 'Side kick: DOWN, then JUMP'] },
@@ -590,43 +591,44 @@ export class Screens {
   lobbyScreen(t) {
     const ctx = this.ctx;
     const L = this.lobby;
-    this.dim(0.5);
-    this.panel(VIEW_W / 2 - 200, 96, 400, 200, 0.88);
-    arcadeText(ctx, 'PARTY MODE', VIEW_W / 2, 104, { size: 18, align: 'center' });
+    this.big('PARTY MODE', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    this.panel(VIEW_W / 2 - 220, 46, 440, 262, 0.88);
+    const say = (text, y, opts = {}) => this.med(text, VIEW_W / 2, y, { align: 'center', scale: 0.55, ...opts });
     if (this.sub === 'party') {
-      arcadeText(ctx, 'Two players hunt gems. Shoot your rival to make', VIEW_W / 2, 134, { size: 10, align: 'center', shadow: false, top: '#ffffff', bottom: '#cfe6ff' });
-      arcadeText(ctx, 'them drop gems; first to the exit with 100 wins!', VIEW_W / 2, 148, { size: 10, align: 'center', shadow: false, top: '#ffffff', bottom: '#cfe6ff' });
-      this.menuList(['HOST A GAME', 'JOIN A GAME', 'BACK'], this.menu, 178, t);
-      arcadeText(ctx, 'Run party.bat (serve.py --lan) so your friend can connect', VIEW_W / 2, 270, { size: 9, align: 'center', shadow: false, top: '#c8b8e8', bottom: '#9a8ab0' });
+      say('Two players hunt gems. Shoot your rival to make', 66, { color: '#ece4ff' });
+      say('them drop gems; first to the exit with 100 wins!', 80, { color: '#ece4ff' });
+      this.menuList(['HOST A GAME', 'JOIN A GAME', 'BACK'], this.menu, 120, t, 34);
+      say('Run party.bat - serve.py --lan - so your friend can connect', 278, { scale: 0.45, color: '#c8b8e8' });
       return;
     }
     if (L.status === 'error') {
-      arcadeText(ctx, L.error || 'Connection failed.', VIEW_W / 2, 160, { size: 10, align: 'center', shadow: false, top: '#ffd0d8', bottom: '#ff8a8a' });
-      this.blink(t, 'Press ENTER', 250);
+      this.wrapTo(L.error || 'Connection failed.', 380, 0.55).forEach((line, i) => say(line, 130 + i * 15, { color: '#ffb0b8' }));
+      this.blink(t, 'Press ENTER', 250, 0.6);
       return;
     }
     if (this.sub === 'host') {
-      if (!L.code) { arcadeText(ctx, 'Connecting...', VIEW_W / 2, 160, { size: 14, align: 'center' }); return; }
-      arcadeText(ctx, 'ROOM CODE', VIEW_W / 2, 130, { size: 12, align: 'center' });
-      arcadeText(ctx, L.code, VIEW_W / 2, 146, { size: 34, align: 'center', top: '#ffffff', bottom: '#5ae08a' });
-      (L.urls || []).slice(0, 2).forEach((u, i) => arcadeText(ctx, `Friend opens ${u}`, VIEW_W / 2, 190 + i * 13, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' }));
+      if (!L.code) { say('Connecting' + '.'.repeat(1 + Math.floor(t / 20) % 3), 150, { scale: 0.7 }); return; }
+      say('ROOM CODE', 66, { color: '#c8b8e8' });
+      this.big(L.code.split('').join(' '), VIEW_W / 2, 84, { align: 'center', scale: 0.9 });
+      (L.urls || []).slice(0, 2).forEach((u, i) => say(`Friend opens ${u}`, 148 + i * 14, { scale: 0.48, color: '#ece4ff' }));
       const lv = levelDef(PARTY_LEVELS[this.partyLevel]);
-      arcadeText(ctx, `< ${lv.title} >`, VIEW_W / 2, 224, { size: 14, align: 'center', top: '#ffffff', bottom: '#ffd54a' });
-      if (L.peer) this.blink(t, 'Player 2 is here! Press ENTER to start', 256);
-      else arcadeText(ctx, 'Waiting for player 2' + '.'.repeat(1 + Math.floor(t / 20) % 3), VIEW_W / 2, 256, { size: 12, align: 'center' });
+      const name = lv.loaded && !lv.loaded() && lv.pack ? lv.pack.title : lv.title;
+      say(`< ${name} >`, 196, { scale: 0.7, color: null });
+      say('LEFT / RIGHT: level', 216, { scale: 0.45, color: '#8a7ab0' });
+      if (L.peer) this.blink(t, 'Player 2 is here! Press ENTER to start', 252, 0.6);
+      else say('Waiting for player 2' + '.'.repeat(1 + Math.floor(t / 20) % 3), 252, { scale: 0.6 });
       return;
     }
     // join
     if (L.joined) {
-      arcadeText(ctx, `Joined room ${L.code}`, VIEW_W / 2, 150, { size: 16, align: 'center', top: '#ffffff', bottom: '#5ae08a' });
-      arcadeText(ctx, 'Waiting for the host to start' + '.'.repeat(1 + Math.floor(t / 20) % 3), VIEW_W / 2, 190, { size: 12, align: 'center' });
+      say(`Joined room ${L.code}`, 120, { scale: 0.75, color: null });
+      say('Waiting for the host to start' + '.'.repeat(1 + Math.floor(t / 20) % 3), 160, { scale: 0.6 });
       return;
     }
-    arcadeText(ctx, 'Type the room code', VIEW_W / 2, 136, { size: 12, align: 'center' });
-    const code = this.codeBuf.padEnd(4, '_');
-    arcadeText(ctx, code.split('').join(' '), VIEW_W / 2, 160, { size: 34, align: 'center', top: '#ffffff', bottom: '#ffd54a' });
-    if (L.error) arcadeText(ctx, L.error, VIEW_W / 2, 214, { size: 10, align: 'center', shadow: false, top: '#ffd0d8', bottom: '#ff8a8a' });
-    arcadeText(ctx, 'ENTER to join   ESC to go back', VIEW_W / 2, 250, { size: 11, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' });
+    say('Type the room code', 80, { scale: 0.6 });
+    this.big(this.codeBuf.padEnd(4, '_').split('').join(' '), VIEW_W / 2, 106, { align: 'center', scale: 0.9 });
+    if (L.error) say(L.error, 190, { color: '#ffb0b8' });
+    say('ENTER to join   ESC to go back', 270, { scale: 0.5, color: '#c8b8e8' });
   }
 
   // Returns an action string when the player chooses something.
@@ -808,19 +810,36 @@ export class Screens {
 
   // ---------------------------------------------------------------- pause
 
-  pause(t) {
-    this.dim(0.6);
-    arcadeText(this.ctx, 'PAUSED', VIEW_W / 2, 90, { size: 32, align: 'center' });
-    this.menuList(['RESUME', 'RESTART LEVEL', 'QUIT TO TITLE'], this.pauseIndex, 150, t);
+  // The pause menu; OPTIONS opens the same options screens as the title.
+  pause(t, save) {
+    this.dim(0.62);
+    if (this.sub === 'options' || this.sub === 'keys' || this.sub === 'video') {
+      this.backdrop();
+      if (this.sub === 'options') this.options(t, save);
+      else if (this.sub === 'keys') this.keysScreen(t, save);
+      else this.videoScreen(t, save);
+      return;
+    }
+    this.panel(VIEW_W / 2 - 150, 70, 300, 210, 0.9);
+    this.big('PAUSED', VIEW_W / 2, 84, { align: 'center', scale: 0.6 });
+    this.menuList(PAUSE_ITEMS, this.pauseIndex, 136, t, 32);
   }
 
-  pauseInput(input) {
-    if (input.pressed('up')) { this.pauseIndex = (this.pauseIndex + 2) % 3; this.audio.play('menu'); }
-    if (input.pressed('down')) { this.pauseIndex = (this.pauseIndex + 1) % 3; this.audio.play('menu'); }
+  pauseInput(input, save) {
+    if (this.sub) {
+      const action = this.titleInput(input, save);
+      if (this.sub === null) { this.pauseIndex = 1; return 'options-closed'; }
+      return action;
+    }
+    const n = PAUSE_ITEMS.length;
+    if (input.pressed('up')) { this.pauseIndex = (this.pauseIndex + n - 1) % n; this.audio.play('menu'); }
+    if (input.pressed('down')) { this.pauseIndex = (this.pauseIndex + 1) % n; this.audio.play('menu'); }
     if (input.pressed('pause')) return 'resume';
     if (input.pressed('start') || input.pressed('jump')) {
       this.audio.play('select');
-      return ['resume', 'restart', 'quit'][this.pauseIndex];
+      const pick = ['resume', 'options', 'restart', 'quit'][this.pauseIndex];
+      if (pick === 'options') { this.sub = 'options'; this.menu = 0; return null; }
+      return pick;
     }
     return null;
   }
@@ -833,38 +852,36 @@ export class Screens {
     const s = game.stats;
     if (t < 70) return;
     const k = t - 70;
-    this.dim(Math.min(0.75, k / 40));
-    arcadeText(ctx, 'LEVEL CLEAR!', VIEW_W / 2, 26, { size: 30, align: 'center' });
+    this.dim(Math.min(0.78, k / 40));
+    this.big('LEVEL CLEAR!', VIEW_W / 2, 18, { align: 'center', scale: 0.7, wave: 2, t: k });
     // Stars pop in one by one.
     const res = game.result || { stars: [true, false, false], newStars: [false, false, false] };
     for (let i = 0; i < 3; i++) {
       if (k < 20 + i * 18) continue;
       const pop = Math.max(1, 2.2 - (k - 20 - i * 18) / 6);
-      this.star(VIEW_W / 2 - 50 + i * 50, 88, 16 * pop, res.stars[i]);
+      this.star(VIEW_W / 2 - 50 + i * 50, 84, 16 * pop, res.stars[i]);
       if (k === 20 + i * 18 && res.stars[i]) this.audio.play('rank');
-      if (res.newStars[i] && k > 40 + i * 18) arcadeText(ctx, 'NEW', VIEW_W / 2 - 50 + i * 50, 108, { size: 9, align: 'center', top: '#ffffff', bottom: '#5ae08a' });
+      if (res.newStars[i] && k > 40 + i * 18) this.med('NEW', VIEW_W / 2 - 50 + i * 50, 102, { align: 'center', scale: 0.45, color: '#7aff9a' });
     }
     const rows = [
-      ['GEMS', `${s.gems}%`],
-      ['SECRETS', `${s.secrets}%`],
-      ['ENEMIES', `${s.enemies}%`],
+      // Out of 100 (the JJ2 font has no percent sign).
+      ['GEMS', `${s.gems} / 100`],
+      ['SECRETS', `${s.secrets} / 100`],
+      ['ENEMIES', `${s.enemies} / 100`],
       ['TIME', `${Math.floor(s.seconds / 60)}:${String(s.seconds % 60).padStart(2, '0')}${res.bestTime ? '  BEST!' : ''}`],
       ['BONUS', `${s.bonus.time + s.bonus.gems + s.bonus.perfect}`],
       ['SCORE', `${game.score}${res.bestScore ? '  BEST!' : ''}`],
     ];
     rows.forEach(([label, value], i) => {
       if (k < 80 + i * 14) return;
-      arcadeText(ctx, label, VIEW_W / 2 - 150, 132 + i * 22, { size: 13, top: '#e8d8ff', bottom: '#9a8ad0' });
-      arcadeText(ctx, value, VIEW_W / 2 + 150, 132 + i * 22, { size: 13, align: 'right', top: '#ffffff', bottom: '#ffd54a' });
+      this.med(label, VIEW_W / 2 - 160, 126 + i * 24, { scale: 0.7, color: '#d8ccf4' });
+      this.med(value, VIEW_W / 2 + 130, 126 + i * 24, { align: 'right', scale: 0.7 });
       if (k === 80 + i * 14) this.audio.play('tally');
     });
     if (k > 180) {
       const pop = Math.max(1, 3 - (k - 180) / 6);
-      arcadeText(ctx, s.rank, VIEW_W / 2 + 220, 150, {
-        size: Math.round(54 * pop), align: 'center',
-        top: s.rank === 'S' ? '#fff6c0' : '#ffffff', bottom: s.rank === 'S' ? '#ff4ad8' : '#ffb02e',
-      });
-      arcadeText(ctx, 'RANK', VIEW_W / 2 + 220, 130, { size: 11, align: 'center' });
+      this.med('RANK', VIEW_W / 2 + 214, 126, { align: 'center', scale: 0.55, color: '#d8ccf4' });
+      this.big(s.rank, VIEW_W / 2 + 214, 146, { align: 'center', scale: 1.1 * pop, color: s.rank === 'S' ? '#ff9af0' : null });
     }
     if (k > 210) this.blink(k, 'Press ENTER', VIEW_H - 34);
   }
@@ -877,10 +894,11 @@ export class Screens {
     this.fit(this.art.screens.continue, Math.min(1, t / 40));
     if (t < 40) return;
     // The NO and YES of the picture sit at (277, 302) and (358, 302).
-    const x = this.continueYes ? 358 : 277;
+    // The gem points at the chosen word from outside it (it used to cover YES).
     const gem = this.art.gems.red[Math.floor(t / 5) % 8];
-    ctx.drawImage(gem, x - gem.width / 2, 312 + Math.sin(t * 0.15) * 2);
-    this.med(`Score ${game.score}`, VIEW_W / 2, 336, { align: 'center', scale: 0.6 });
+    const x = this.continueYes ? 392 : 248 - gem.width;
+    ctx.drawImage(gem, x + Math.sin(t * 0.15) * 2, 304 - gem.height / 2);
+    this.med(`Score ${game.score}`, VIEW_W / 2, 336, { align: 'center', scale: 0.55 });
   }
 
   continueInput(input) {
@@ -895,14 +913,14 @@ export class Screens {
     this.sky.draw(ctx, t, 0, t);
     this.weather.update(t, 0, t);
     this.weather.draw(ctx, true, t);
-    arcadeText(ctx, 'YOU WIN!', VIEW_W / 2, 50, { size: 40, align: 'center' });
+    this.big('YOU WIN!', VIEW_W / 2, 40, { align: 'center', scale: 0.9, wave: 3, t });
     const v = this.art.kip.victory;
     const vf = v[Math.min(v.length - 1, Math.floor(t / 8))];
     ctx.drawImage(vf.right, VIEW_W / 2 - vf.ax, 170 - vf.ay);
-    arcadeText(ctx, `FINAL SCORE ${game.score}`, VIEW_W / 2, 186, { size: 16, align: 'center' });
-    arcadeText(ctx, `GEMS ${game.gems}   COINS ${game.coins}`, VIEW_W / 2, 212, { size: 12, align: 'center' });
+    this.med(`FINAL SCORE ${game.score}`, VIEW_W / 2, 184, { align: 'center', scale: 0.8 });
+    this.med(`GEMS ${game.gems}   COINS ${game.coins}`, VIEW_W / 2, 210, { align: 'center', scale: 0.6, color: '#ece4ff' });
     const credits = ['Sprites, tiles, sound effects and music: Jazz Jackrabbit 2 (c) Epic MegaGames', 'Sprite rips via The Spriters Resource - not owned by this project', 'Thanks for playing!'];
-    credits.forEach((c, i) => arcadeText(ctx, c, VIEW_W / 2, 250 + i * 18, { size: 10, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' }));
+    credits.forEach((c, i) => this.med(c, VIEW_W / 2, 248 + i * 16, { align: 'center', scale: 0.45, color: '#d8ccf4' }));
     if (t > 120) this.blink(t, 'Press ENTER', VIEW_H - 26);
   }
 }
