@@ -150,8 +150,10 @@ export class JJ2Level extends Level {
           if (te & 0xff) ev = { id: te & 0xff, difficulty: 0, params: ((te >>> 12) & 0x000ffff0) | ((te >>> 8) & 0xf) };
         }
         if (ev.id === EV.GENERATOR) {
+          // Generators spawn objects; ids up to 32 are area events (exits,
+          // hooks...), which a generator never makes real.
           const [inner] = eventFields(ev.params, [8]);
-          ev = { id: inner, difficulty: ev.difficulty, params: 0 };
+          ev = inner <= 32 ? { id: 0, difficulty: 0, params: 0 } : { id: inner, difficulty: ev.difficulty, params: 0 };
         }
         const mask = word ? this.maskOf(word) : null;
         this.masks[i] = mask && mask.m;
@@ -351,7 +353,10 @@ export class JJ2Level extends Level {
     // also waits where the boss was).
     this.bossEnds = !exits && bosses.length > 0;
     if (!exits && !party) {
-      const [bx, by] = bosses[0] || start[start.length - 1];
+      // No exit event (some JJ2+ levels place theirs by script): the exit
+      // waits where the boss is, or else at the open spot with a floor that
+      // is furthest from the start, never on the start itself.
+      const [bx, by] = bosses[0] || this.farthestSpot(start[0][0], start[0][1]);
       put(bx, by, 'E');
     }
     // Levels open at the start light (64 = full daylight).
@@ -423,6 +428,32 @@ export class JJ2Level extends Level {
   }
 
   // Tile-level answers for enemies, shots and the HUD.
+  // Breadth-first through open cells from (sx, sy): the furthest cell that
+  // has ground right under it.
+  farthestSpot(sx, sy) {
+    const { w, h } = this;
+    const open = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !'#=xmpKW'.includes(this.tiles[y][x]);
+    const floor = (x, y) => y + 1 < h && '#s-'.includes(this.tiles[y + 1][x]);
+    const seen = new Uint8Array(w * h);
+    let queue = [[sx, sy]];
+    seen[sy * w + sx] = 1;
+    let best = [sx, sy];
+    while (queue.length) {
+      const next = [];
+      for (const [x, y] of queue) {
+        if (floor(x, y)) best = [x, y];
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx; const ny = y + dy;
+          if (!open(nx, ny) || seen[ny * w + nx]) continue;
+          seen[ny * w + nx] = 1;
+          next.push([nx, ny]);
+        }
+      }
+      queue = next;
+    }
+    return best;
+  }
+
   solid(tx, ty) { const c = this.at(tx, ty); return c === '=' || c === '#' || c === 'x' || c === 'm' || c === 'p' || c === 'K' || c === 'W'; }
   slope(tx, ty) { return this.at(tx, ty) === 's'; }
   groundish(tx, ty) { return this.solid(tx, ty) || this.at(tx, ty) === 's' || this.at(tx, ty) === '^'; }

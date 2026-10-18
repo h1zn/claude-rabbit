@@ -886,7 +886,11 @@ export class Hint {
   }
 
   update(game) {
-    if (overlap(this, game.player)) game.hintText = this.text;
+    if (!overlap(this, game.player)) return;
+    game.hintText = this.text;
+    // A JJ2 text area stays up a while after Kip passes it (story levels
+    // carry him through them in a tube).
+    if (this.hidden) game.hintHold = { text: this.text, t: 210 };
   }
 }
 

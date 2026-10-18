@@ -339,7 +339,10 @@ export class Player {
     this.floatUp = level.areaAt(this.cx, this.cy) === EV.FLOAT_UP || level.areaAt(this.cx, this.y + this.h - 2) === EV.FLOAT_UP;
     // A tube carries Kip at its own speed, straight through its walls.
     if (level.areaAt(this.cx, this.cy) === EV.TUBE) {
-      const [xs, ys] = eventFields(level.areaParam(this.cx, this.cy), [-7, -7]);
+      let [xs, ys] = eventFields(level.areaParam(this.cx, this.cy), [-7, -7]);
+      // Original: a tube cell with no speed keeps the speed Kip entered with
+      // (story levels ride long zero-speed columns past their text).
+      if (!xs && !ys && this.inTube > 0) { xs = this.vx; ys = this.vy; }
       if (xs || ys) {
         const tx = Math.floor(this.cx / TILE); const ty = Math.floor(this.cy / TILE);
         this.vx = xs; this.vy = ys;

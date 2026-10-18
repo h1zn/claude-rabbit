@@ -479,6 +479,9 @@ export class Screens {
       // Long titles shrink (then get cut) so they stop short of the stars.
       const room = (rec ? 284 : 314) - 60;
       let label = def ? def.title : 'Back';
+      // Two levels share a title in some packs: tell them apart.
+      const twin = def && list.findIndex((o) => o !== def && o.title === def.title);
+      if (def && twin >= 0) label += def.story ? ' - story' : twin < list.indexOf(def) ? ' II' : '';
       let scale = on ? 0.7 : 0.62;
       const font = this.art.fonts.med;
       const w = jjWidth(font, label, scale);
@@ -504,9 +507,15 @@ export class Screens {
       const got = def.loaded();
       if (got) {
         const map = preview(got.file, got.ts);
-        const k = Math.min(bw / map.width, bh / map.height);
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(map, bx + (bw - map.width * k) / 2, by + (bh - map.height * k) / 2, map.width * k, map.height * k);
+        if (def.story && map.lit < 0.05) {
+          // Story levels are mostly text on black: say so rather than show an empty map.
+          this.big('STORY', bx + bw / 2, by + bh / 2 - 22, { align: 'center', scale: 0.6 });
+          this.med('text and a short ride to the next level', bx + bw / 2, by + bh / 2 + 10, { align: 'center', scale: 0.5, color: '#c8b8f0' });
+        } else {
+          const k = Math.min(bw / map.width, bh / map.height);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(map, bx + (bw - map.width * k) / 2, by + (bh - map.height * k) / 2, map.width * k, map.height * k);
+        }
         this.med(`${got.file.layers[3].w} x ${got.file.layers[3].h} tiles - ${got.ts.name}`, bx + bw / 2, by + bh + 4, { align: 'center', scale: 0.5, color: '#c8b8f0' });
       } else {
         this.med(def.error ? 'Can not load' : 'Loading...', bx + bw / 2, by + bh / 2 - 8, { align: 'center', scale: 0.7 });
@@ -845,7 +854,10 @@ export class Screens {
       ctx.globalAlpha = 1;
       this.med(m, VIEW_W / 2 - 80, y, { scale: 0.55, color: ink, alpha: a });
     });
-    if (meta.error) this.med(`${meta.error} - press ENTER`, VIEW_W / 2, 306, { align: 'center', scale: 0.55, color: '#b0180c' });
+    if (meta.error) {
+      this.wrapTo(meta.error, 330, 0.5).slice(0, 2).forEach((line, i) => this.med(line, VIEW_W / 2, 296 + i * 11, { align: 'center', scale: 0.5, color: '#b0180c' }));
+      this.med(meta.next ? 'ENTER: skip to the next level   ESC: menu' : 'Press ENTER', VIEW_W / 2, 320, { align: 'center', scale: 0.45, color: '#8a4a1a' });
+    }
     else if (rec) this.med(`Best ${rec.score}   ${Math.floor(rec.seconds / 60)}:${String(rec.seconds % 60).padStart(2, '0')}`, VIEW_W / 2, 306, { align: 'center', scale: 0.5, color: '#8a4a1a' });
   }
 

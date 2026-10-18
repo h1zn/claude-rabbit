@@ -106,8 +106,19 @@ export function jj2Def(key) {
     if (state.level) return def;
     await discovered();       // the folder listing gives the files' real names
     const level = await fetchParsed(url(pack, entry.file), parseLevel);
-    const j2t = (n) => (/\.j2t$/i.test(n) ? n : `${n}.j2t`);
-    let ts = await fetchParsed(url(pack, packFile(pack, j2t(level.tileset))), parseTileset);
+    // Name and link the level from its own file first, so the menu shows its
+    // real title (and a story chain can skip it) even if a tile set is missing.
+    def.title = (level.title || '').trim() || def.title;
+    const bare = (f) => f.toLowerCase().replace(/\.j2l$/, '');
+    const j = pack.levels.findIndex((l) => bare(l.file) === bare(level.next || ''));
+    def.next = j >= 0 && j !== Number(n) ? `jj2:${pack.id}:${j}` : null;
+    // No gems, coins or food anywhere: a story level (text, then on).
+    const ids = new Set();
+    for (const w of level.events || []) ids.add(w & 0xff);
+    def.story = ![63, 64, 65, 66, 44, 45, 72, 73].some((id) => ids.has(id));
+    const j2t = (name) => (/\.j2t$/i.test(name) ? name : `${name}.j2t`);
+    let ts = await fetchParsed(url(pack, packFile(pack, j2t(level.tileset))), parseTileset)
+      .catch(() => { throw new Error(`Needs the tile set ${j2t(level.tileset)}, which isn't in Levels/${pack.title}/`); });
     if (level.mlle) {
       // JJ2+ levels: extra tile sets (missing ones leave their tiles empty)
       // and extra layers from the level's MLLE data files.
@@ -116,6 +127,20 @@ export function jj2Def(key) {
       })));
       def.missing = extras.filter((x) => !x.ts).map((x) => x.name);
       if (extras.length || level.mlle.palette || level.mlle.edited) ts = composeTileset(ts, extras, level.mlle.palette, level.mlle.edited);
+      // A level drawn mostly from missing sets would have no floor to stand on.
+      if (def.missing.length && ts.parts) {
+        const sprite = level.layers[3];
+        const max = level.maxTiles;
+        let used = 0; let gone = 0;
+        for (const word of sprite.tiles || []) {
+          const id = word & (max - 1);
+          if (!id) continue;
+          used++;
+          const part = id >= ts.base.count && [...ts.parts].reverse().find((p) => id >= p.start);
+          if (part && !part.ts) gone++;
+        }
+        if (used && gone / used > 0.25) throw new Error(`Needs the tile sets ${def.missing.map(j2t).join(', ')}`);
+      }
       const files = Math.ceil(Math.max(0, (level.mlle.layers ? level.mlle.layers.length : 8) - 8) / 8);
       const base = entry.file.replace(/\.j2l$/i, '');
       const data = await Promise.all(Array.from({ length: files }, (_, i) => fetchParsed(url(pack, packFile(pack, `${base}-MLLE-Data-${i + 1}.j2l`)), parseLevel).catch(() => null)));
@@ -123,11 +148,6 @@ export function jj2Def(key) {
     }
     state.ts = ts;
     state.level = level;
-    def.title = level.title || def.title;
-    // The level names its successor; follow it when it's in the same pack.
-    const bare = (f) => f.toLowerCase().replace(/\.j2l$/, '');
-    const j = pack.levels.findIndex((l) => bare(l.file) === bare(level.next || ''));
-    def.next = j >= 0 && j !== Number(n) ? `jj2:${pack.id}:${j}` : null;
     return def;
   };
   defs.set(key, def);

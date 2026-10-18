@@ -76,7 +76,7 @@ export class Game {
     Object.assign(this, {
       enemies: [], enemyShots: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
       platforms: (this.level.platforms || []).map((o) => new Platform(o)),
-      levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null,
+      levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null, hintHold: null,
       combo: 0, comboTimer: 0, comboMult: 1, activeBoss: null, bossCall: false, bossEnd: 0,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,
     });
@@ -174,7 +174,9 @@ export class Game {
     this.audio.play('fanfare');
     // An original level that ends with its boss: beating it ends the level
     // (the original's ExitType::Boss), however many others are about.
-    if (this.level.bossEnds) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); this.bossEnd = 160; return; }
+    // With several bosses, the level ends with the last of them.
+    if (this.level.bossEnds && !this.enemies.some((e) => e.boss && !e.dead && e !== boss)) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); this.bossEnd = 160; return; }
+    if (this.level.bossEnds) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); return; }
     if (!boss.guard || this.bossGuarding()) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); return; }
     this.banner(`${boss.name.replace('!', '')} DEFEATED! EXIT OPEN!`, 140);
   }
@@ -496,7 +498,7 @@ export class Game {
     for (const s of this.shots) s.update(this);
     for (const s of this.enemyShots) s.update(this);
     for (const k of this.pickups) k.update(this);
-    this.hintText = null;
+    this.hintText = this.hintHold && this.hintHold.t-- > 0 ? this.hintHold.text : null;
     for (const prop of this.props) prop.update(this);
     for (const part of this.particles) part.update();
     for (const fx of this.effects) fx.update(this);

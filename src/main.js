@@ -108,7 +108,7 @@ function showCard(index, fresh) {
       pending.ready = true;
       meta.loading = false;
       meta.title = def.title;
-    }).catch((e) => { meta.error = e.message; meta.loading = false; });
+    }).catch((e) => { meta.error = e.message; meta.loading = false; meta.next = def.next; meta.title = def.title; });
   }
   audio.stopMusic();
   audio.play('card');
@@ -249,7 +249,12 @@ function tick() {
       break;
     }
     case 'card':
-      if (game.cardMeta.error) { if (sceneTime > 30 && (input.pressed('start') || input.pressed('pause'))) toMenu(); break; }
+      if (game.cardMeta.error) {
+        // A level that can't load: ENTER moves on along its episode's chain.
+        if (sceneTime > 30 && input.pressed('start') && game.cardMeta.next) showCard(game.cardMeta.next, false);
+        else if (sceneTime > 30 && (input.pressed('start') || input.pressed('pause'))) toMenu();
+        break;
+      }
       if (!pendingLevel.ready && sceneTime > 30 && input.pressed('pause')) { toMenu(); break; }   // give up on a slow load
       if (pendingLevel.ready && (sceneTime > 170 || (sceneTime > 50 && input.pressed('start')))) startPendingLevel();
       break;
