@@ -76,14 +76,16 @@ function showCard(index, fresh) {
   const def = levelDef(index);
   pendingLevel = { index, fresh, ready: !def.prepare };
   game.cardIndex = index;
-  game.cardMeta = { title: def.title, tip: def.tip, label: def.pack && def.pack.title.toUpperCase(), loading: !!def.prepare };
+  const meta = { title: def.title, tip: def.tip, label: def.pack && def.pack.title.toUpperCase(), loading: !!def.prepare };
+  game.cardMeta = meta;
   if (def.prepare) {
+    // A load that finishes after another card opened only updates its own card.
     const pending = pendingLevel;
     def.prepare().then(() => {
       pending.ready = true;
-      game.cardMeta.loading = false;
-      game.cardMeta.title = def.title;
-    }).catch((e) => { game.cardMeta.error = e.message; game.cardMeta.loading = false; });
+      meta.loading = false;
+      meta.title = def.title;
+    }).catch((e) => { meta.error = e.message; meta.loading = false; });
   }
   audio.stopMusic();
   audio.play('card');

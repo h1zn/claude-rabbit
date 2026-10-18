@@ -452,6 +452,26 @@ export class Level {
         if (this.solid(tx, ty)) { body.x = (tx + 1) * TILE; result.left = true; break; }
       }
     }
+    // Landing step-up: the low rows let a falling body catch a ledge edge,
+    // but only when there is headroom to be lifted onto it.
+    if (land && !climb && dx !== 0 && !result.left && !result.right) {
+      const tx = dx > 0 ? Math.floor((body.x + body.w - 0.01) / TILE) : Math.floor(body.x / TILE);
+      const yb = Math.floor((body.y + body.h - 0.01) / TILE);
+      for (let ty = y1 + 1; ty <= yb; ty++) {
+        if (!this.solid(tx, ty)) continue;
+        const top = ty * TILE - body.h;
+        const x0 = Math.floor(body.x / TILE);
+        const x1 = Math.floor((body.x + body.w - 0.01) / TILE);
+        let blocked = false;
+        for (let ry = Math.floor(top / TILE); ry < y0 && !blocked; ry++) {
+          for (let cx = x0; cx <= x1; cx++) if (this.solid(cx, ry)) { blocked = true; break; }
+        }
+        if (blocked) {
+          if (dx > 0) { body.x = tx * TILE - body.w; result.right = true; } else { body.x = (tx + 1) * TILE; result.left = true; }
+        }
+        break;
+      }
+    }
     // Vertical
     const prevBottom = body.y + body.h;
     body.y += dy;

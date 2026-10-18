@@ -62,8 +62,11 @@ function tintSheet(sheet, wash = false) {
     ctx.putImageData(img, 0, 0);
     return c;
   };
+  // Merged anims (e.g. jazz_extra) hold frames that aren't in sheet.frames.
   const map = new Map();
-  for (const f of sheet.frames) map.set(f, { ...f, right: recolor(f.right), left: recolor(f.left) });
+  const all = new Set(sheet.frames);
+  for (const a of Object.values(sheet.anims)) for (const f of a.frames) all.add(f);
+  for (const f of all) map.set(f, { ...f, right: recolor(f.right), left: recolor(f.left) });
   const anims = {};
   for (const [k, a] of Object.entries(sheet.anims)) anims[k] = { ...a, frames: a.frames.map((f) => map.get(f)) };
   return { frames: [...map.values()], anims };

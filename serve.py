@@ -24,6 +24,7 @@ import sys
 import threading
 
 WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+MAX_FRAME = 64 * 1024  # party messages are small; anything bigger ends the connection
 # Room-code letters: no I/O (look like 1/0) and no M/P (the game's mute and
 # pause keys, which players type while entering a code).
 CODE_LETTERS = 'ABCDEFGHJKLNQRSTUVWXYZ'
@@ -56,19 +57,40 @@ class WebSocket:
         self.lock = threading.Lock()
         self.closed = False
 
+    def read_exact(self, n):
+        """Exactly n bytes, or None if the connection ended first."""
+        buf = b''
+        while len(buf) < n:
+            chunk = self.rfile.read(n - len(buf))
+            if not chunk:
+                return None
+            buf += chunk
+        return buf
+
     def recv(self):
         while True:
-            head = self.rfile.read(2)
-            if len(head) < 2:
+            head = self.read_exact(2)
+            if head is None:
                 return None
             opcode = head[0] & 0x0F
             length = head[1] & 0x7F
             if length == 126:
-                length = struct.unpack('>H', self.rfile.read(2))[0]
+                ext = self.read_exact(2)
+                if ext is None:
+                    return None
+                length = struct.unpack('>H', ext)[0]
             elif length == 127:
-                length = struct.unpack('>Q', self.rfile.read(8))[0]
-            mask = self.rfile.read(4) if head[1] & 0x80 else b'\0\0\0\0'
-            data = bytearray(self.rfile.read(length))
+                ext = self.read_exact(8)
+                if ext is None:
+                    return None
+                length = struct.unpack('>Q', ext)[0]
+            if length > MAX_FRAME:
+                return None
+            mask = self.read_exact(4) if head[1] & 0x80 else b'\0\0\0\0'
+            raw = self.read_exact(length)
+            if mask is None or raw is None:
+                return None
+            data = bytearray(raw)
             for i in range(len(data)):
                 data[i] ^= mask[i % 4]
             if opcode == 8:
@@ -96,7 +118,7 @@ class WebSocket:
             with self.lock:
                 self.wfile.write(head + payload)
                 self.wfile.flush()
-        except OSError:
+        except (OSError, ValueError):
             self.closed = True
 
 
@@ -151,12 +173,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         code, role = None, None
         try:
             while True:
-                text = ws.recv()
+                try:
+                    text = ws.recv()
+                except (OSError, ValueError):
+                    break
                 if text is None:
                     break
                 try:
                     msg = json.loads(text)
                 except ValueError:
+                    continue
+                if not isinstance(msg, dict):
                     continue
                 kind = msg.get('t')
                 if kind == 'host' and code is None:

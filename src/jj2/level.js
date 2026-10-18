@@ -175,7 +175,7 @@ export class JJ2Level extends Level {
             const [, speed, weapon] = id === EV.DESTRUCT ? eventFields(ev.params, [10, 5, 4]) : [0, 0, 0];
             ch = speed > 0 ? 'p' : id === EV.BUTTSTOMP || id === EV.GEMSTOMP ? 'm' : 'x';
             // Weapon blocks: one weapon breaks them; bomb scenery, explosions.
-            const need = id === EV.DESTRUCT_BOMB ? 7 : !speed && weapon > 1 && weapon <= 9 ? weapon : 0;
+            const need = id === EV.DESTRUCT_BOMB ? 7 : !speed && weapon >= 1 && weapon <= 9 ? weapon : 0;
             if (need) { ch = 'W'; this.weapons.set(`${tx},${ty}`, need); }
             // Collapsing scenery ('K') only gives way under the player's feet.
             if (id === EV.COLLAPSE) { this.collapse.set(i, 0); ch = 'K'; }

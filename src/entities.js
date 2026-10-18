@@ -537,7 +537,9 @@ export class Pickup {
       const w = WEAPONS[this.weapon];
       return frameAt(a[this.weapon === 1 && this.spaz ? 'monBlasterSpaz' : w.mon], this.t, 6);
     }
-    const k = this.bomb ? 5 : this.weapon ? WEAPONS[this.weapon].crate : 0;
+    // Bomb and trigger crates (and weapons without an ammo crate) are JJ2's plain wooden crate.
+    const k = this.bomb || this.trigger ? undefined : this.weapon ? WEAPONS[this.weapon].crate : 0;
+    if (k === undefined && a.plainCrate) return a.plainCrate.frames[0];
     return a.ammoCrate.frames[k === undefined ? 0 : k];
   }
 
@@ -626,7 +628,7 @@ export class Pickup {
       } else if (this.item === 'freeze') {
         // The hourglass freezes every enemy around.
         for (const e of game.enemies) {
-          if (e.dead || e.freezable === false || Math.hypot(e.cx - p.cx, e.y - p.y) > 400) continue;
+          if (e.dead || e.hidden || e.freezable === false || (e.boss && !e.active) || Math.hypot(e.cx - p.cx, e.y - p.y) > 400) continue;
           e.frozen = Math.max(e.frozen, 420);
         }
         game.audio.play('freeze');
@@ -695,7 +697,7 @@ export class Spring {
       p.jumping = false; p.jumpCut = false; p.onGround = false; p.stomping = false;
       p.hoverLeft = PHYS.hoverTicks;
       // Measured: a spring hands Spaz's double jump back, for when its rise is over.
-      p.doubleJumped = false; p.springDj = true;
+      p.doubleJumped = false; p.springDj = true; p.djWindow = 0; p.superJump = false;
       p.springLock = 0;
       this.launch(game, p.cx, this.y + 6);
     }

@@ -140,7 +140,7 @@ export class Player {
     // input: crouch first, standing still, then Jump (Down and Jump together,
     // or a crouch still sliding, give a jump instead). Measured timing:
     // 16-tick wind-up, then rise with vy = (t - 256) * 2048 / 65536 until tick 45.
-    if (this.special === 0 && this.knock === 0 && controlled && this.onGround && input.pressed('jump')
+    if (this.special === 0 && this.knock === 0 && controlled && this.onGround && !this.swimming && input.pressed('jump')
       && this.crouchT >= PHYS.superJumpCoil && Math.abs(this.vx) < PHYS.specialStillSpeed
       && !level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE))) {   // one-way: drop through instead
       this.special = 1;
@@ -188,7 +188,7 @@ export class Player {
     if (input.released('jump') && !this.onGround) this.djWindow = PHYS.doubleJumpWindow;
     if (this.springDj && this.vy >= 0) { this.springDj = false; this.djWindow = PHYS.doubleJumpWindow; }
     if (this.onGround) this.springDj = false;
-    if (controlled && input.pressed('jump')) this.jumpBuffer = PHYS.jumpBufferTicks;
+    if (controlled && this.special === 0 && input.pressed('jump')) this.jumpBuffer = PHYS.jumpBufferTicks;
     else if (this.jumpBuffer > 0) this.jumpBuffer--;
     const onPlatform = this.onGround && level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE));
     if (this.special === 0 && !this.swimming) {
@@ -381,7 +381,7 @@ export class Player {
     if (input.pressed('jump')) {
       release(PHYS.jumpBase, 12);
       this.y -= 4;
-      this.jumping = true; this.jumpCut = false; this.launched = true;
+      this.jumping = true; this.jumpCut = false; this.launched = true; this.superJump = false;
       game.audio.play('jump');
       return false;
     }
@@ -453,6 +453,7 @@ export class Player {
     if (this.poleT < this.poleHold && !(this.poleT > 8 && input.pressed('jump'))) return;
     this.pole = null;
     this.poleCool = 24;
+    this.superJump = false;
     this.jumpCut = false;
     if (pole.vertical) {
       this.vx = this.poleDir * 2;
@@ -581,6 +582,7 @@ export class Player {
   // decaying at the released rate whatever the jump key does.
   stompBounce() {
     this.vy = PHYS.stompEnemyBounce;
+    this.superJump = false;
     this.jumping = true;
     this.jumpCut = true;
     this.stomping = false;
@@ -593,13 +595,14 @@ export class Player {
     this.rfDir = dir; this.rfBlast = PHYS.rfBlastTicks;
     this.vy = this.onGround ? -(0.646 + 0.1732 * dist) : PHYS.rfBlastRise;
     this.onGround = false;
-    this.jumping = true; this.jumpCut = true; this.stomping = false;
+    this.jumping = true; this.jumpCut = true; this.stomping = false; this.superJump = false;
   }
 
   // Measured stomp bounce: vy = -8 - vy/2 with jump held, -4 - vy/2 without.
   bounce(jumpHeld) {
     const base = jumpHeld ? PHYS.stompBounceHeld : PHYS.stompBounce;
     this.vy = base - Math.min(this.vy, 12) / 2;
+    this.superJump = false;
     this.jumping = jumpHeld;
     this.jumpCut = false;
     this.stomping = false;

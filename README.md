@@ -26,11 +26,11 @@ not work, because browsers block JavaScript modules on `file://`.)
 | Action | Keys |
 | --- | --- |
 | Move | Arrow keys / WASD |
-| Jump | Space / Z (hold for a higher jump) |
-| Hover-boots | Press jump again in the air and hold |
+| Jump | Space / Z / K (hold for a higher jump) |
+| Copter ears (Jazz, Lori) / double jump (Spaz) | Press jump again in the air (hold to keep the copter going) |
 | Fire | X / J / Ctrl (hold Up to aim up; diagonally while moving) |
 | Change weapon | C / Tab (next with ammo), or 1-9 |
-| Run | Shift (hold) |
+| Run | Shift / L (hold) |
 | Drop through a platform | Down + Jump |
 | Uppercut (Jazz) / kick (Spaz, Lori) | Hold Down until crouched, standing still, then Jump (the original's input) |
 | Super jump | The same while still sliding (60% higher, smashes blocks above) |
@@ -198,29 +198,39 @@ index.html, style.css   page and crisp pixel scaling
 src/config.js           physics and camera constants (measured vs tuned)
 src/main.js             fixed-step loop and screen flow
 src/game.js             world state, interactions, camera
-src/player.js           Kip's movement and abilities
+src/input.js            keyboard sampled once per tick (held / pressed)
+src/player.js           the hero's movement and abilities
 src/entities.js         enemies, pickups, springs, poles, warps, hints, shots, effects
+src/weapons.js          the nine weapons: shots, aiming, explosions, TNT
+src/bosses.js           Queen, Schwartzenguard, Bilsy, Robot, Uterus
 src/level.js            tile map, collision and the level builder
 src/levels.js           the level list; designs in src/levels/ (kit.js: helpers, room maze)
 src/party.js            party mode: relay connection, rival, sync and rules
 src/save.js             saved progress, stars and options
 src/jj2/                original JJ2 levels: files.js (.j2l/.j2t reader), level.js
                         (masks -> collision, events -> entities), view.js (layers),
-                        play.js (light/water/collapse), catalog.js (packs), preview.js
+                        play.js (light/water/collapse), catalog.js (packs), preview.js,
+                        platforms.js (moving platforms on chains)
 vendor/chiptune3/       libopenmpt player for tracker music (MIT / BSD)
 src/screens.js          splash intro, menus, level select, lobby, tally
 serve.py                web server + party relay (WebSocket /ws)
 tools/check_levels.mjs  reachability check for all levels
 tools/build_sprites.py  cuts sprite sheets in new/ into assets/*.png + .json
 tools/build_blocks.py   packs the special block tiles into assets/blocks.png
+tools/build_font.py     cuts the JJ2 menu fonts into assets/font_*.png
+tools/slice.py, boxes.py, tilegrid.py   helpers for finding frames and tiles in sheets
 src/art.js              loads the sprite sheets and tilesets; arcade text
-src/audio.js            synthesized sound effects and music sequencer
+src/sheets.js           sprite-sheet atlases and animation frames
+src/sprites.js, paint.js  the few procedural sprites and their painting toolkit
+src/tilesets.js, terrain.js, backdrop.js, sky.js   built-in levels' ground, backdrops, skies, weather
+src/audio.js            JJ2 sound samples, tracker and recorded music, synthesized fallbacks
+src/sfxmap.js           game event -> sound sample number
 src/render.js           drawing, HUD and screens
+dev/                    sheet.html (frame viewer), sounds.html (sample listener)
 SPEC.md                 the measured mechanics and where they came from
 ```
 
 ## Ideas for the next pass
 
 - More of JJ2 in the classic levels: the remaining bosses and the frog/bird morphs.
-- A save file for high scores.
 - Gamepad support and touch controls.

@@ -146,7 +146,7 @@ export class Bullet {
       if (d < best && dx * Math.cos(this.angle) + dy * Math.sin(this.angle) > -40) { best = d; target = o; }
     };
     if (this.remote) { if (!game.player.dead) consider(game.player); } else {
-      for (const e of game.enemies) if (!e.dead) consider(e);
+      for (const e of game.enemies) if (!e.dead && !e.hidden) consider(e);
       if (game.party && game.party.rival.seen && !game.party.rival.dead) consider(game.party.rival);
     }
     const sp = Math.min(6, Math.hypot(this.vx, this.vy) + 0.15);
@@ -172,7 +172,11 @@ export class Bullet {
     if (!this.placed && --this.life <= 0) { this.burst(game); return; }
     if (this.armed > 0) return;
     const near = (o) => Math.abs(o.x + o.w / 2 - this.cx) < 40 && Math.abs(o.y + o.h / 2 - this.cy) < 40;
-    if (this.remote ? !game.player.dead && near(game.player) : game.enemies.some((e) => !e.dead && near(e))) this.burst(game);
+    // A rival close by sets it off too (party mode has no enemies).
+    const rival = game.party && game.party.rival;
+    const close = this.remote ? !game.player.dead && near(game.player)
+      : game.enemies.some((e) => !e.dead && !e.hidden && near(e)) || (rival && rival.seen && !rival.dead && near(rival));
+    if (close) this.burst(game);
   }
 
   // Set off by another blast: a short delay makes chain reactions visible.
@@ -180,6 +184,8 @@ export class Bullet {
 
   burst(game) {
     this.dead = true;
+    // Party: TNT going off here goes off on the rival's screen too.
+    if (this.weapon === TNT && !this.remote && game.party) game.party.boom(this.cx, this.cy);
     const r = this.weapon === TNT ? 72 : 30;
     game.blast(this.cx, this.cy, r, { weapon: this.weapon, damage: this.weapon === TNT ? 5 : this.damage, remote: this.remote, big: this.weapon === TNT });
   }
@@ -188,13 +194,13 @@ export class Bullet {
   strike(game, e) {
     if (this.weapon === TNT || this.hit.has(e)) return;
     if (this.weapon === 3) {
-      if (e.freezable === false) { e.damage(game, 1); this.dead = true; return; }
+      if (e.freezable === false || (e.boss && !e.active)) { e.damage(game, 1); this.dead = true; return; }
       e.frozen = this.powered ? 350 : FREEZE;
       e.flash = 0;
       game.audio.play('freeze');
       game.effect('sparkle', e.cx, e.y + e.h / 2);
     } else if (this.explosive) {
-      e.damage(game, this.damage);
+      // The blast does the damage (the target is always inside it).
       this.burst(game);
       return;
     } else {

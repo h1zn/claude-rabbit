@@ -34,6 +34,7 @@ class Boss extends Enemy {
     this.active = true;
     this.hp = this.maxHp;
     game.activeBoss = this;
+    game.bossCall = false;
     game.banner(this.name, 120);
     game.audio.play('rush');
     this.activate(game);
@@ -46,7 +47,7 @@ class Boss extends Enemy {
   reset() {
     this.x = this.origin.x; this.y = this.origin.y; this.prevX = this.x; this.prevY = this.y;
     this.vx = 0; this.vy = 0; this.frozen = 0;
-    this.active = false; this.state = 'wait'; this.st = 0; this.anim = 'idle'; this.hp = this.maxHp;
+    this.active = false; this.state = 'wait'; this.st = 0; this.anim = 'idle'; this.hp = this.maxHp; this.hitCool = 0;
   }
 
   // Play `anim` from its start.
@@ -56,6 +57,7 @@ class Boss extends Enemy {
     super.begin();
     this.at++;
     if (this.st > 0) this.st = Math.max(0, this.st - 1);
+    if (this.hitCool > 0) this.hitCool--;
   }
 
   facePlayer(game) { this.facing = game.player.cx < this.cx ? -1 : 1; }
@@ -80,7 +82,8 @@ class Boss extends Enemy {
     if (!this.active) this.wake(game);
     if (this.frozen > 0) return;
     if (fromAbove || p.attacking) {
-      this.damage(game, p.stomping || p.special > 0 ? 4 : 2);
+      // One hit per contact: an uppercut overlapping for several ticks counts once.
+      if (!this.hitCool) { this.damage(game, p.stomping || p.special > 0 ? 4 : 2); this.hitCool = 20; }
       if (p.stomping) { p.stompBounce(); p.y = Math.min(p.y, this.y - p.h); game.audio.play('stomp'); } else if (fromAbove) { p.bounce(input.held('jump')); p.y = this.y - p.h; game.audio.play('stomp'); }
       else p.vx = -p.vx * 0.5;
       return;
@@ -280,10 +283,11 @@ export class Queen extends Boss {
   wake(game) {
     if (this.active) return true;
     const p = game.player;
-    const ahead = (p.cx - this.cx) * this.facing;
-    if (p.dead || ahead < -60 || ahead > 300 || Math.abs(p.cy - this.cy) > 120) return false;
+    if (p.dead || Math.abs(p.cx - this.cx) > 300 || Math.abs(p.cy - this.cy) > 120) return false;
     this.active = true;
+    this.facePlayer(game);
     game.activeBoss = this;
+    game.bossCall = false;
     game.banner(this.name, 120);
     game.audio.play('rush');
     this.state = 'idle'; this.st = Math.round(260 * T * 0.5);
@@ -367,7 +371,8 @@ export class Queen extends Boss {
         // Beaten once she drops well below where she stood (or lands on a
         // spring, which throws her away as in the original).
         const spring = game.props.find((pr) => pr.kind === 'spring' && overlap(pr, this));
-        if (spring || this.y > this.origin.y + 3 * TILE) {
+        // Landing on a floor close below counts too, so she never stalls.
+        if (spring || this.y > this.origin.y + 3 * TILE || (this.onGround && this.at > 20)) {
           this.state = 'gone'; this.vy = -14; this.vx = back * 3; this.st = Math.round(50 * T);
           if (spring) spring.launch(game, this.cx, this.y + this.h);
         }
@@ -435,7 +440,7 @@ export class Bilsy extends Boss {
       const x = this.origin.x + rand(-320, 320); const y = this.origin.y + rand(-240, 240);
       if (x < 0 || y < 0 || x + this.w > L.pixelW || y + this.h > L.pixelH) continue;
       const box = { x, y, w: this.w, h: this.h };
-      if (L.groundBelow && L.groundBelow(box, 0) !== null) continue;
+      if (L.groundBelow && (L.groundBelow(box, 0) !== null || L.groundBelow(box, 400) === null)) continue;
       let clear = true;
       for (let yy = y; yy < y + this.h && clear; yy += 8) for (let xx = x; xx < x + this.w; xx += 6) if (L.solidAt(xx, yy)) { clear = false; break; }
       if (!clear) continue;
@@ -587,6 +592,7 @@ export class Robot extends Boss {
   }
 
   damage(game, amount) {
+    if (!this.active || this.dead) return;
     super.damage(game, amount);
     for (let i = 0; i < 3; i++) game.debris.push({ x: this.cx, y: this.cy, vx: (Math.random() - 0.5) * 6, vy: -2 - Math.random() * 4, life: 50, spin: Math.random() * 6 });
   }
@@ -696,6 +702,7 @@ class ShieldPart extends Enemy {
       this.fallTime--;
       this.vy = Math.min(this.vy + 0.15, 4);
       game.level.move(this, 0, this.vy, {});
+      if (this.y > game.level.pixelH) this.fallTime = 0;
       return;
     }
     const a = this.owner.phase + this.phase;

@@ -165,7 +165,11 @@ async function scanPacks() {
     const dir = `Levels/${f.dir}/`;
     let pack = PACKS.find((p) => p.dir === dir);
     if (!pack) {
-      pack = { id: f.dir.toLowerCase().replace(/[^a-z0-9]+/g, '-'), title: f.dir, blurb: `Levels from Levels/${f.dir}/.`, dir, levels: [] };
+      // Ids key levels ("jj2:<id>:<n>"), so two folders that slug alike get a suffix.
+      const base = f.dir.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      let id = base;
+      for (let n = 2; PACKS.some((p) => p.id === id); n++) id = `${base}-${n}`;
+      pack = { id, title: f.dir, blurb: `Levels from Levels/${f.dir}/.`, dir, levels: [] };
       PACKS.push(pack);
     }
     pack.tilesets = f.tilesets;

@@ -1,5 +1,6 @@
-// Original synthesized sound effects and chiptune music (WebAudio). No audio
-// files: everything is generated at runtime.
+// Sound (WebAudio): JJ2 sound samples (assets/sfx/, mapped in sfxmap.js),
+// recorded soundtracks (Soundtracks/) and the levels' tracker music, with the
+// original synthesized effects and chiptunes as fallbacks.
 
 const NOTE_INDEX = { C: -9, 'C#': -8, D: -7, 'D#': -6, E: -5, F: -4, 'F#': -3, G: -2, 'G#': -1, A: 0, 'A#': 1, B: 2 };
 

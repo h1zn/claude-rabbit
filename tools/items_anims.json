@@ -550,6 +550,16 @@
       ],
       "speed": 1,
       "loop": true
+    },
+    "plainCrate": {
+      "region": [
+        656,
+        690,
+        696,
+        727
+      ],
+      "speed": 1,
+      "loop": false
     }
   }
 }

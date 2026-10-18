@@ -5,9 +5,10 @@ gameplay mechanics measured from a legitimately owned copy of a 1999 platformer
 (Jazz Jackrabbit 2: Christmas Chronicles '99, `Jazz2.exe`) in IDA Pro.
 
 Mechanics come from IDA and from the game's manual (`new/Jazz_Jackrabbit_2_Manual.pdf`,
-English section pp. 11-18). Sprites and five tilesets are cut from sprite sheets
-the project owner supplied (`new/`), for personal use. Sounds, music, levels and
-code are this project's own.
+English section pp. 11-18). Sprites and tilesets are cut from sprite sheets the
+project owner supplied (`new/`), sound effects are JJ2 samples (`assets/sfx/`) and
+music comes from `Soundtracks/` and the levels' tracker files, all for personal
+use. The built-in levels and the code are this project's own.
 
 ## How the numbers were found
 
@@ -49,7 +50,10 @@ the full 12 px/tick, as in the original. Jazz2 Resurrection
 per-tick values from traces of the real game; they agree with the IDA reads
 where both exist.
 
-## Prototype scope
+## First prototype scope
+
+What the first loop built; the game has grown well past it (see README.md and
+EXPERIMENT.md).
 
 - Fixed 71.4 Hz simulation with interpolated rendering.
 - Run, walk, variable-height jump with running bonus, hover boots, stomp,
@@ -57,7 +61,8 @@ where both exist.
 - 32 px tile world with solid blocks, one-way platforms, springs, spikes,
   checkpoints and an exit.
 - Enemies: walker, hopper, flyer. Pickups: gems, health berries, ammo.
-- Original procedural art, synthesized sound effects and an original chiptune.
+- Sprite-sheet art, JJ2 sound samples and recorded or tracker music (the
+  first prototype's procedural art and synthesized sounds remain as fallbacks).
 
 ## World rules (loop 3)
 

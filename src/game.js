@@ -155,7 +155,7 @@ export class Game {
   bossGuarding() { return this.enemies.some((e) => e.guard && !e.dead); }
 
   bossDefeated(boss) {
-    if (this.activeBoss === boss) this.activeBoss = null;
+    if (this.activeBoss === boss) this.activeBoss = this.enemies.find((e) => e.boss && e !== boss && e.active && !e.dead) || null;
     this.explode(boss.cx, boss.y + boss.h / 2, '#ffd54a');
     this.shake(14);
     this.flash('#ffffff', 6);
@@ -163,7 +163,7 @@ export class Game {
     // An original level that ends with its boss: beating it ends the level
     // (the original's ExitType::Boss), however many others are about.
     if (this.level.bossEnds) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); this.bossEnd = 160; return; }
-    if (this.bossGuarding()) return;
+    if (!boss.guard || this.bossGuarding()) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); return; }
     this.banner(`${boss.name.replace('!', '')} DEFEATED! EXIT OPEN!`, 140);
   }
 
@@ -274,7 +274,7 @@ export class Game {
     const d = Math.hypot(p.cx - x, p.cy - y);
     if (weapon === 5 && d <= 36 && !p.dead) p.blast(p.cx < x ? -1 : 1, d);
     for (const e of this.enemies) if (!e.dead && inside(e)) e.damage(this, damage);
-    for (const b of this.enemyShots) if (!b.dead && inside(b)) b.kind === 'bomb' ? b.explode(this) : b.pop(this);
+    for (const b of this.enemyShots) if (!b.dead && !b.solid && inside(b)) b.kind === 'bomb' ? b.explode(this) : b.pop(this);
     for (const s of this.shots) if (s.weapon === TNT && inside(s)) s.detonate();
     for (const k of this.pickups) {
       if (k.taken || k.pending || !k.needsHit || !inside(k)) continue;
@@ -325,7 +325,7 @@ export class Game {
     // Unsupported breakable blocks stacked above crumble too, so one shot at
     // the base of a wall clears the way instead of leaving a hanging stub.
     let up = ty - 1;
-    while (this.level.at(tx, up) === 'x' && this.level.breakTile(tx, up)) {
+    while (!this.level.jj2 && this.level.at(tx, up) === 'x' && this.level.breakTile(tx, up)) {
       const cy = up * TILE + TILE / 2;
       this.addScore(50, x, cy);
       for (let i = 0; i < 6; i++) {
@@ -434,7 +434,7 @@ export class Game {
     }
 
     this.levelTime++;
-    if (this.bossEnd > 0 && --this.bossEnd === 0) { this.completeLevel(); return; }
+    if (this.bossEnd > 0 && !this.player.dead && --this.bossEnd === 0) { this.completeLevel(); return; }
     if (this.comboTimer > 0 && --this.comboTimer === 0) { this.combo = 0; this.comboMult = 1; }
     if (this.bannerTime > 0) this.bannerTime--;
     if (this.shakeTime > 0) this.shakeTime--;
@@ -460,6 +460,7 @@ export class Game {
       for (const e of this.enemies) if (e.boss && !e.dead) e.reset();
       this.enemyShots = this.enemyShots.filter((b) => !b.solid);
       this.activeBoss = null;
+      this.bossCall = false;
       this.audio.startMusic(this.level.meta.music);
     }
 
@@ -479,6 +480,8 @@ export class Game {
 
     this.interact(input);
 
+    // A boss knocked out of the world starts over rather than vanishing.
+    for (const e of this.enemies) if (e.boss && !e.dead && e.y >= this.level.pixelH + 200) e.reset();
     this.enemies = this.enemies.filter((e) => !e.dead && e.y < this.level.pixelH + 200);
     this.shots = this.shots.filter((s) => !s.dead);
     this.enemyShots = this.enemyShots.filter((s) => !s.dead);
@@ -498,7 +501,7 @@ export class Game {
     const p = this.player;
     for (const s of this.shots) {
       for (const e of this.enemies) {
-        if (!s.dead && !e.dead && touches(s, e)) s.strike(this, e);
+        if (!s.dead && !e.dead && !e.hidden && touches(s, e)) s.strike(this, e);
       }
       // Measured: crates only break when attacked (a shot, stomp or special).
       for (const k of this.pickups) {
@@ -509,7 +512,11 @@ export class Game {
       }
       // Manual: TNT can be set off by shooting it.
       if (!s.dead && s.weapon !== TNT) {
-        for (const t of this.shots) if (t.weapon === TNT && !t.dead && overlap(s, t)) { t.detonate(); s.dead = true; }
+        for (const t of this.shots) {
+          if (t.weapon !== TNT || t.dead || s.dead || !overlap(s, t)) continue;
+          t.detonate();
+          if (s.explosive) s.burst(this); else s.dead = true;
+        }
       }
     }
     for (const s of this.shots) {

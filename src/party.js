@@ -129,7 +129,9 @@ export class Party {
     for (const s of this.shots) s.update(game);
     // Rival shots against us (missiles and TNT blast us instead); ours
     // fizzle on the rival (it decides the hit).
-    if (!p.dead && p.invuln === 0) {
+    // (While we blink after a hit the shot is still used up, as on the
+    // shooter's screen; hit() ignores it.)
+    if (!p.dead) {
       for (const s of this.shots) {
         if (s.dead || s.weapon === TNT || !overlap(s, p)) continue;
         if (s.explosive) s.burst(game);
@@ -194,6 +196,9 @@ export class Party {
     }
   }
 
+  // Our TNT went off: the rival's copy (or a JJ2 bomb there) goes off too.
+  boom(x, y) { this.net.send({ t: 'boom', x: Math.round(x), y: Math.round(y) }); }
+
   tile(tx, ty, opts = {}) { this.net.send({ t: 'tile', x: tx, y: ty, w: opts.weapon || 0, b: opts.blast ? 1 : 0 }); }
   fire(shot) { this.net.send({ t: 'shot', x: Math.round(shot.x), y: Math.round(shot.y), vx: +shot.vx.toFixed(2), vy: +shot.vy.toFixed(2), w: shot.weapon, p: shot.powered ? 1 : 0, l: shot.life }); }
 
@@ -221,7 +226,7 @@ export class Party {
       case 'shot': {
         // The rival's shot flies here as well, but only hurts us.
         const b = new Bullet(m.w || 1, !!m.p, m.x, m.y, m.vx, m.vy, { remote: true });
-        if (b.weapon === TNT) b.life = m.l || b.life;
+        if (m.l) b.life = m.l;
         this.shots.push(b);
         game.audio.play(b.weapon === 6 ? 'flame' : 'shoot');
         break;
@@ -236,7 +241,13 @@ export class Party {
       case 'deny': { const k = game.pickups.find((q) => q.id === m.id); if (k && !k.taken) gone(k); break; }
       case 'gone': { const k = find(m.id) || game.pickups.find((q) => q.id === m.id && q.pending); if (k) gone(k); break; }
       case 'tile': game.hitTile(m.x, m.y, { stomp: true, speed: true, collapse: true, weapon: m.w, blast: !!m.b, remote: true }); break;
-      case 'win': this.result = 'lose'; game.audio.play('gameover'); break;
+      case 'boom': {
+        const near = (s) => s.weapon === TNT && !s.dead && Math.abs(s.cx - m.x) < 24 && Math.abs(s.cy - m.y) < 24;
+        for (const s of this.shots) if (near(s)) s.burst(game);
+        for (const s of game.shots) if (near(s) && s.placed) s.burst(game);
+        break;
+      }
+      case 'win': if (!this.result) { this.result = 'lose'; game.audio.play('gameover'); } break;
       case 'left': this.result = this.result || 'left'; break;
       default: break;
     }

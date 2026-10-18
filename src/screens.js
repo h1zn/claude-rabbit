@@ -15,9 +15,9 @@ import { Sky, Weather } from './sky.js';
 const MAIN = ['New Game', 'Party', 'How to Play', 'Options'];
 const SUBS = ['char', 'party', 'help', 'options'];
 const CHARACTERS = [
-  { id: 'jazz', moves: ['Copter ears: JUMP again in the air', 'Uppercut: UP + FIRE'] },
-  { id: 'spaz', moves: ['Double jump: JUMP again in the air', 'Side kick: UP + FIRE'] },
-  { id: 'lori', moves: ['Copter ears: JUMP again in the air', 'Flying kick: UP + FIRE'] },
+  { id: 'jazz', moves: ['Copter ears: JUMP again in the air', 'Uppercut: DOWN, then JUMP'] },
+  { id: 'spaz', moves: ['Double jump: JUMP again in the air', 'Side kick: DOWN, then JUMP'] },
+  { id: 'lori', moves: ['Copter ears: JUMP again in the air', 'Flying kick: DOWN, then JUMP'] },
 ];
 // Episode pictures (JJ2's episode select) for this game and each level pack.
 const EPISODE_ART = { kip: 'prince', xx: 'time', episode2: 'flashback', overgrown: 'monkeys', bl18: 'christmas', threed: 'secret' };
