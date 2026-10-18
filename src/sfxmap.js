@@ -3,9 +3,11 @@
 // check them by ear on dev/sounds.html and swap numbers here.
 export const SFX_MAP = {
   shoot: 20, spread: 21,
-  jump: 17, land: 2, spring: 24,
+  jump: 17, land: 2,
   stompStart: 8, stompLand: 1, uppercutCharge: 22, uppercut: 16,
-  hit: 19, kill: 3, stomp: 4, blob: 15,
+  // hit, kill, stomp and spring are synthesized (audio.js): samples 3 and 4
+  // are voices and made defeating an enemy sound like the hero getting hurt.
+  blob: 15,
   gem: 14, coin: 9, food: 11, berry: 15, crate: 6, break: 13,
   hurt: 7, death: 5, gameover: 5,
   checkpoint: 12, rush: 16, sign: 0, secret: 10, fanfare: 0,

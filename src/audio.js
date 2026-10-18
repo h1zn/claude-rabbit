@@ -170,6 +170,7 @@ const FADE = 1.2;            // seconds for fades between tracks
 
 export class Audio {
   constructor() {
+    this.volScale = 1;
     this.ctx = null;
     this.muted = false;
     this.song = null;
@@ -242,7 +243,7 @@ export class Audio {
     }));
   }
 
-  sample(i, vol = 0.9) {
+  sample(i, vol = 0.9 * this.volScale) {
     const buf = this.samples && this.samples[i];
     if (!buf) return false;
     const src = this.ctx.createBufferSource();
@@ -269,7 +270,7 @@ export class Audio {
     osc.frequency.setValueAtTime(from, t);
     if (to !== from) osc.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + dur);
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.linearRampToValueAtTime(vol, t + attack);
+    gain.gain.linearRampToValueAtTime(vol * this.volScale, t + attack);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     osc.connect(gain).connect(bus);
     osc.start(t);
@@ -286,7 +287,7 @@ export class Audio {
     f.frequency.setValueAtTime(filter, t);
     if (sweep) f.frequency.exponentialRampToValueAtTime(sweep, t + dur);
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(vol, t);
+    gain.gain.setValueAtTime(vol * this.volScale, t);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     src.connect(f).connect(gain).connect(bus);
     src.start(t, Math.random() * 0.5);
@@ -297,8 +298,14 @@ export class Audio {
     list.forEach((n, i) => this.tone({ wave, from: freq(n), dur, vol, delay: i * step }));
   }
 
-  play(name) {
-    if (!this.ctx || this.muted) return;
+  // `vol` scales the sound (0-1): world sounds fade with distance (Game.sound).
+  play(name, vol = 1) {
+    if (!this.ctx || this.muted || vol <= 0) return;
+    this.volScale = vol;
+    try { this.playNow(name); } finally { this.volScale = 1; }
+  }
+
+  playNow(name) {
     if (SFX_MAP[name] !== undefined && this.sample(SFX_MAP[name])) return;
     switch (name) {
       case 'jump': this.tone({ from: 300, to: 820, dur: 0.12, vol: 0.11 }); break;
@@ -332,14 +339,25 @@ export class Audio {
         break;
       case 'weapon': this.tone({ wave: 'square', from: 660, to: 990, dur: 0.05, vol: 0.06 }); break;
       case 'ammo': this.notes(['E5', 'B5'], { step: 0.05, dur: 0.08, vol: 0.08 }); break;
-      case 'hit': this.noise({ dur: 0.08, vol: 0.2, filter: 1800, type: 'bandpass' }); break;
+      // Hitting an enemy: a short, bright knock (nothing like the hero's hurt).
+      case 'hit':
+        this.noise({ dur: 0.05, vol: 0.22, filter: 2600, type: 'bandpass' });
+        this.tone({ wave: 'square', from: 1400, to: 700, dur: 0.05, vol: 0.06 });
+        break;
+      // An enemy defeated: a pop that falls away.
       case 'kill':
-        this.tone({ wave: 'triangle', from: 620, to: 70, dur: 0.3, vol: 0.2 });
-        this.noise({ dur: 0.22, vol: 0.16, filter: 1400, sweep: 200 });
+        this.tone({ wave: 'square', from: 900, to: 1800, dur: 0.05, vol: 0.07 });
+        this.tone({ wave: 'triangle', from: 700, to: 90, dur: 0.22, vol: 0.18, delay: 0.04 });
+        this.noise({ dur: 0.16, vol: 0.12, filter: 1600, sweep: 300, delay: 0.03 });
         break;
       case 'stomp':
-        this.tone({ from: 180, to: 520, dur: 0.1, vol: 0.14 });
-        this.tone({ from: 520, to: 1040, dur: 0.1, vol: 0.1, delay: 0.06 });
+        this.tone({ wave: 'sine', from: 240, to: 70, dur: 0.12, vol: 0.28 });
+        this.tone({ wave: 'square', from: 520, to: 1040, dur: 0.08, vol: 0.06, delay: 0.05 });
+        break;
+      // A shell ricocheting off a wall: a hollow clack.
+      case 'shell':
+        this.tone({ wave: 'triangle', from: 520, to: 380, dur: 0.06, vol: 0.12 });
+        this.noise({ dur: 0.03, vol: 0.08, filter: 1800, type: 'bandpass' });
         break;
       case 'blob': this.tone({ wave: 'sine', from: 160, to: 420, dur: 0.14, vol: 0.12 }); break;
       case 'gem':
@@ -353,7 +371,7 @@ export class Audio {
       case 'food': this.tone({ wave: 'sine', from: 700, to: 1100, dur: 0.06, vol: 0.09 }); this.noise({ dur: 0.04, vol: 0.06, filter: 3000, delay: 0.03 }); break;
       case 'berry': this.notes(['E5', 'G#5', 'B5', 'E6'], { wave: 'triangle', step: 0.06, dur: 0.1, vol: 0.14 }); break;
       case 'crate': this.notes(['A4', 'A5'], { step: 0.07, dur: 0.12, vol: 0.09 }); break;
-      case 'spring': this.tone({ wave: 'sawtooth', from: 140, to: 1300, dur: 0.28, vol: 0.12 }); break;
+      case 'spring': this.boing(); break;
       case 'hurt':
         this.tone({ wave: 'sawtooth', from: 520, to: 110, dur: 0.32, vol: 0.15 });
         this.noise({ dur: 0.12, vol: 0.12, filter: 900 });
@@ -396,6 +414,31 @@ export class Audio {
       case 'rank': this.notes(['C6', 'E6', 'G6', 'C7'], { step: 0.05, dur: 0.2, vol: 0.09 }); this.noise({ dur: 0.3, vol: 0.12, filter: 3000 }); break;
       default: break;
     }
+  }
+
+  // A spring: a cartoon "boing", a sine rising and wobbling as it fades.
+  boing() {
+    const c = this.ctx;
+    const t = c.currentTime;
+    const osc = c.createOscillator();
+    const lfo = c.createOscillator();
+    const depth = c.createGain();
+    const gain = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(170, t);
+    osc.frequency.exponentialRampToValueAtTime(520, t + 0.09);
+    osc.frequency.exponentialRampToValueAtTime(380, t + 0.45);
+    lfo.frequency.setValueAtTime(26, t);
+    lfo.frequency.linearRampToValueAtTime(14, t + 0.45);
+    depth.gain.setValueAtTime(70, t);
+    depth.gain.exponentialRampToValueAtTime(8, t + 0.45);
+    lfo.connect(depth).connect(osc.frequency);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.22 * this.volScale, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.48);
+    osc.connect(gain).connect(this.sfxBus);
+    osc.start(t); lfo.start(t);
+    osc.stop(t + 0.5); lfo.stop(t + 0.5);
   }
 
   hover(on) {

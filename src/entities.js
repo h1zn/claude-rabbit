@@ -31,14 +31,14 @@ export class Enemy {
     this.hp -= amount;
     this.flash = 6;
     if (this.hp <= 0) this.kill(game);
-    else game.audio.play('hit');
+    else game.sound('hit', this.cx, this.y + this.h / 2);
   }
 
   kill(game) {
     if (this.dead) return;
     this.dead = true;
     if (!this.counted) game.enemiesKilled++;   // spawned mid-level: not in the tally
-    game.audio.play('kill');
+    game.sound('kill', this.cx, this.y + this.h / 2);
     game.explode(this.cx, this.y + this.h / 2, this.color || '#ffd54a');
     game.addScore(this.score * game.bump(), this.cx, this.y);
   }
@@ -104,6 +104,7 @@ export class Shell extends Enemy {
     super('shell', x, feet - 18, 30, 18, 1, 100);
     this.color = '#c48aff';
     this.kickLock = 0;
+    this.bounces = 0;
     this.counted = true;   // its turtle already counted toward the tally
   }
 
@@ -115,7 +116,13 @@ export class Shell extends Enemy {
     const hit = level.move(this, this.vx, this.vy, { climb: this.onGround });
     this.onGround = hit.bottom || (this.onGround && level.snapDown(this, this.vx));
     if (this.onGround) this.vy = 0;
-    if (hit.left || hit.right) { this.vx = -this.vx; game.audio.play('hit'); }
+    if (hit.left || hit.right) {
+      // It ricochets a few times, then cracks (a shell caught between two
+      // walls used to rattle for the rest of the level).
+      this.vx = -this.vx;
+      if (++this.bounces > 5) { this.kill(game); return; }
+      game.sound('shell', this.cx, this.y + this.h / 2);
+    }
     if (this.vx) {
       for (const e of game.enemies) {
         if (e === this || e.dead || e.type === 'shell' || !overlap(this, e)) continue;
@@ -128,6 +135,7 @@ export class Shell extends Enemy {
   kick(game, dir) {
     this.vx = dir * 6;
     this.kickLock = 12;
+    this.bounces = 0;
     game.audio.play('stomp');
   }
 
@@ -136,7 +144,7 @@ export class Shell extends Enemy {
   kill(game) {
     if (this.dead) return;
     this.dead = true;
-    game.audio.play('kill');
+    game.sound('kill', this.cx, this.y + this.h / 2);
     game.explode(this.cx, this.y + this.h / 2, this.color);
     game.addScore(this.score, this.cx, this.y);
   }
@@ -168,7 +176,7 @@ export class Lizard extends Enemy {
         this.vy = ENEMY.lungeVy;
         this.onGround = false;
         this.cool = ENEMY.lungeCooldown;
-        game.audio.play('blob');
+        game.sound('blob', this.cx, this.y + this.h / 2);
       } else {
         this.vx = dir * Math.max(0.05, (Math.sin(this.t / 10) + 1) / 2);
       }
@@ -221,7 +229,7 @@ export class Frog extends Enemy {
         this.vy = close ? ENEMY.hopBig : ENEMY.hopSmall;
         this.wait = close ? 70 : 40;
         this.hopT = 0;
-        game.audio.play('blob');
+        game.sound('blob', this.cx, this.y + this.h / 2);
       }
     }
     this.hopT = (this.hopT || 0) + 1;
@@ -299,7 +307,7 @@ export class Dragonfly extends Enemy {
         this.vx = (dx / d) * 5; this.vy = (dy / d) * 5;
         this.mode = 'dive';
         this.timer = 0;
-        game.audio.play('blob');
+        game.sound('blob', this.cx, this.y + this.h / 2);
         return;
       }
     } else {
@@ -349,7 +357,7 @@ export class Monkey extends Enemy {
       const dx = player.cx - sx; const dy = player.cy - sy;
       const d = Math.hypot(dx, dy) || 1;
       game.enemyShots.push(new EnemyShot('banana', sx, sy, (dx / d) * ENEMY.shotSpeed, (dy / d) * ENEMY.shotSpeed));
-      game.audio.play('shoot');
+      game.sound('shoot', sx, sy);
     }
     if (this.throwT >= 24) this.throwT = 0;
     if (this.cool === 0 && this.throwT === 0 && this.near(game, ENEMY.shooterRange) && !player.dead
@@ -443,7 +451,7 @@ export class EnemyShot {
     if (this.dead) return;
     this.dead = true;
     game.effect('explosion', this.x + 8, this.y + 8);
-    game.audio.play('kill');
+    game.sound('kill', this.x + 8, this.y + 8);
     game.shake(5);
     const p = game.player;
     if (Math.hypot(p.cx - (this.x + 8), p.cy - (this.y + 8)) < 44) p.hurt(game, this.x + 8);
@@ -829,7 +837,7 @@ export class Warp {
     if (p.warpLock === this) return;
     const short = (this.cost || 0) - game.coins;
     if (short > 0) {
-      if (this.near === 0) game.audio.play('hit');
+      if (this.near === 0) game.audio.play('denied');
       this.near = 60;
       return;
     }

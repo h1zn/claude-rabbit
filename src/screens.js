@@ -13,6 +13,12 @@ import { frameAt } from './sheets.js';
 import { Sky, Weather } from './sky.js';
 
 const MAIN = ['New Game', 'Party', 'How to Play', 'Options'];
+const MAIN_INFO = [
+  "Kip's Gem Rush or a classic JJ2 episode",
+  'Two players on two computers: race for gems',
+  'Controls, moves and blocks',
+  'Volume, keyboard and video',
+];
 const SUBS = ['char', 'party', 'help', 'options'];
 const CHARACTERS = [
   { id: 'jazz', moves: ['Copter ears: JUMP again in the air', 'Uppercut: DOWN, then JUMP'] },
@@ -154,6 +160,18 @@ export class Screens {
     ctx.restore();
   }
 
+  // Word-wrap to a pixel width in the medium JJ2 font.
+  wrapTo(text, width, scale) {
+    const out = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && jjWidth(this.art.fonts.med, next, scale) > width) { out.push(line); line = word; } else line = next;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+
   blink(t, text, y, scale = 0.75) {
     this.med(text, VIEW_W / 2, y, { align: 'center', scale, alpha: Math.floor(t / 25) % 2 ? 1 : 0.4 });
   }
@@ -206,18 +224,10 @@ export class Screens {
 
   title(t, save) {
     const ctx = this.ctx;
-    this.top(this.art.screens.title_plus);
     if (this.sub === null) {
-      // Darken the left side for the menu.
-      const g = ctx.createLinearGradient(0, 0, 330, 0);
-      g.addColorStop(0, 'rgba(8,4,24,0.88)'); g.addColorStop(0.7, 'rgba(8,4,24,0.55)'); g.addColorStop(1, 'rgba(8,4,24,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, 330, VIEW_H);
-      this.menuList(MAIN, this.menu, 150, t, 36, 46, 'left');
-      this.star(54, VIEW_H - 38, 9, true);
-      this.med(`${totalStars(save)} / ${LEVELS.length * 3}`, 68, VIEW_H - 47, { scale: 0.7 });
+      this.mainMenu(t, save);
     } else {
-      this.dim(0.8);
+      this.backdrop();
       if (this.sub === 'char') this.charSelect(t, save);
       else if (this.sub === 'episodes') this.episodeSelect(t, save);
       else if (this.sub === 'levels') this.levelGrid(t, save);
@@ -227,6 +237,56 @@ export class Screens {
       else this.lobbyScreen(t);
     }
     arcadeText(ctx, 'Fan project - sprites, tiles, sounds and music (c) Epic MegaGames, not for distribution', VIEW_W / 2, VIEW_H - 12, { size: 8, align: 'center', shadow: false, top: '#c8b8e8', bottom: '#9a8ab0' });
+  }
+
+  // JJ2's title picture, untouched, with the menu in a dark band along the
+  // bottom: the items side by side, the chosen one gold and bobbing under a
+  // spinning gem, and a line saying what it does.
+  mainMenu(t, save) {
+    const ctx = this.ctx;
+    this.top(this.art.screens.title_jj2);
+    const g = ctx.createLinearGradient(0, 246, 0, VIEW_H);
+    g.addColorStop(0, 'rgba(10,4,26,0)'); g.addColorStop(0.38, 'rgba(10,4,26,0.8)'); g.addColorStop(1, 'rgba(10,4,26,0.95)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 246, VIEW_W, VIEW_H - 246);
+    // Fixed slots (sized for the chosen scale) so items don't shift as the
+    // selection moves.
+    const font = this.art.fonts.big;
+    const slots = MAIN.map((label) => jjWidth(font, label, 0.46));
+    const gap = 28;
+    let x = (VIEW_W - slots.reduce((a, b) => a + b, 0) - gap * (MAIN.length - 1)) / 2;
+    const y = 294;
+    MAIN.forEach((label, i) => {
+      const on = i === this.menu;
+      const cx = x + slots[i] / 2;
+      this.big(label, cx, on ? y - 2 : y, { align: 'center', scale: on ? 0.46 : 0.4, color: on ? null : '#a898d0', wave: on ? 2 : 0, t });
+      if (on) {
+        const gem = this.art.gems.red[Math.floor(t / 5) % 8];
+        ctx.drawImage(gem, Math.round(cx - gem.width / 2), y - gem.height - 6);
+      }
+      x += slots[i] + gap;
+    });
+    this.med(MAIN_INFO[this.menu], VIEW_W / 2, 324, { align: 'center', scale: 0.55, color: '#e8dcff' });
+    this.star(20, 20, 9, true);
+    this.med(`${totalStars(save)} / ${LEVELS.length * 3}`, 34, 12, { scale: 0.62 });
+  }
+
+  // Behind every other menu screen: the title picture blurred and darkened,
+  // so it doesn't fight with the text (built once).
+  backdrop() {
+    if (!this.backCanvas) {
+      const c = document.createElement('canvas');
+      c.width = VIEW_W; c.height = VIEW_H;
+      const x = c.getContext('2d');
+      const img = this.art.screens.title_jj2;
+      x.filter = 'blur(4px) saturate(1.2)';
+      x.drawImage(img, 0, 0, img.width, img.width * (VIEW_H / VIEW_W), -8, -8, VIEW_W + 16, VIEW_H + 16);
+      x.filter = 'none';
+      x.fillStyle = 'rgba(14,6,34,0.74)';
+      x.fillRect(0, 0, VIEW_W, VIEW_H);
+      this.backCanvas = c;
+    }
+    this.ctx.drawImage(this.backCanvas, 0, 0);
   }
 
   // Jazz, Spaz or Lori: animated portraits, name logos and their moves.
@@ -249,8 +309,10 @@ export class Screens {
       const nf = name.frames[on ? Math.floor(t / 12) % name.frames.length : 0];
       ctx.drawImage(nf.right, Math.round(x - nf.w * 0.35), 246, Math.round(nf.w * 0.7), Math.round(nf.h * 0.7));
       ctx.globalAlpha = 1;
-      if (on) c.moves.forEach((m, k) => this.med(m, x, 290 + k * 15, { align: 'center', scale: 0.55 }));
     });
+    // The chosen hero's moves, centred (under the outer heroes they ran off screen).
+    const pick = CHARACTERS.find((c) => c.id === this.charPick);
+    pick.moves.forEach((m, k) => this.med(m, VIEW_W / 2, 290 + k * 15, { align: 'center', scale: 0.58 }));
     this.med('LEFT / RIGHT to choose   ENTER to go on', VIEW_W / 2, VIEW_H - 34, { align: 'center', scale: 0.55, color: '#c8b8e8' });
   }
 
@@ -321,31 +383,35 @@ export class Screens {
 
   levelGrid(t, save) {
     const ctx = this.ctx;
-    this.dim(0.35);
-    arcadeText(ctx, 'LEVELS', VIEW_W / 2, 84, { size: 18, align: 'center' });
-    const cw = 196; const ch = 74; const x0 = (VIEW_W - cw * 3 - 16) / 2; const y0 = 112;
+    this.big('LEVELS', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    const cw = 196; const ch = 86; const gap = 8;
+    const x0 = (VIEW_W - cw * 3 - gap * 2) / 2; const y0 = 42;
     LEVELS.forEach((make, i) => {
-      const x = x0 + (i % 3) * (cw + 8); const y = y0 + Math.floor(i / 3) * (ch + 6);
+      const x = x0 + (i % 3) * (cw + gap); const y = y0 + Math.floor(i / 3) * (ch + 6);
       const open = i < save.unlocked;
       const on = i === this.menu;
       ctx.save();
-      ctx.fillStyle = on ? 'rgba(60,30,90,0.92)' : 'rgba(14,8,32,0.85)';
-      ctx.strokeStyle = on ? '#ffd54a' : 'rgba(150,120,200,0.6)';
+      ctx.fillStyle = on ? 'rgba(60,30,90,0.94)' : 'rgba(14,8,32,0.88)';
+      ctx.strokeStyle = on ? '#ffd54a' : 'rgba(150,120,200,0.55)';
       ctx.lineWidth = on ? 3 : 1;
       ctx.beginPath(); ctx.roundRect(x, y, cw, ch, 8); ctx.fill(); ctx.stroke();
       ctx.restore();
       if (open) {
-        ctx.drawImage(this.thumb(i), x + 8, y + 6);
-        arcadeText(ctx, `${i + 1}. ${make.title}`, x + 8, y + 58, { size: 10, shadow: false, top: '#ffffff', bottom: on ? '#ffd54a' : '#c8b8f0' });
+        ctx.drawImage(this.thumb(i), x + 8, y + 7);
+        this.med(`${i + 1}. ${make.title}`, x + 9, y + 64, { scale: 0.5, color: on ? null : '#d8ccf4' });
         const rec = save.levels[i];
-        for (let s = 0; s < 3; s++) this.star(x + cw - 44 + s * 15, y + 64, 6, !!(rec && rec.stars[s]));
+        for (let s = 0; s < 3; s++) this.star(x + cw - 40 + s * 13, y + 71, 5.5, !!(rec && rec.stars[s]));
       } else {
-        arcadeText(ctx, 'LOCKED', x + cw / 2, y + 24, { size: 14, align: 'center', top: '#8a7aaa', bottom: '#5a4a7a' });
-        arcadeText(ctx, `${i + 1}. ???`, x + 8, y + 58, { size: 10, shadow: false, top: '#8a7aaa', bottom: '#5a4a7a' });
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(x + 8, y + 7, 180, 52);
+        this.med('LOCKED', x + cw / 2, y + 26, { align: 'center', scale: 0.6, color: '#7a6aa0' });
+        this.med(`${i + 1}. ???`, x + 9, y + 64, { scale: 0.5, color: '#7a6aa0' });
       }
     });
     const sel = this.menu === LEVELS.length;
-    arcadeText(ctx, 'BACK', VIEW_W / 2, VIEW_H - 32, { size: sel ? 16 : 13, align: 'center', top: sel ? '#ffffff' : '#b8a8d8', bottom: sel ? '#ffb02e' : '#7a6aa0' });
+    const by = y0 + 3 * (ch + 6) + 2;
+    this.med('BACK', VIEW_W / 2, by, { align: 'center', scale: sel ? 0.72 : 0.62, color: sel ? null : '#b8a8d8', wave: sel ? 2 : 0, t });
+    if (sel) ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], VIEW_W / 2 - 46, by);
   }
 
   // Original JJ2 levels from Levels/, grouped by pack, with a map preview.
@@ -363,10 +429,17 @@ export class Screens {
       const y = 98 + k * 19;
       const on = n === this.jj2Index;
       const rec = def && save.levels[def.key];
-      const label = def ? def.title : 'Back';
-      this.med(label, 60, y, { scale: on ? 0.7 : 0.62, color: on ? null : def && def.error ? '#7a6a8a' : '#b8a8e0', wave: on ? 2 : 0, t });
+      // Long titles shrink (then get cut) so they stop short of the stars.
+      const room = (rec ? 284 : 314) - 60;
+      let label = def ? def.title : 'Back';
+      let scale = on ? 0.7 : 0.62;
+      const font = this.art.fonts.med;
+      const w = jjWidth(font, label, scale);
+      if (w > room) scale = Math.max(0.5, scale * (room / w));
+      while (label.length > 4 && jjWidth(font, label, scale) > room) label = `${label.slice(0, -4).trimEnd()}...`;
+      this.med(label, 60, y, { scale, color: on ? null : def && def.error ? '#7a6a8a' : '#b8a8e0', wave: on ? 2 : 0, t });
       if (on) ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], 32, y);
-      if (rec) for (let s = 0; s < 3; s++) this.star(282 + s * 12, y + 7, 5, rec.stars[s]);
+      if (rec) for (let s = 0; s < 3; s++) this.star(292 + s * 11, y + 7, 4.5, rec.stars[s]);
     });
     if (first > 0) this.med('...', 60, 84, { scale: 0.6, color: '#8a7ab0' });
     if (first + shown < rows.length) this.med('...', 60, 98 + shown * 19 - 6, { scale: 0.6, color: '#8a7ab0' });
@@ -387,37 +460,35 @@ export class Screens {
         const k = Math.min(bw / map.width, bh / map.height);
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(map, bx + (bw - map.width * k) / 2, by + (bh - map.height * k) / 2, map.width * k, map.height * k);
-        this.med(`${got.file.layers[3].w} x ${got.file.layers[3].h} tiles - ${got.ts.name}`, bx + bw / 2, by + bh + 6, { align: 'center', scale: 0.5, color: '#c8b8f0' });
+        this.med(`${got.file.layers[3].w} x ${got.file.layers[3].h} tiles - ${got.ts.name}`, bx + bw / 2, by + bh + 4, { align: 'center', scale: 0.5, color: '#c8b8f0' });
       } else {
         this.med(def.error ? 'Can not load' : 'Loading...', bx + bw / 2, by + bh / 2 - 8, { align: 'center', scale: 0.7 });
       }
-      wrap(def.error || def.pack.blurb, 40).slice(0, 5).forEach((line, i) => this.med(line, bx + bw / 2, by + bh + 24 + i * 13, { align: 'center', scale: 0.52, color: def.error ? '#ff9a9a' : null }));
+      this.wrapTo(def.error || def.pack.blurb, bw, 0.5).slice(0, 4).forEach((line, i) => this.med(line, bx + bw / 2, by + bh + 19 + i * 12, { align: 'center', scale: 0.5, color: def.error ? '#ff9a9a' : null }));
     }
   }
 
   help(t) {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(40, 84, VIEW_W - 80, 232, 0.85);
-    arcadeText(ctx, 'HOW TO PLAY', VIEW_W / 2, 92, { size: 18, align: 'center' });
+    this.big('HOW TO PLAY', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    this.panel(28, 40, VIEW_W - 56, 284, 0.85);
     const lines = [
-      ['ARROWS / WASD', 'move (hold SHIFT to run)'],
+      ['ARROWS / WASD', 'move - hold SHIFT to run'],
       ['SPACE / Z', 'jump - hold for higher; again in the air:'],
-      ['', 'Jazz & Lori hover on their ears, Spaz jumps again'],
-      ['DOWN, then JUMP', 'uppercut (Jazz) / kick; sliding: super jump'],
+      ['', 'Jazz and Lori hover on their ears, Spaz jumps again'],
+      ['DOWN, then JUMP', 'uppercut, Jazz / kick; sliding: super jump'],
       ['DOWN in the air', 'butt-stomp: breaks stomp blocks, kills enemies'],
-      ['X / J', 'fire    UP + X: aim up (diagonal while moving)'],
-      ['C / TAB, 1-9', 'change weapon (bouncer, frostbiter, missiles, TNT...)'],
-      ['Poles & vines', 'touch a pole to spin and fly; hang from vines'],
+      ['X / J', 'fire    UP and X: aim up, diagonal while moving'],
+      ['C / TAB, 1-9', 'change weapon: bouncer, frostbiter, missiles, TNT...'],
+      ['Poles and vines', 'touch a pole to spin and fly; hang from vines'],
       ['Blocks', 'star: shoot  number: N shots  arrow: stomp  gun: that gun'],
       ['Stars', 'exit  /  75% of gems  /  every secret'],
       ['P / M', 'pause / mute'],
     ];
     lines.forEach(([a, b], i) => {
-      arcadeText(ctx, a, 60, 118 + i * 16, { size: 10, shadow: false, top: '#ffd54a', bottom: '#ffb02e' });
-      arcadeText(ctx, b, 200, 118 + i * 16, { size: 10, shadow: false, top: '#ffffff', bottom: '#cfe6ff' });
+      this.med(a, 46, 54 + i * 21, { scale: 0.5 });
+      this.med(b, 190, 54 + i * 21, { scale: 0.5, color: '#ece4ff' });
     });
-    this.blink(t, 'Press ENTER', 298);
+    this.blink(t, 'Press ENTER', 300, 0.6);
   }
 
   options(t, save) {
@@ -489,8 +560,9 @@ export class Screens {
     const move = (n, count) => { this.menu = (this.menu + n + count) % count; this.audio.play('menu'); };
     switch (this.sub) {
       case null:
-        if (input.pressed('up')) move(-1, MAIN.length);
-        if (input.pressed('down')) move(1, MAIN.length);
+        // The menu runs side by side; up/down work too.
+        if (input.pressed('left') || input.pressed('up')) move(-1, MAIN.length);
+        if (input.pressed('right') || input.pressed('down')) move(1, MAIN.length);
         if (!choose) return null;
         this.audio.play('select');
         this.sub = SUBS[this.menu];

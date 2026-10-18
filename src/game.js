@@ -181,6 +181,16 @@ export class Game {
 
   // ---------------------------------------------------------------- effects and helpers
 
+  // A sound from somewhere in the world: full volume on screen, fading out
+  // within half a screen beyond its edge, silent further away.
+  sound(name, x, y) {
+    const cam = this.cam || { x: 0, y: 0 };
+    const dx = Math.max(0, Math.abs(x - (cam.x + VIEW_W / 2)) - VIEW_W / 2);
+    const dy = Math.max(0, Math.abs(y - (cam.y + VIEW_H / 2)) - VIEW_H / 2);
+    const d = Math.hypot(dx, dy);
+    if (d < 320) this.audio.play(name, 1 - d / 320);
+  }
+
   addScore(points, x, y) {
     this.score += points;
     this.popups.push({ x, y, text: String(points), life: 50 });
@@ -274,7 +284,7 @@ export class Game {
       for (const [dx, dy] of [[-22, -10], [20, -14], [0, 16]]) this.effect('explosion', x + dx, y + dy, 4);
       this.flash('#ffd890', 4);
     }
-    this.audio.play(big ? 'boom' : 'kill');
+    this.sound(big ? 'boom' : 'kill', x, y);
     this.shake(big ? 12 : 5);
     const inside = (o) => Math.hypot(o.x + o.w / 2 - x, o.y + o.h / 2 - y) < r + Math.min(o.w, o.h) / 2;
     if (remote) {

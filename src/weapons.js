@@ -128,12 +128,12 @@ export class Bullet {
   bounce(game) {
     this.vy = Math.min(this.vy + 0.25, 7);
     this.x += this.vx;
-    if (this.wall(game)) { this.x = this.prevX; this.vx = -this.vx; game.audio.play('bounce'); }
+    if (this.wall(game)) { this.x = this.prevX; this.vx = -this.vx; game.sound('bounce', this.cx, this.cy); }
     this.y += this.vy;
     if (this.wall(game)) {
       this.y = this.prevY;
       this.vy = this.vy > 0 ? -(this.powered ? 6 : 4.5) : 1;
-      game.audio.play('bounce');
+      game.sound('bounce', this.cx, this.cy);
     }
   }
 

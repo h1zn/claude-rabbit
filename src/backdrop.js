@@ -45,13 +45,6 @@ function cutLayer(tileset, layer) {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(tileset.image, c * 32, r * 32, cols * 32, rows * 32, 0, 0, cols * 32, rows * 32);
   for (const [x, y, w, h] of layer.clear || []) ctx.clearRect(x * 32, y * 32, w * 32, h * 32);
-  // Dimmed layers sit further back (and keep busy interiors readable).
-  if (layer.dim) {
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.fillStyle = `rgba(6,2,16,${1 - layer.dim})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.globalCompositeOperation = 'source-over';
-  }
   // Remove the tileset's editor guide lines (light lavender grid, blue labels).
   if (layer.strip) {
     const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -66,6 +59,14 @@ function cutLayer(tileset, layer) {
       if (lav || label || filler || other) d[i + 3] = 0;
     }
     ctx.putImageData(img, 0, 0);
+  }
+  // Dimmed layers sit further back (and keep busy interiors readable). After
+  // the strip: dimming first darkened the guide lines past its colour test.
+  if (layer.dim) {
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = `rgba(6,2,16,${1 - layer.dim})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = 'source-over';
   }
   let underColor = null;
   if (layer.under) {

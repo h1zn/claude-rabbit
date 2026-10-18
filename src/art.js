@@ -108,9 +108,10 @@ export async function buildArt() {
   art.fonts = { big: await font('big'), med: await font('med') };
   art.fonts.med.fallback = art.fonts.big;   // for the few marks the medium font lacks
   art.screens = {};
-  await Promise.all(['title_jj2', 'title_plus', 'title_tsf', 'loading', 'continue'].map(async (n) => { art.screens[n] = await loadImage(`assets/screens/${n}.jpg`); }));
+  // Lossless cuts of JJ2's screens (tools: crops of new/New Tilesets/Miscellaneous - Screens.png).
+  await Promise.all(['title_jj2', 'title_tsf', 'loading', 'continue'].map(async (n) => { art.screens[n] = await loadImage(`assets/screens/${n}.png`); }));
   art.episodes = {};
-  await Promise.all(['prince', 'time', 'flashback', 'monkeys', 'demo', 'homecooked', 'christmas', 'secret'].map(async (n) => { art.episodes[n] = await loadImage(`assets/episodes/${n}.jpg`); }));
+  await Promise.all(['prince', 'time', 'flashback', 'monkeys', 'demo', 'homecooked', 'christmas', 'secret'].map(async (n) => { art.episodes[n] = await loadImage(`assets/episodes/${n}.png`); }));
   art.charsel = await loadSheet('assets/charsel.json');
   art.heroRed = tintSheet(art.hero);
   art.heroesRed = { jazz: art.heroRed, spaz: tintSheet(spaz, true), lori: tintSheet(lori, true) };
