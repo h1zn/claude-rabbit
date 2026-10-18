@@ -47,9 +47,12 @@ export const PHYS = {
   stompFall: 10.0,                   // buttstomp speed 10 px/tick
   rushTicks: 1400,                   // measured: sugar rush lasts 1400 ticks (20 s)
   rushSpeedScale: 1.25,              // tuned
+  fastFeetScale: 1.3,                // tuned: speed shoes (JJ2 "Fast Feet")...
+  fastFeetTicks: 1050,               // ...for 15 s
   foodForRush: 100,                  // measured: every 100th food starts a rush
   superJumpScale: 1.39,              // manual: 60% higher (with the 8 px/tick rise cap)
   superJumpCoil: 10,                 // tuned: ticks crouched before it is ready
+  specialStillSpeed: 0.5,            // crouched + Jump below this speed is the special move, above it the super jump
   coyoteTicks: 6,                    // tuned: grace after leaving a ledge
   // Measured 20 px on the original's wider body. Ours leaves ledges at a
   // different point (JJ2 levels: feet centre; our levels: whole body), so

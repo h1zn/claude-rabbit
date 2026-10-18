@@ -50,6 +50,8 @@ export class Bullet {
   constructor(weapon, powered, x, y, vx, vy, { remote = false } = {}) {
     const s = SPEC[weapon];
     Object.assign(this, { weapon, powered, x, y, vx, vy, remote, w: s.w, h: s.h, life: s.life, dead: false, t: 0 });
+    // Shots fired upward stand on end.
+    if (Math.abs(vy) > Math.abs(vx) * 2 && weapon !== TNT) { this.w = s.h; this.h = s.w; }
     this.prevX = x; this.prevY = y;
     this.angle = Math.atan2(vy, vx);
     this.hit = new Set();          // enemies an electro shot already went through
@@ -91,7 +93,13 @@ export class Bullet {
         this.vx *= 0.96; this.vy -= 0.03;
         this.fly(game, this.powered);
         break;
-      case 1: this.vx += Math.sign(this.vx) * (this.powered ? 0.1875 : PLAYER.shotAccel); this.fly(game); break;
+      case 1: {
+        // Speeds up along its own direction (aimed shots too).
+        const a = this.powered ? 0.1875 : PLAYER.shotAccel; const sp = Math.hypot(this.vx, this.vy) || 1;
+        this.vx += (this.vx / sp) * a; this.vy += (this.vy / sp) * a;
+        this.fly(game);
+        break;
+      }
       default: this.fly(game);
     }
     if (game.levelTime % 2 === 0 && this.weapon !== 6 && this.weapon !== 9) game.trail(this.cx - Math.sign(this.vx) * 6, this.cy, `rgb(${WEAPONS[this.weapon].glow})`);
@@ -199,50 +207,59 @@ export class Bullet {
   }
 }
 
-// Fire the player's weapon. Returns false when there was nothing to fire.
+// Aim angles above the facing direction: straight ahead, diagonal, up.
+const AIM = { null: 0, diag: Math.PI / 4, up: Math.PI / 2 };
+
+// Fire the player's weapon (aimed by p.aim: null, 'diag' or 'up'). Returns
+// false when there was nothing to fire.
 export function fire(game, p) {
   const n = p.weapon;
   if (n !== 1 && p.ammo[n] <= 0) return false;
   const powered = p.powered[n];
   const dir = p.facing;
-  const x = dir > 0 ? p.x + p.w + 4 : p.x - 18;
-  const y = p.y + p.h - 18;
-  const boost = Math.max(0, Math.min(PHYS.moveCap, p.vx * dir));
+  // Shots are laid out along the aim (`along`) and across it (`side`, down
+  // when aiming ahead), then turned to the aim angle.
+  const phi = AIM[p.aim] || 0;
+  const F = [dir * Math.cos(phi), -Math.sin(phi)];
+  const N = [dir * Math.sin(phi), Math.cos(phi)];
+  const ox = p.aim === 'up' ? p.cx - 7 + dir * 2 : p.aim === 'diag' ? p.cx - 7 + dir * 12 : (dir > 0 ? p.x + p.w + 4 : p.x - 18);
+  const oy = p.aim === 'up' ? p.y - 14 : p.aim === 'diag' ? p.y - 2 : p.y + p.h - 18;
+  const boost = Math.max(0, Math.min(PHYS.moveCap, p.vx * dir)) * Math.cos(phi);
   const made = [];
-  const shot = (vx, vy, dy = 0) => made.push(new Bullet(n, powered, x, y + dy, vx, vy));
+  const bullet = (along, side, offset = 0) => new Bullet(n, powered, ox + N[0] * offset, oy + N[1] * offset, F[0] * along + N[0] * side, F[1] * along + N[1] * side);
+  const shot = (along, side, offset) => made.push(bullet(along, side, offset));
   switch (n) {
     case 1:
       // Measured: 6 px/tick (powered 7) plus the player's own speed.
-      shot(dir * (PLAYER.shotSpeed + boost + (powered ? 1 : 0)), 0);
+      shot(PLAYER.shotSpeed + boost + (powered ? 1 : 0), 0);
       break;
-    case 2: shot(dir * (5 + boost / 2 + (powered ? 1 : 0)), -1); break;   // measured 5 px/tick
-    case 3: shot(dir * (7 + boost), 0); break;
-    case 4: shot(dir * 2, 0); break;                                      // measured 2 px/tick
+    case 2: shot(5 + boost / 2 + (powered ? 1 : 0), -1); break;   // measured 5 px/tick
+    case 3: shot(7 + boost, 0); break;
+    case 4: shot(2, 0); break;                                      // measured 2 px/tick
     case 5:
       // V shape; powered RF fires three at once.
-      shot(dir * 3, -0.5, -2); shot(dir * 3, 0.5, 2);
-      if (powered) shot(dir * 3.4, 0);
+      shot(3, -0.5, -2); shot(3, 0.5, 2);
+      if (powered) shot(3.4, 0);
       break;
     case 6: {
-      const flame = new Bullet(6, powered, x, y - 2, dir * (3.5 + Math.random() * 1.5) + p.vx * 0.5, (Math.random() - 0.5) * 0.8);
+      const flame = bullet(3.5 + Math.random() * 1.5 + p.vx * dir * 0.5 * Math.cos(phi), (Math.random() - 0.5) * 0.8, -2);
       // Manual: the more Fastfire collected, the longer the stream.
       flame.life += Math.round((PLAYER.shotDelay - p.shotDelay) / PLAYER.fastfireStep) * 2;
       made.push(flame);
       break;
     }
-    case TNT: {
-      const t = new Bullet(TNT, false, p.cx - 7, p.y + p.h - 16, p.vx * 0.3, 0);
-      made.push(t);
+    case TNT:
+      // TNT is dropped at the feet whatever the aim.
+      made.push(new Bullet(TNT, false, p.cx - 7, p.y + p.h - 16, p.vx * 0.3, 0));
       break;
-    }
     case 8:
       for (let k = 0; k < (powered ? 3 : 2); k++) {
-        const b = new Bullet(8, powered, x, y, dir * (5 + Math.random() * 2.5 + boost / 2), (Math.random() - 0.5) * 3);
+        const b = bullet(5 + Math.random() * 2.5 + boost / 2, (Math.random() - 0.5) * 3);
         b.life += Math.floor(Math.random() * 6);
         made.push(b);
       }
       break;
-    case 9: shot(dir * (6 + boost / 2), 0, -3); break;
+    case 9: shot(6 + boost / 2, 0, -3); break;
     default: break;
   }
   if (n === 6) {
@@ -252,7 +269,7 @@ export function fire(game, p) {
   game.shots.push(...made);
   game.audio.play(['', 'shoot', 'bounce', 'freeze', 'missile', 'missile', 'flame', 'tnt', 'pepper', 'electro'][n]);
   if (game.party) for (const s of made) game.party.fire(s);
-  if (n <= 3 || n === 8 || n === 9) game.particles.push(game.muzzle(x + (dir > 0 ? 4 : 10), y + 4, WEAPONS[n].glow));
+  if (n <= 3 || n === 8 || n === 9) game.particles.push(game.muzzle(ox + 7 + F[0] * 4, oy + 4 + F[1] * 4, WEAPONS[n].glow));
   if (n !== 1 && p.ammo[n] <= 0) p.nextWeapon(-1);
   return true;
 }

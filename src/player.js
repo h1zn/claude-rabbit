@@ -56,7 +56,7 @@ export class Player {
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, dash: 0, jumpCut: false,
       hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
-      dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0,
+      dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0, dizzy: 0, aim: null, fastFeet: 0,
     });
   }
 
@@ -74,7 +74,7 @@ export class Player {
     this.prevX = this.x;
     this.prevY = this.y;
     this.animTime++;
-    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube', 'weaponShown', 'djWindow', 'rfBlast']) if (this[k] > 0) this[k]--;
+    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube', 'weaponShown', 'djWindow', 'rfBlast', 'dizzy', 'fastFeet']) if (this[k] > 0) this[k]--;
     if (this.rush > 0 && --this.rush === 0) game.endRush();
     if (this.shield > 0) this.shield--;
 
@@ -110,7 +110,7 @@ export class Player {
     if (input.held('run') || this.rush > 0) this.dash = PHYS.dashGrace;
     else if (this.dash > 0 && --this.dash === 0 && Math.abs(this.vx) > PHYS.walkMax) this.vx = Math.sign(this.vx) * PHYS.walkMax;
     const dashing = this.dash > 0;
-    const boost = this.rush > 0 ? PHYS.rushSpeedScale : 1;
+    const boost = this.rush > 0 ? PHYS.rushSpeedScale : this.fastFeet > 0 ? PHYS.fastFeetScale : 1;
     const accel = (dashing ? PHYS.runAccel : PHYS.walkAccel) * boost;
     const max = this.swimming ? (dashing ? 4 : 2.5) : (dashing && !this.hovering ? PHYS.runMax : PHYS.walkMax) * boost;
     const crouching = controlled && this.onGround && input.held('down') && !dir;
@@ -136,12 +136,18 @@ export class Player {
       this.vx = approach(this.vx, 0, dashing ? PHYS.dashDecel : PHYS.walkDecel);
     }
 
-    // ---- special: uppercut (hold Up + Shoot). Measured timing: 16-tick
-    // wind-up, then rise with vy = (t - 256) * 2048 / 65536 until tick 45.
-    if (this.special === 0 && this.knock === 0 && input.held('up') && input.pressed('shoot')) {
+    // ---- special: uppercut (Jazz) or kick (Spaz, Lori). The original's
+    // input: crouch first, standing still, then Jump (Down and Jump together,
+    // or a crouch still sliding, give a jump instead). Measured timing:
+    // 16-tick wind-up, then rise with vy = (t - 256) * 2048 / 65536 until tick 45.
+    if (this.special === 0 && this.knock === 0 && controlled && this.onGround && input.pressed('jump')
+      && this.crouchT >= PHYS.superJumpCoil && Math.abs(this.vx) < PHYS.specialStillSpeed
+      && !level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE))) {   // one-way: drop through instead
       this.special = 1;
       this.stomping = false;
       this.hovering = false;
+      this.jumpBuffer = 0;
+      this.crouchT = 0;
       audio.play('uppercutCharge');
     }
     if (this.special > 0 && this.windup === KICK_WINDUP) {
@@ -193,6 +199,7 @@ export class Player {
       } else if (this.jumpBuffer > 0 && (this.onGround || this.coyote > 0)) {
         // Measured: vy = jumpBase - |vx| / 4 (running jumps go higher). From a
         // full crouch it is a super jump (manual: 60% higher, smashes blocks).
+        // A crouched jump while still sliding is the super jump.
         this.superJump = this.onGround && this.crouchT >= PHYS.superJumpCoil;
         this.vy = PHYS.jumpBase * (this.superJump ? PHYS.superJumpScale : 1) - Math.abs(this.vx) / PHYS.jumpRunBonusDivisor;
         this.jumpCut = false;
@@ -292,10 +299,14 @@ export class Player {
     // ---- shooting. Measured timing: holding fire shoots every 35 ticks, but
     // releasing the button cuts the wait to 5 ticks, so tapping fires faster.
     if (input.released('shoot')) this.shotCooldown = Math.min(this.shotCooldown, PLAYER.tapDelay);
-    if (controlled && !input.held('up') && input.held('shoot') && this.shotCooldown === 0 && !this.stomping) {
+    if (controlled && input.held('shoot') && this.shotCooldown === 0 && !this.stomping) {
       if (this.weapon !== 1 && this.ammo[this.weapon] <= 0) this.nextWeapon(-1);
       this.shotCooldown = fireDelay(this);
       this.shootPose = 8;
+      // Up aims: straight up standing still (or in the air with no direction
+      // held), diagonally up while moving.
+      const still = this.onGround ? Math.abs(this.vx) < 0.5 && !dir : !dir;
+      this.aim = input.held('up') ? (still ? 'up' : 'diag') : null;
       fire(game, this);
     }
 
@@ -472,7 +483,7 @@ export class Player {
     const vx = this.vx;
     // Original: speed is momentum; movement is capped at 8 px/tick (rising
     // too). A dash reads 16 but travels 8; the extra still boosts jumps.
-    const cap = PHYS.moveCap * (this.rush > 0 ? PHYS.rushSpeedScale : 1);
+    const cap = PHYS.moveCap * (this.rush > 0 ? PHYS.rushSpeedScale : this.fastFeet > 0 ? PHYS.fastFeetScale : 1);
     const dx = Math.max(-cap, Math.min(cap, this.vx));
     const dy = Math.max(-PHYS.moveCap, this.vy);
     // Original landing allowance: coming down onto a ledge up to 20 px above

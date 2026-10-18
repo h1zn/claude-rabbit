@@ -12,6 +12,10 @@ const BLOCK_SPRITE = { x: 0, m: 5, p: 6, Y: 7, u: 8, i: 8, W: 6 };
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 
+// Poses only Jazz and Spaz have (new/sprites other movements.png): what
+// Lori shows instead.
+const HERO_FALLBACK = { shootUp: 'look', shootDiag: 'run', shootDiagAir: 'shootAir', shootRun: 'run', fidget: 'idle', knockdown: 'dead', dizzy: 'hurt' };
+
 // A sheet frame washed in ice blue, for frozen enemies (made once per frame).
 const icedFrames = new WeakMap();
 function iced(f) {
@@ -487,11 +491,12 @@ export class Renderer {
     // A flame grows and dies over its life; other shots loop.
     const f = s.weapon === 6 ? a.frames[Math.min(a.frames.length - 1, Math.floor((s.t / (s.t + s.life)) * a.frames.length))] : frameAt(a, s.life, a.speed);
     this.glow(x, y, s.weapon === 6 ? 16 : 12, rival ? 'rgba(255,80,60,0.6)' : `rgba(${w.glow},${s.weapon === 6 ? 0.35 : 0.5})`);
-    if (s.weapon === 4 || s.weapon === 5) {
-      // Missiles point where they fly.
+    const aimed = s.weapon !== 2 && s.weapon !== 6 && Math.abs(s.vy) > Math.abs(s.vx) * 0.5;
+    if (s.weapon === 4 || s.weapon === 5 || aimed) {
+      // Missiles (and shots fired upward) point where they fly.
       ctx.save();
       ctx.translate(Math.round(x), Math.round(y));
-      ctx.rotate(s.angle);
+      ctx.rotate(s.weapon === 4 || s.weapon === 5 ? s.angle : Math.atan2(s.vy, s.vx));
       ctx.drawImage(f.right, -f.w / 2, -f.h / 2);
       ctx.restore();
       return;
@@ -502,10 +507,16 @@ export class Renderer {
   // Which hero animation fits the player's current state.
   heroAnim(p) {
     const speed = Math.abs(p.vx);
-    if (p.dead) return 'dead';
+    if (p.dead) return 'knockdown';
     if (p.celebrate) return 'victory';
     if (p.pole || p.hang) return 'spring';
     if (p.knock > 0) return 'hurt';
+    if (p.dizzy > 0) return 'dizzy';
+    // Aiming up: straight up standing (or in the air), diagonally while moving.
+    if (p.shootPose > 0 && p.aim && !p.hovering && !p.stomping && p.special === 0 && !p.swimming) {
+      if (!p.onGround) return p.aim === 'up' ? 'shootUp' : 'shootDiagAir';
+      return p.aim === 'up' ? 'shootUp' : 'shootDiag';
+    }
     if (p.swimming && !p.onGround) return Math.abs(p.vx) > 0.6 ? 'jumpFwd' : 'fall';
     if (p.special > 0) return p.special <= p.windup ? 'uppercutWindup' : 'uppercut';
     if (p.stomping) return 'stomp';
@@ -517,10 +528,12 @@ export class Renderer {
       return speed > 2 ? 'fallFwd' : 'fall';
     }
     if (p.anim === 'skid') return 'skid';
-    if (p.anim === 'run') return speed > 4.2 ? 'run' : 'walk';
+    if (p.anim === 'run') return p.shootPose > 0 ? 'shootRun' : speed > 4.2 ? 'run' : 'walk';
     if (p.anim === 'crouch') return p.shootPose > 0 ? 'crouchShoot' : 'crouch';
     if (p.anim === 'look') return 'look';
     if (p.shootPose > 0) return 'shoot';
+    // Standing around: a fidget after about 2.5 s, then the bored animation.
+    if (p.idleTime >= 180 && p.idleTime < 272) return 'fidget';
     return p.idleTime > 420 ? 'bored' : 'idle';
   }
 
@@ -528,9 +541,10 @@ export class Renderer {
     const ctx = this.ctx;
     const p = game.player;
     if (p.invuln > 0 && !p.dead && p.rush === 0 && Math.floor(p.invuln / 4) % 2) return;
-    const name = this.heroAnim(p);
-    if (!this.heroState || this.heroState.name !== name) this.heroState = { name, start: game.time };
     const sheet = this.art.heroes[p.character] || this.art.hero;
+    let name = this.heroAnim(p);
+    if (!sheet.anims[name]) name = HERO_FALLBACK[name] || 'idle';
+    if (!this.heroState || this.heroState.name !== name) this.heroState = { name, start: game.time };
     const anim = sheet.anims[name] || sheet.anims.idle;
     const t = game.time - this.heroState.start;
     // Walk and run cycles speed up with the player.
@@ -693,6 +707,10 @@ export class Renderer {
     arcadeText(ctx, `${game.gems}`, 32, 32, { size: 12, top: '#ffffff', bottom: '#ffb0c0' });
     this.centred(items.coinSilver.frames[0], 84, 40);
     arcadeText(ctx, `${game.coins}`, 96, 32, { size: 12, top: '#ffffff', bottom: '#ffe08a' });
+    if (p.fastFeet > 0) {
+      this.centred(this.art.beta.anims.speedShoes.frames[0], 210, 40);
+      arcadeText(ctx, `${Math.ceil(p.fastFeet / 70)}`, 226, 32, { size: 12, top: '#ffffff', bottom: '#7ae8ff' });
+    }
     if (p.shield > 0) {
       this.centred(items.shieldMonitor.frames[0], 146, 40);
       arcadeText(ctx, `${Math.ceil(p.shield / 70)}`, 162, 32, { size: 12, top: '#ffffff', bottom: '#ff9a3a' });

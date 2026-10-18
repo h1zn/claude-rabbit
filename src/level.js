@@ -140,6 +140,9 @@ export class Builder {
   ammoCrate(x, y, weapon) { this.objects.push({ type: 'ammoCrate', tx: x, ty: y, weapon }); return this; }
   powerup(x, y, weapon) { this.objects.push({ type: 'powerup', tx: x, ty: y, weapon }); return this; }
   bomb(x, y) { this.objects.push({ type: 'bomb', tx: x, ty: y }); return this; }
+  // Power-up items: 'fastFeet' (speed shoes), 'freeze' (hourglass: freezes the
+  // enemies around), 'stopwatch' (extra shield time).
+  item(x, y, kind) { this.objects.push({ type: 'item', tx: x, ty: y, kind }); return this; }
 
   // Warp standing on the cell (x, y). It sends Kip to the warp with id `to`;
   // `cost` coins makes it a coin warp. Arrival-only warps have no `to`.

@@ -318,7 +318,7 @@ export class Queen extends Boss {
         break;
       case 'scream':
         // The scream pushes the player away.
-        if (!p.dead && !p.pole) game.level.move(p, this.facing * 1.5 * V, 0, { climb: p.onGround });
+        if (!p.dead && !p.pole) { game.level.move(p, this.facing * 1.5 * V, 0, { climb: p.onGround }); p.dizzy = 12; }
         if (this.at >= 40) {
           this.queued = this.hits >= 2;
           this.state = Math.random() < 0.8 ? 'toStomp' : 'toBack';

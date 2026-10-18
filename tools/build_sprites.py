@@ -38,7 +38,7 @@ def main():
     for a in spec['anims'].values():
         if 'cols' in a:
             # Slivers narrower than 4 px are stray pixels, not frames.
-            a['boxes'] = [b for b in column_boxes(sheet, *a['cols'], a.get('gap', 2)) if b[2] - b[0] >= 4]
+            a['boxes'] = [b for b in column_boxes(sheet, *a['cols'], a.get('gap', 2)) if b[2] - b[0] >= a.get('minW', 4)]
             if 'pick' in a:
                 a['boxes'] = [a['boxes'][k] for k in a['pick'] if k < len(a['boxes'])]
     for a in spec['anims'].values():

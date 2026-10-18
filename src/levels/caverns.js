@@ -38,6 +38,7 @@ export function crystalCaverns() {
   weaponVault(L, 12, 9, 5, { w: 5, loot: 'b' });
   // Uterus floats over the exit room.
   L.put(55, 16, 'O');
+  L.item(22, 9, 'freeze');                     // an hourglass: freezes the enemies around
   return L.build({ name: 'Crystal Caverns', theme: 'crystal', music: 'crystal', dark: true });
 }
 crystalCaverns.title = 'Crystal Caverns';

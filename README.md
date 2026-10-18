@@ -27,13 +27,13 @@ not work, because browsers block JavaScript modules on `file://`.)
 | Move | Arrow keys / WASD |
 | Jump | Space / Z (hold for a higher jump) |
 | Hover-boots | Press jump again in the air and hold |
-| Fire | X / J / Ctrl |
+| Fire | X / J / Ctrl (hold Up to aim up; diagonally while moving) |
 | Change weapon | C / Tab (next with ammo), or 1-9 |
 | Run | Shift (hold) |
 | Drop through a platform | Down + Jump |
-| Super jump | Hold Down until crouched, then Jump (60% higher, smashes blocks above) |
+| Uppercut (Jazz) / kick (Spaz, Lori) | Hold Down until crouched, standing still, then Jump (the original's input) |
+| Super jump | The same while still sliding (60% higher, smashes blocks above) |
 | Butt-stomp | Down in the air |
-| Uppercut | Up + Fire |
 | Let go of a swinging pole | Jump |
 | Pause / Mute | P / M |
 
@@ -105,7 +105,13 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 - **Things to use**: red, green and blue springs, side springs, swinging poles
   (measured: held up to 70 ticks, flung at up to 20 px/tick), warps and coin
   warps (they show `xN` when you are N coins short), lava (burns).
-- **Pickups**: silver/gold coins, 4 gem colours, 38 foods, carrot, super carrot,
+- **Extra moves** from the original's unused animations (new/sprites other
+  movements.png): Jazz and Spaz aim up and diagonally (Lori uses her own
+  poses), fidget when left standing, spin dizzy in the Queen's scream and get
+  knocked down when they lose a life.
+- **Pickups**: speed shoes (15 s faster), the freeze hourglass (freezes the
+  enemies around) and the stopwatch (+10 s of shield), as JJ2's Fast Feet,
+  Freeze and Shield Time events; silver/gold coins, 4 gem colours, 38 foods, carrot, super carrot,
   1-up, Fastfire (fire delay -3, down to 6), fire-shield monitor (30 s, each hit
   costs 5 s), ammo, ammo crates, power-up monitors.
 - **Bosses** guard the exits of five levels; the exit stays locked until the

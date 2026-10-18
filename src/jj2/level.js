@@ -295,6 +295,9 @@ export class JJ2Level extends Level {
             if (id < 220) armed.add(POWER_EV[id]);
             break;
           case BOMB_CRATE: this.objects.push({ type: 'bombCrate', tx, ty }); armed.add('blast'); break;
+          case 79: this.objects.push({ type: 'item', tx, ty, kind: 'fastFeet' }); break;
+          case 89: this.objects.push({ type: 'item', tx, ty, kind: 'stopwatch' }); break;
+          case 90: this.objects.push({ type: 'item', tx, ty, kind: 'freeze' }); break;
           case BOMB: this.objects.push({ type: 'bomb', tx, ty }); armed.add('blast'); break;
           case EV.TRIGGER_ZONE: case EV.WATER_BLOCK: case EV.ACTIVATE_BOSS:
             this.areas[i] = id; this.areaParams[i] = ev.params;

@@ -502,6 +502,7 @@ export class Pickup {
     if (o.type === 'ammo') return new Pickup('ammo', x - 2, y - 2, { w: 20, h: 20, weapon: o.weapon, amount: o.amount || 3 });
     if (o.type === 'ammoCrate') return Pickup.crate(o.tx, o.ty, o.weapon, 15);
     if (o.type === 'powerup') return new Pickup('powerup', x - 6, o.ty * TILE + TILE - 32, { w: 28, h: 32, weapon: o.weapon, needsHit: true });
+    if (o.type === 'item') return new Pickup('item', x - 4, y - 4, { w: 24, h: 24, item: o.kind });
     if (o.type === 'bombCrate') return new Pickup('crate', x - 4, o.ty * TILE + TILE - 22, { w: 24, h: 22, needsHit: true, bomb: true });
     return null;
   }
@@ -531,6 +532,7 @@ export class Pickup {
     if (this.kind === 'fastfire') return frameAt(a.fastfire, this.t, 4);
     if (this.kind === 'shield') return frameAt(a.shieldMonitor, this.t, 6);
     if (this.kind === 'ammo') return frameAt(a[WEAPONS[this.weapon].icon], this.t, 5);
+    if (this.kind === 'item') return frameAt(art.beta.anims[{ fastFeet: 'speedShoes', freeze: 'hourglass', stopwatch: 'stopwatch' }[this.item]], this.t, 5);
     if (this.kind === 'powerup') {
       const w = WEAPONS[this.weapon];
       return frameAt(a[this.weapon === 1 && this.spaz ? 'monBlasterSpaz' : w.mon], this.t, 6);
@@ -614,6 +616,26 @@ export class Pickup {
       game.addScore(100, cx, this.y);
       game.audio.play('ammo');
       game.effect('sparkle', cx, cy);
+    } else if (this.kind === 'item') {
+      game.addScore(500, cx, this.y);
+      game.audio.play('rush');
+      game.effect('sparkle', cx, cy);
+      if (this.item === 'fastFeet') {
+        p.fastFeet = PHYS.fastFeetTicks;
+        game.banner('SPEED SHOES!', 70);
+      } else if (this.item === 'freeze') {
+        // The hourglass freezes every enemy around.
+        for (const e of game.enemies) {
+          if (e.dead || e.freezable === false || Math.hypot(e.cx - p.cx, e.y - p.y) > 400) continue;
+          e.frozen = Math.max(e.frozen, 420);
+        }
+        game.audio.play('freeze');
+        game.flash('#bfe8ff', 8);
+        game.banner('FREEZE!', 70);
+      } else if (this.item === 'stopwatch') {
+        // Extra time for a shield (JJ2 "shield time").
+        if (p.shield > 0) { p.shield += 700; game.banner('+10 SECONDS SHIELD!', 70); } else game.addScore(500, cx, this.y);
+      }
     } else if (this.kind === 'powerup') {
       // Manual: a power-up monitor upgrades its gun's shots.
       p.powered[this.weapon] = true;

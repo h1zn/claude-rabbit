@@ -148,6 +148,7 @@ export function sunnySpires() {
   for (let x = 116; x <= 124; x += 2) L.put(x, 49, 'b');
   L.put(120, 48, '%');
   L.hint(112, 45, 'A rock pool! Dive in and swim (UP / DOWN).\nJUMP at the surface to leap out.');
+  L.item(163, 31, 'stopwatch');                // extra time for the fire shield next to it
   return L.build({ name: 'Shipwreck Shores', theme: 'meadow', music: 'beach', horizon: 22 });
 }
 sunnySpires.title = 'Shipwreck Shores';
