@@ -1,9 +1,10 @@
 # Kip's Gem Rush (prototype)
 
-A fast 2D platformer starring **Kip**, a fox with hover-boots and a blaster.
-Its movement and world rules are modelled on Jazz Jackrabbit 2: mechanics
-measured from the game in IDA, plus the rules in its manual (see
-[SPEC.md](SPEC.md)). The hero, item, enemy and effect sprites and five of the
+A fast 2D platformer in the style of Jazz Jackrabbit 2, starring Jazz, Spaz
+and Lori. Its movement and world rules are modelled on the original:
+mechanics measured from the game in IDA and from Jazz2 Resurrection's traces,
+plus the rules in its manual (see [SPEC.md](SPEC.md)). How it was built is
+written up in [EXPERIMENT.md](EXPERIMENT.md). The hero, item, enemy and effect sprites and five of the
 tilesets are cut from JJ2 sprite sheets the project owner supplied (`new/`,
 built by `tools/`), for personal use, as is the soundtrack in `Soundtracks/`.
 Code and levels are this project's own.
@@ -136,7 +137,8 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 
 **New Game** opens JJ2's character select: **Jazz** (copter ears, uppercut),
 **Spaz** (double jump, side kick) or **Lori** (copter ears, flying kick);
-UP + FIRE is the special move, JUMP in the air the second ability. The pick
+crouch (standing still) then JUMP is the special move, JUMP in the air the
+second ability, UP + FIRE aims up. The pick
 is saved, and in party mode your rival sees your character in red. Then the
 **episode select** shows JJ2's episode pictures for this game's nine levels
 and every level pack. The menus use JJ2's own fonts and title screen, the
