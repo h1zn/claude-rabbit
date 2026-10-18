@@ -52,7 +52,7 @@ export function candyClouds() {
     shape(L, x + Math.floor(w / 2) - 2, 21, i % 2 ? 'hump' : 'line5', ['o', '$', 'g', 'o', 'b', '$'][i]);
     L.put(x + w + 5, 21, 'H');
   });
-  L.put(123, 34, 'T');
+  L.put(123, 33, 'T');
   L.on(160, 'J', 20);
   // A green spring on one cloud reaches a lone sugar cloud (a secret).
   L.put(103, 23, 'T');

@@ -105,12 +105,15 @@ export class Shell extends Enemy {
     this.color = '#c48aff';
     this.kickLock = 0;
     this.bounces = 0;
+    this.runT = 0;
     this.counted = true;   // its turtle already counted toward the tally
   }
 
   update(game) {
     this.begin();
     if (this.kickLock > 0) this.kickLock--;
+    // A kicked shell runs out after ten seconds.
+    if (this.moving && ++this.runT > 700) { this.kill(game); return; }
     const { level } = game;
     this.vy = Math.min(this.vy + ENEMY.gravity, ENEMY.maxFall);
     const hit = level.move(this, this.vx, this.vy, { climb: this.onGround });
@@ -136,6 +139,7 @@ export class Shell extends Enemy {
     this.vx = dir * 6;
     this.kickLock = 12;
     this.bounces = 0;
+    this.runT = 0;
     game.audio.play('stomp');
   }
 
@@ -699,7 +703,9 @@ export class Spring {
       return;
     }
     const feet = p.y + p.h;
-    if (p.vy >= 0 && feet >= this.y && feet <= this.y + 18 && p.x + p.w > this.x + 4 && p.x < this.x + this.w - 4) {
+    // Feet resting on the floor sit at this.y + 20: walking onto a spring
+    // fires it too (18 only caught landings).
+    if (p.vy >= 0 && feet >= this.y && feet <= this.y + 20 && p.x + p.w > this.x + 4 && p.x < this.x + this.w - 4) {
       p.y = this.y - p.h;
       p.vy = PHYS.springs[this.color];
       p.jumping = false; p.jumpCut = false; p.onGround = false; p.stomping = false;

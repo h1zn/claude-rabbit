@@ -16,14 +16,15 @@ export function frostfallRidge() {
   L.hint(6, 71, 'Climb to the summit! Ice caves inside the\nmountain lead up too, and hide treasure.');
   L.arc(8, 69, 7, 'o', 1);
   L.on(20, 'w').on(36, 'k').on(48, 'h');
-  L.row(26, 66, 5, '*');
+  // On the ground (a fixed row cut into the slope and left a pit).
+  for (let x = 26; x < 31; x++) L.on(x, '*');
   L.put(60, 57, 'T');
   L.hint(56, 57, 'Spring up the cliff, or find the cave.');
 
   // Cave 1 under the foot: hole in, spring and shaft out.
   L.carve(14, 72, 2, 3).carve(4, 75, 44, 4);
-  for (const x of [10, 22, 34]) over(L, x, 74, 'hump', 'o', 2);
-  L.on(25, 'h', 74).put(30, 75, 'f');
+  for (const x of [10, 22, 34]) over(L, x, 75, 'hump', 'o', 2);
+  L.on(25, 'h', 75).put(30, 75, 'f');
   L.row(18, 76, 6, '$');
   L.carve(40, 64, 2, 11).put(40, 78, 'U');
   L.breakable(8, 75, 1, 4);
@@ -39,11 +40,11 @@ export function frostfallRidge() {
   L.carve(86, 50, 3, 4).plat(86, 54, 3);
 
   // Ridge up to the second cliff and its vertical pole.
-  L.on(86, 'C');
+  L.on(84, 'C');                 // on the ridge beside the shaft, not in it
   L.on(82, 'w').on(96, 'J');
   L.row(64, 46, 6, '$').row(144, 18, 4, '$');
   L.row(100, 39, 6, 'g');
-  L.put(108, 38, 'I');
+  L.put(108, 37, 'I');
   L.hint(102, 41, 'Vertical poles fling you upward.');
   L.put(95, 36, 'd');
   // Sky ledges over the ridge.
@@ -66,7 +67,7 @@ export function frostfallRidge() {
   L.put(140, 31, 'C');
   L.warp(138, 31, 'back4');
   L.on(116, 'k').on(146, 'w').on(154, 'J');
-  L.row(142, 26, 5, 'g');
+  for (let x = 142; x < 147; x++) L.on(x, 'g');
   L.put(157, 21, 'T');
   L.hint(153, 21, 'A green spring - higher than red!');
   L.put(166, 11, 'E');

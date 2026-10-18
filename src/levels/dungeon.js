@@ -17,7 +17,11 @@ export function dungeonEscape() {
   // Step-ups with sloped sides along each corridor (t = band above).
   const humps = { 66: [35, 85], 58: [40, 95], 50: [45, 95], 42: [30, 80], 34: [100], 26: [95], 18: [30, 85], 10: [30, 70] };
   for (const [t, xs] of Object.entries(humps)) {
-    for (const x of xs) L.profile([[x, +t + 8], [x + 3, +t + 5], [x + 9, +t + 5], [x + 12, +t + 8]], 3);
+    for (const x of xs) {
+      L.profile([[x, +t + 8], [x + 3, +t + 5], [x + 9, +t + 5], [x + 12, +t + 8]], 3);
+      // The profile's fill pokes one stone below the corridor ceiling at each end.
+      if (+t < 66) L.put(x, +t + 10, '.').put(x + 11, +t + 10, '.');
+    }
   }
   const deco = rng(7);
   for (const t of [66, 58, 50, 42, 34, 26, 18, 10]) {
@@ -34,7 +38,7 @@ export function dungeonEscape() {
   L.put(4, 73, 'P');
   L.hint(7, 73, 'Thrown in the dungeon! Climb out of the castle.\nHoles in the ceiling lead up a floor.');
   corridor(66, 8, 120);
-  L.on(30, 'w', 68).on(60, 'h', 68).on(95, 'w', 68).put(80, 68, 'f');
+  L.on(30, 'w', 68).on(60, 'h', 68).on(91, 'w', 69).put(80, 68, 'f');
   L.row(40, 70, 4, '*').row(70, 70, 4, '*');
   // TNT: a crate, two more sticks, and a vault that only a blast opens.
   L.ammoCrate(110, 73, 7).ammo(64, 73, 7).ammo(100, 73, 7);
@@ -85,7 +89,7 @@ export function dungeonEscape() {
   L.put(72, 29, 'H');
   L.row(56, 29, 12, '*');
   L.hint(78, 33, 'Swinging poles: touch one to spin,\nthen fly off. Jump lets go early.');
-  L.on(90, 'n', 28).on(110, 'G', 28);
+  L.on(95, 'n', 28).on(110, 'G', 28);
 
   // Floor 26 corridor (stand 25): checkpoint, speed blocks, coin warp.
   corridor(18, 20, 120);
@@ -118,7 +122,7 @@ export function dungeonEscape() {
   L.floorRow(96, 129, 7, 'o', 3);
   L.put(110, 7, '1').put(111, 7, '@').put(112, 7, '@');
 
-  for (let y = 10; y < 74; y += 16) L.deco('candles', 70, y + 2);
+  for (let y = 10; y < 74; y += 16) L.deco('candles', 70, L.surface(70, y + 2));
   // The Queen guards the way out (manual: she threw you into her dungeon).
   // Push her back into the pit behind her; the spring below throws her away
   // (and brings you back up if you fall in).

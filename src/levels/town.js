@@ -11,7 +11,7 @@ export function carrotusTown() {
   // Houses: [x, width, roof row]. Each is hollow, with doors on both sides,
   // ledges up the inside and a one-way hatch in the roof.
   const houses = [[12, 10, 26], [26, 12, 22], [42, 8, 28], [54, 14, 20], [72, 10, 24], [86, 12, 18],
-    [104, 8, 26], [118, 12, 22], [134, 10, 28], [148, 12, 20], [166, 10, 24], [180, 8, 26]];
+    [104, 8, 26], [118, 12, 22], [134, 10, 28], [148, 12, 20], [166, 10, 24]];
   houses.forEach(([x, w, roof], k) => {
     L.block(x, roof, w, STREET - roof);
     L.room(x + 1, roof + 1, w - 2, STREET - roof - 1);
@@ -97,8 +97,14 @@ export function carrotusTown() {
   // A sewer vault that only a missile opens.
   weaponVault(L, 35, 46, 4, { loot: 'b' });
   L.hint(26, 46, 'This vault opens only to MISSILES.\nSelect them with C or 4.');
-  // Schwartzenguard patrols the east end of the street.
-  L.put(180, 35, 'V');
+  // Schwartzenguard guards the open square in front of the clock tower
+  // (every way to the tower crosses it).
+  L.put(186, STREET - 1, 'V');
+  // The locked house can't be dropped into through its roof.
+  L.block(153, 20, 2, 1);
+  // A manhole in the strip east of the tower, so dropping off the tower's
+  // roof there doesn't strand you.
+  L.carve(211, STREET, 3, 6);                  // 3 wide: a walk crosses 2-wide gaps
   L.item(15, 35, 'fastFeet');                  // speed shoes for the long street
   return L.build({ name: 'Carrotus Town', theme: 'town', music: 'carrotus', horizon: STREET });
 }

@@ -7,7 +7,7 @@ export function crystalCaverns() {
   const S = M.startRoom;
   const at = (R, ch, from = 1, dir = 1) => L.put(M.spot(R, from, dir), R.floor - 1, ch);
   at(S, 'P');
-  L.hint(M.spot(S, 4), S.floor - 1, 'Deep, dark caverns. Glowing crystals light the way.\nThe exit lies in the farthest cave.');
+  L.hint(M.spot(S, 4), S.floor - 1, 'Deep, dark caverns. Glowing crystals light the way.\nThe exit lies at the end of the longest path.');
   at(M.exit, 'E', 2, -1);
   for (const R of M.deadEnds) L.put(Math.floor((R.x0 + R.x1) / 2), R.floor - 3, 'X').row(R.x0 + 2, R.floor - 2, 4, 'v').put(M.spot(R, 2, -1), R.floor - 1, '1');
   at(S, 'Y', 2, -1);

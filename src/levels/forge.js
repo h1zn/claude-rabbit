@@ -30,8 +30,11 @@ export function lavaForge() {
   L.carve(2, 14, 146, 13);
   pit(20, 27, 14);
   pit(88, 27, 22);
-  L.put(94, 23, 'H');
-  shape(L, 97, 23, 'line5', '*').put(105, 23, 'b');
+  // A stepping stone in the lava, then the pole, which flings Kip to the
+  // far edge; gems along its flight.
+  L.fill(90, 28, 2, 1, '#');
+  L.put(98, 23, 'H');
+  shape(L, 100, 23, 'line5', '*').put(106, 23, 'b');
   for (const [x, n] of [[8, 'hump'], [40, 'arc'], [60, 'line5'], [76, 'hump'], [116, 'arc']]) over(L, x, 14, n, 'o', 2);
   L.on(44, 'G', 14).on(64, 'n', 14).on(120, 'w', 14).put(84, 16, 'f');
   L.plat(36, 22, 6).put(38, 21, '$').put(39, 21, '$');
@@ -67,9 +70,11 @@ export function lavaForge() {
   // stone pillars; after the switch, a ghost bridge spans the lake.
   L.carve(2, 48, 146, 14);
   L.carve(14, 62, 114, 1).lavaPool(14, 63, 114);
-  for (const x of [40, 70, 100]) L.fill(x, 58, 3, 4, '#');
   for (const x of [24, 50, 80, 110]) L.put(x, 56, 'H');
   L.fill(14, 58, 26, 1, 'i').fill(43, 58, 27, 1, 'i').fill(73, 58, 27, 1, 'i').fill(103, 58, 25, 1, 'i');
+  // Pillars reach back toward the poles: a fling lands about nine tiles on.
+  for (const x of [40, 70, 100]) L.fill(x - 8, 58, 11, 4, '#');
+  L.fill(118, 58, 10, 4, '#');
   for (const x of [40, 70, 100]) shape(L, x, 54, 'line3', 'g');
   shape(L, 26, 52, 'line5', '$');
   shape(L, 84, 52, 'line5', 'o');
@@ -96,6 +101,7 @@ export function lavaForge() {
 
   // ---- Bonus room sealed below the forge.
   L.carve(50, 84, 40, 4);
+  L.block(72, 84, 3, 1);                        // a floor under the lava pit above
   L.warp(52, 87, 'bonus9');
   L.warp(88, 87, 'out9', 'back9');
   shape(L, 56, 84, 'ring', '*');

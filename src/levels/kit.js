@@ -145,7 +145,12 @@ export function roomMaze(L, { cols, rows, cw, ch, seed, start, bonus, irregular 
       const px = R.x0 + 2 + Math.floor(r() * Math.max(1, w - 8));
       L.plat(px, R.floor - 4, 4).row(px, R.floor - 5, 4, pick(['*', '*', 'g', '$']));
     }
-    if (r() < 0.75) L.put(R.x0 + 3 + Math.floor(r() * (w - 6)), R.floor - 1, pick(enemies));
+    if (r() < 0.75) {
+      // Only on bare floor: not over a hole, a spring or another thing.
+      const ex = R.x0 + 3 + Math.floor(r() * (w - 6));
+      const kind = pick(enemies);
+      if (L.grid[R.floor - 1][ex] === '.' && L.grid[R.floor][ex] === '#') L.put(ex, R.floor - 1, kind);
+    }
     if (r() < 0.3) L.put(R.x0 + 2 + Math.floor(r() * (w - 4)), R.top + 1, 'f');
     if (r() < 0.3) L.row(R.x0 + 3, R.top + 2, Math.min(4, w - 6), '$');
   }
@@ -155,8 +160,13 @@ export function roomMaze(L, { cols, rows, cw, ch, seed, start, bonus, irregular 
     const A = pick(far); const B = pick(far.filter((R) => Math.abs(R.x - A.x) + Math.abs(R.y - A.y) >= 4));
     if (!B || A.warped || B.warped) continue;
     A.warped = B.warped = true;
-    L.warp(A.x1 - 1, A.floor - 1, `${theme}w${k}a`, `${theme}w${k}b`);
-    L.warp(B.x1 - 1, B.floor - 1, `${theme}w${k}b`, `${theme}w${k}a`);
+    // On a ledge by the room's left wall: warps touch-trigger, and one on the
+    // floor in front of a door caught everyone walking through.
+    const perch = (R, id, to) => {
+      if (R.floor - R.top >= 6) { L.plat(R.x0 + 1, R.floor - 3, 3); L.warp(R.x0 + 2, R.floor - 4, id, to); } else L.warp(R.x0 + 1, R.floor - 1, id, to);
+    };
+    perch(A, `${theme}w${k}a`, `${theme}w${k}b`);
+    perch(B, `${theme}w${k}b`, `${theme}w${k}a`);
   }
   // Exit in the deepest room; secrets in dead ends.
   const order = [...depth.entries()].sort((p, q) => q[1] - p[1]).map(([k]) => rooms[k]);

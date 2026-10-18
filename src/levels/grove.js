@@ -15,9 +15,12 @@ export function fireflyGrove() {
     L.wall(x, c + 3, 3, f - c - 3);
     // Branches every 4 rows, alternating sides but overlapping the trunk so
     // Kip can also hop straight up; the top one is 4 below the canopy top.
+    // The exit tree has only its top branches: it is reached by the pole
+    // from the canopy before it, not climbed from the forest floor.
+    const last = i === trees.length - 1;
     let lowest = c + 4;
-    for (let r = c + 4, k = 0; r <= f - 2; r += 4, k++) { L.plat(k % 2 ? x - 4 : x + 1, r, 6); lowest = r; }
-    if (f - lowest > 4) L.plat(x - 1, f - 3, 5);
+    for (let r = c + 4, k = 0; r <= (last ? c + 12 : f - 2); r += 4, k++) { L.plat(k % 2 ? x - 4 : x + 1, r, 6); lowest = r; }
+    if (!last && f - lowest > 4) L.plat(x - 1, f - 3, 5);
     // Canopy with a one-way hatch above the trunk.
     L.mass(x - 6, c, 15, 3).carve(x, c, 3, 3).plat(x, c, 3);
     L.deco('glowshroom', x + 5, f, { v: i % 3 });
@@ -52,8 +55,9 @@ export function fireflyGrove() {
   L.on(44, 'J', 0).on(122, 'J', 0);
   trees.forEach(([x, c], i) => shape(L, x - 4, c - 3, i % 2 ? 'line5' : 'arc', i === 4 ? 'b' : 'o'));
   // Secret pocket inside the second canopy, under a butt-stomp lid.
-  L.carve(51, 19, 4, 2).stomp(52, 18, 2, 1);
-  L.put(52, 20, 'X').put(53, 20, '1');
+  // (One column in from the canopy's edge, so the pocket is closed.)
+  L.carve(50, 19, 4, 2).stomp(51, 18, 2, 1);
+  L.put(51, 20, 'X').put(52, 20, '1');
   // Switch-block cage around an extra life on the fourth canopy.
   L.fill(122, 14, 5, 1, 'u').fill(122, 15, 1, 2, 'u').fill(126, 15, 1, 2, 'u');
   L.put(124, 16, '1').put(123, 16, 'g').put(125, 16, 'g');

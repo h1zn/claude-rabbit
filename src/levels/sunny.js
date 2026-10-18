@@ -2,7 +2,8 @@ import { ammoOn, Builder, dress, over, shape, weaponVault } from './kit.js';
 
 // Beach: three layers of ground with open caves between them (back wall below
 // row 26), sky islands linked by swinging poles, and the exit plateau in the
-// east, reached only with the blue spring at the bottom of the canyon.
+// east, reached only with the blue spring at the bottom of the canyon (its
+// door opens with the ! crate on the bottom floor).
 export function sunnySpires() {
   const L = new Builder(200, 56);
   L.wall(0, 26, 186, 30);
@@ -13,6 +14,10 @@ export function sunnySpires() {
   L.profile([[127, 32], [165, 32]], 4);
   L.profile([[0, 46], [50, 46], [54, 42], [90, 42], [94, 46], [140, 46], [146, 40], [186, 40]]);
   L.ground(186, 200, 24);
+  // The ground under the two hills (the back wall starts lower down).
+  L.fill(27, 22, 16, 4, '#').fill(101, 24, 20, 2, '#');
+  // A wall up to the sky in front of the plateau, so it can't be glided onto.
+  L.block(185, 0, 1, 24);
 
   // ---- Upper ground.
   L.put(3, 21, 'P');
@@ -103,9 +108,10 @@ export function sunnySpires() {
   L.put(60, 41, 'Y');
   L.hint(63, 41, 'Shoot the ! crate to flip\nthe switch blocks.');
   L.on(68, 'w', 40);
-  // Ghost-block stair (solid once the switch flips) to a high coin ledge.
-  L.fill(74, 40, 2, 1, 'i').fill(78, 38, 2, 1, 'i').fill(82, 36, 2, 1, 'i');
-  shape(L, 82, 34, 'line3', '$');
+  // Ghost-block stair (solid once the switch flips) up into the hollow
+  // under the middle band, where coins wait.
+  L.fill(70, 40, 2, 1, 'i').fill(73, 38, 2, 1, 'i').fill(76, 36, 2, 1, 'i');
+  shape(L, 72, 35, 'line5', '$');
   L.on(100, 'G', 40);
   // Switch-block vault.
   L.fill(107, 38, 7, 1, 'u').fill(107, 39, 1, 3, 'u').fill(113, 39, 1, 3, 'u');
@@ -122,29 +128,33 @@ export function sunnySpires() {
   over(L, 140, 40, 'arc', 'o', 2);
   L.put(172, 39, 'C');
   L.warp(174, 39, 'back1');
-  L.put(181, 39, 'U');
-  L.hint(176, 39, 'A blue spring! It throws you\nhigher than anything else.');
-  L.put(181, 33, 'g').put(181, 28, 'g').put(181, 24, 'b');
+  // The canyon: a switch-block door (the ! crate opens it), the blue spring
+  // and a shaft up to the plateau.
+  L.carve(186, 36, 3, 4).carve(187, 24, 2, 12).fill(186, 36, 1, 4, 'u');
+  L.put(188, 39, 'U');
+  L.hint(176, 39, 'A blue spring behind the switch door!\nShoot the ! crate to open it.');
+  L.put(188, 33, 'g').put(188, 28, 'g').put(188, 25, 'b');
   over(L, 190, 0, 'line5', 'o', 2);
   L.put(196, 23, 'E');
 
   // ---- Bonus room inside the plateau, only reachable through the Coin Warp.
-  L.carve(187, 29, 12, 5);
-  L.warp(188, 33, 'bonus1');
+  L.carve(190, 29, 9, 5);
+  L.warp(191, 33, 'bonus1');
   L.warp(197, 33, 'out1', 'back1');
-  shape(L, 190, 30, 'ring', '*');
-  shape(L, 194, 30, 'ring', 'g');
-  L.floorRow(189, 197, 33, 'o', 2);
-  L.put(192, 33, '1');
+  shape(L, 192, 30, 'ring', '*');
+  shape(L, 195, 30, 'ring', 'g');
+  L.floorRow(192, 196, 33, 'o', 2);
+  L.put(194, 33, '1');
 
+  // A rock pool on the bottom floor with treasure on its floor: dive in,
+  // swim (Up / Down, Run to go faster) and leap out at the surface. (Carved
+  // before the dressing, so no rock floats over it.)
+  L.carve(115, 46, 11, 4).pool(115, 46, 11, 4);
   for (const c of [8, 60, 128]) L.onGround(c, '+');
   const BEACH = ['shell', 'plant', 'plant', 'rock', 'plant'];
   dress(L, BEACH, 2, 150, 0, 11, 7);
   dress(L, BEACH, 12, 165, 27, 12, 8);
   dress(L, BEACH, 2, 186, 37, 13, 8);
-  // A rock pool on the bottom floor with treasure on its floor: dive in,
-  // swim (Up / Down, Run to go faster) and leap out at the surface.
-  L.carve(115, 46, 11, 4).pool(115, 46, 11, 4);
   for (let x = 116; x <= 124; x += 2) L.put(x, 49, 'b');
   L.put(120, 48, '%');
   L.hint(112, 45, 'A rock pool! Dive in and swim (UP / DOWN).\nJUMP at the surface to leap out.');
