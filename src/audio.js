@@ -322,6 +322,41 @@ export class Audio {
   }
 
   // `vol` scales the sound (0-1): world sounds fade with distance (Game.sound).
+  // A sound file (the cinematics' sounds), decoded once: a Promise of its
+  // buffer, or null.
+  load(url) {
+    if (!this.ctx) return Promise.resolve(null);
+    this.files = this.files || new Map();
+    if (!this.files.has(url)) {
+      this.files.set(url, fetch(url).then((r) => r.arrayBuffer()).then((d) => this.ctx.decodeAudioData(d))
+        .catch((e) => { console.warn('sound', url, e); return null; }));
+    }
+    return this.files.get(url);
+  }
+
+  // Play a sound file at `vol` (0..1) and `pan` (-1 left .. 1 right); the
+  // cues still sounding stop with stopCues().
+  async cue(url, vol = 1, pan = 0) {
+    const buf = await this.load(url);
+    if (!buf || this.muted || !this.ctx) return;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = this.ctx.createGain();
+    gain.gain.value = vol;
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.value = Math.max(-1, Math.min(1, pan));
+    src.connect(gain).connect(panner).connect(this.sfxBus);
+    this.cues = (this.cues || []).filter((c) => !c.ended);
+    this.cues.push(src);
+    src.onended = () => { src.ended = true; };
+    src.start();
+  }
+
+  stopCues() {
+    for (const c of this.cues || []) if (!c.ended) { try { c.stop(); } catch (e) { /* not started */ } }
+    this.cues = [];
+  }
+
   play(name, vol = 1) {
     if (!this.ctx || this.muted || vol <= 0) return;
     this.volScale = vol;

@@ -10,7 +10,7 @@ import { cleanText, decodeEvent, eventFields, tileMask } from './files.js';
 
 // JJ2 boss events -> our boss characters (src/bosses.js); other bosses stay
 // ordinary enemies.
-const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O', 200: 'D', 201: 'R', 199: 'a', 235: 'e', 198: 'j', 241: 'l' };
+const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O', 200: 'D', 201: 'R', 199: 'a', 235: 'e', 198: 'j', 241: 'l', 251: 'bilsyXmas' };
 
 // Event ids (JJ2 numbering).
 export const EV = {
@@ -48,12 +48,14 @@ const CHAR = {
 const SKIN = {
   126: 'fencer', 125: 'fatChick', 127: 'fish', 102: 'labRat', 116: 'dog', 115: 'skeleton', 190: 'raven', 105: 'bee', 225: 'bee', 196: 'crab', 113: 'hatter',
   // From Anims.j2a (assets/jj2_enemies).
-  107: 'sparks', 109: 'sucker', 152: 'suckerFloat', 197: 'witch', 183: 'lizardFloat', 250: 'lizardFloat', 118: 'helmut', 106: 'rapier',
+  107: 'sparks', 109: 'sucker', 152: 'suckerFloat', 197: 'witch', 183: 'lizardFloat', 118: 'helmut', 106: 'rapier',
   103: 'dragon', 237: 'beeBoy', 100: 'tufTurt', 191: 'turtleTube',
+  // The Christmas Chronicles' wintry turtles and lizards.
+  248: 'turtleXmas', 249: 'lizardXmas', 250: 'lizardFloatXmas',
 };
 for (let id = 141; id <= 147; id++) CHAR[id] = 'o';
 for (let id = 154; id <= 182; id++) CHAR[id] = 'o';
-const BOSSES = new Set([101, 114, 151, 195, 198, 199, 200, 201, 202, 235, 241]);
+const BOSSES = new Set([101, 114, 151, 195, 198, 199, 200, 201, 202, 235, 241, 251]);
 // Weapon events -> weapon number (src/weapons.js): ammo (+3), ammo crates
 // and power-up monitors.
 const AMMO_EV = { 33: 2, 34: 3, 35: 4, 36: 5, 37: 6, 38: 7, 39: 8, 40: 9 };

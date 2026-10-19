@@ -10,6 +10,9 @@ palette in JJ2Anims.Palettes.h); tools/j2a_names.json holds the names for the
     python j2a.py names AnimSetMapping.cpp OUT    (re)build j2a_names.json
     python j2a.py sfx Anims.j2a                   the samples src/sfxmap.js names
                                                   -> assets/sfx/jj2/<Category>_<name>.wav
+    python j2a.py cine Anims.j2a Data.j2d         the cinematics' sounds: Data.j2d's lists
+                                                  (frame, sample, volume, pan) -> assets/cinematics.json,
+                                                  their samples -> assets/sfx/cine/
     python j2a.py sheet Anims.j2a SPEC.json OUT   animations -> OUT.png + OUT.json, the
                                                   atlas format of build_sprites.py
 SPEC: {"anims": {name: {"j2a": "Category/name", "speed": ticks per frame (default:
@@ -212,6 +215,45 @@ def main():
             open(os.path.join(out, n.replace('/', '_') + '.wav'), 'wb').write(data)
             total += len(data)
         print(len(wanted), 'samples,', total // 1024, 'KB ->', os.path.normpath(out))
+    elif cmd == 'cine':
+        # Data.j2d is a PLIB library: a zlib-packed directory of 52-byte
+        # entries (name[32], type, offset, crc, packed, unpacked), then the
+        # zlib-packed files. SoundFXList.<film> holds 16-byte cues (frame,
+        # sample, volume 0-64, pan 0-64) up to a frame of -1; the sample is
+        # numbered across all of Anims.j2a's samples in order.
+        j = read_j2a(sys.argv[2])
+        names = json.load(open(os.path.join(HERE, 'j2a_names.json')))
+        order = sorted(j['samples'])
+        d = open(sys.argv[3], 'rb').read()
+        assert d[:4] == b'PLIB'
+        packed = struct.unpack_from('<I', d, 20)[0]
+        head = zlib.decompress(d[28:28 + packed])
+        base = 28 + packed
+        out_dir = os.path.join(HERE, '..', 'assets', 'sfx', 'cine')
+        os.makedirs(out_dir, exist_ok=True)
+        lists, used = {}, set()
+        for e in range(0, len(head), 52):
+            name = head[e:e + 32].split(b'\0')[0].decode('latin1')
+            # The films the game plays (not P2's or Avalon's lists).
+            if name not in ('SoundFXList.Logo', 'SoundFXList.Intro', 'SoundFXList.Ending'):
+                continue
+            off, _, size = struct.unpack_from('<III', head, e + 36)
+            body = zlib.decompress(d[base + off:base + off + size])
+            cues = []
+            for q in range(0, len(body) - 15, 16):
+                frame, sample, vol, pan = struct.unpack_from('<IIII', body, q)
+                if frame == 0xFFFFFFFF:
+                    break
+                s_i = order[sample]
+                n = names['samples'].get('%d:%d' % s_i)
+                file = ('_'.join(n[:2]) if n else 'sample_%d_%d' % s_i).replace('/', '_')
+                cues.append([frame, file, vol, pan])
+                if file not in used:
+                    used.add(file)
+                    open(os.path.join(out_dir, file + '.wav'), 'wb').write(wav_bytes(j['samples'][s_i]))
+            lists[name.split('.', 1)[1]] = cues
+        json.dump(lists, open(os.path.join(HERE, '..', 'assets', 'cinematics.json'), 'w'), separators=(',', ':'))
+        print({k: len(v) for k, v in lists.items()}, len(used), 'samples ->', os.path.normpath(out_dir))
     elif cmd == 'sheet':
         from PIL import Image
         j = read_j2a(sys.argv[2])

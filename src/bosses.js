@@ -480,7 +480,7 @@ export class Bilsy extends Boss {
       case 'throw':
         if (this.at === 48) {
           game.audio.play('bilsyFire');
-          game.enemyShots.push(new Fireball(this.cx + this.facing * 26 - 9, this.y + 10, this.facing));
+          game.enemyShots.push(new Fireball(this.cx + this.facing * 26 - 9, this.y + 10, this.facing, this.xmas));
         }
         if (this.at >= 56) { this.state = 'wait2'; this.st = Math.round(30 * T); this.anim = 'idle'; }
         break;
@@ -517,9 +517,25 @@ export class Bilsy extends Boss {
   draw(r, alpha) { if (this.active && !this.hidden) super.draw(r, alpha); }
 }
 
+// The Christmas Chronicles' Bilsy (event 251, Tinsel Town's boss): the same
+// fight in a winter coat, from Anims.j2a (assets/jj2_enemies).
+export class XmasBilsy extends Bilsy {
+  constructor(x, y) { super(x, y); this.xmas = true; }
+
+  frame(art) {
+    const a = art.jj2e.anims;
+    // Appear, vanish and throw each take as long as Bilsy's own (60, 60, 56 ticks).
+    const run = (anim, ticks) => anim.frames[Math.min(anim.frames.length - 1, Math.floor((this.at / ticks) * anim.frames.length))];
+    if (this.state === 'appear') return run(a.bilsyXmasAppear, 60);
+    if (this.state === 'vanish') return run(a.bilsyXmasVanish, 60);
+    if (this.state === 'throw') return run(a.bilsyXmasThrow, 56);
+    return frameAt(a.bilsyXmasIdle, this.t, a.bilsyXmasIdle.speed);
+  }
+}
+
 class Fireball extends BossShot {
-  constructor(x, y, dir) {
-    super('fireball', x, y, dir * 4 * V, 2 * V, { w: 18, h: 18, life: Math.round(90 * T), solid: true, glowColor: 'rgba(255,140,40,0.6)' });
+  constructor(x, y, dir, xmas = false) {
+    super('fireball', x, y, dir * 4 * V, 2 * V, { w: 18, h: 18, life: Math.round(90 * T), solid: true, glowColor: 'rgba(255,140,40,0.6)', xmas });
   }
 
   move(game) {
@@ -535,7 +551,7 @@ class Fireball extends BossShot {
     if (this.t % 2 === 0) game.trail(this.x + 9, this.y + 9, '#ff8a2a');
   }
 
-  sprite(art) { return frameAt(art.bilsy.anims.fireball, this.t, 3); }
+  sprite(art) { return frameAt(this.xmas ? art.jj2e.anims.bilsyXmasFireball : art.bilsy.anims.fireball, this.t, 3); }
 }
 
 // ---------------------------------------------------------------- the Robot
@@ -1206,6 +1222,6 @@ class TweedleShot extends BossShot {
 }
 
 // JJ2 boss events -> boss classes (others stay ordinary enemies).
-export const JJ2_BOSSES = { 101: Schwartzenguard, 151: Queen, 114: Bilsy, 202: Robot, 195: Uterus, 200: Devan, 201: Robot, 199: Bubba, 235: Bolly, 198: RocketTurtle, 241: Tweedle };
+export const JJ2_BOSSES = { 101: Schwartzenguard, 151: Queen, 114: Bilsy, 202: Robot, 195: Uterus, 200: Devan, 201: Robot, 199: Bubba, 235: Bolly, 198: RocketTurtle, 241: Tweedle, 251: XmasBilsy };
 // Level characters for our own levels (a, e, j: only made by JJ2 levels).
-export const BOSS_CHARS = { Z: Queen, V: Schwartzenguard, B: Bilsy, R: Robot, O: Uterus, D: Devan, a: Bubba, e: Bolly, j: RocketTurtle, l: Tweedle };
+export const BOSS_CHARS = { Z: Queen, V: Schwartzenguard, B: Bilsy, R: Robot, O: Uterus, D: Devan, a: Bubba, e: Bolly, j: RocketTurtle, l: Tweedle, bilsyXmas: XmasBilsy };

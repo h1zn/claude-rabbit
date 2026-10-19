@@ -139,6 +139,33 @@
     },
     "tweedleHurt": {
       "j2a": "Tweedle/hurt"
+    },
+    "turtleXmas": {
+      "j2a": "Turtle/xmas_walk"
+    },
+    "turtleXmasShell": {
+      "j2a": "Turtle/xmas_shell"
+    },
+    "lizardXmas": {
+      "j2a": "Lizard/xmas_walk"
+    },
+    "lizardFloatXmas": {
+      "j2a": "Lizard/xmas_copter_idle"
+    },
+    "bilsyXmasIdle": {
+      "j2a": "Bilsy/xmas_idle"
+    },
+    "bilsyXmasThrow": {
+      "j2a": "Bilsy/xmas_throw_fireball"
+    },
+    "bilsyXmasAppear": {
+      "j2a": "Bilsy/xmas_appear"
+    },
+    "bilsyXmasVanish": {
+      "j2a": "Bilsy/xmas_vanish"
+    },
+    "bilsyXmasFireball": {
+      "j2a": "Bilsy/xmas_bullet_fireball"
     }
   }
 }

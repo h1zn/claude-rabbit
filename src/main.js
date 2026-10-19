@@ -99,7 +99,7 @@ window.kip = {
 };
 
 function go(next) {
-  if (next !== 'cinema') cinema = null;
+  if (next !== 'cinema' && cinema) { cinema = null; audio.stopCues(); }
   scene = next;
   sceneTime = 0;
 }
@@ -161,11 +161,28 @@ function unlock() {
 
 // ---------------------------------------------------------------- cinematics
 
-// A film and its song, loaded: { film, song } (film null if it isn't there).
+// The films' sound cues, from Data.j2d (tools/j2a.py cine): per film, a
+// list of [frame, sound file, volume 0-64, pan 0-64].
+let cueLists = null;
+const cueUrl = (file) => `assets/sfx/cine/${file}.wav`;
+
+// A film, its song and its sounds, loaded: { film, song, cues } (film null
+// if it isn't there).
 async function loadReel(reel) {
-  const [bytes, song] = await Promise.all([cinematicFile(reel.name), reel.song ? songKey(reel.song) : null]);
+  if (!cueLists) cueLists = fetch('assets/cinematics.json').then((r) => r.json()).catch(() => ({}));
+  const [bytes, song, lists] = await Promise.all([cinematicFile(reel.name), reel.song ? songKey(reel.song) : null, cueLists]);
   const film = bytes && await parseJ2V(bytes).catch(() => null);
-  return { film, song };
+  const cues = (film && lists[reel.name.replace(/\.j2v$/i, '')]) || [];
+  await Promise.all(cues.map(([, file]) => audio.load(cueUrl(file))));
+  return { film, song, cues };
+}
+
+// The film's sounds up to the frame it shows.
+function playCues(c) {
+  while (c.cue < c.cues.length && c.cues[c.cue][0] <= c.film.shown) {
+    const [, file, vol, pan] = c.cues[c.cue++];
+    audio.cue(cueUrl(file), vol / 64, (pan - 32) / 32);
+  }
 }
 
 // Play films one after another, then `then`; any key skips them all.
@@ -179,10 +196,10 @@ function playFilms(reels, then, missing = then) {
 }
 
 async function startReel(c, missing) {
-  const { film, song } = await c.next;
+  const { film, song, cues } = await c.next;
   if (cinema !== c) return;            // skipped while it loaded
   if (!film) { cinema = null; if (c.i === 0) missing(); else c.then(); return; }
-  c.film = film;
+  Object.assign(c, { film, cues, cue: 0 });
   c.next = c.i + 1 < c.reels.length ? loadReel(c.reels[c.i + 1]) : null;
   if (song) audio.startMusic(song, { restart: true });
   else audio.stopMusic();
@@ -192,6 +209,7 @@ function endFilms() {
   const { then } = cinema;
   cinema = null;
   audio.stopMusic();
+  audio.stopCues();
   then();
 }
 window.addEventListener('keydown', unlock);
@@ -453,11 +471,15 @@ function tick() {
       const c = cinema;
       if (sceneTime > 20 && ['start', 'jump', 'pause', 'fire'].some((k) => input.pressed(k))) { endFilms(); break; }
       // The film's frames go by its own clock; the next film loads meanwhile.
-      if (c.film && c.film.advance(TICK_MS)) {
-        c.last = c.film;
-        c.film = null;
-        if (++c.i < c.reels.length) startReel(c);
-        else endFilms();
+      if (c.film) {
+        const done = c.film.advance(TICK_MS);
+        playCues(c);
+        if (done) {
+          c.last = c.film;
+          c.film = null;
+          if (++c.i < c.reels.length) startReel(c);
+          else endFilms();
+        }
       }
       break;
     }

@@ -98,16 +98,18 @@ export class Turtle extends Enemy {
     game.addScore(this.score * game.bump(), this.cx, this.y);
     game.audio.play('stomp');
     game.effect('poof', this.cx, this.y + this.h / 2);
-    // A skinned turtle-walker (fat chick, crab, hatter) has no shell.
-    if (!this.skin) game.enemies.push(new Shell(this.x, this.y + this.h));
+    // A skinned turtle-walker (fat chick, crab, hatter) has no shell; the
+    // Christmas turtle leaves its own.
+    if (!this.skin || this.skin === 'turtleXmas') game.enemies.push(new Shell(this.x, this.y + this.h, this.skin === 'turtleXmas'));
   }
 }
 
 // A turtle's shell: still until touched, then slides at 6 px/tick (the
 // measured walker speed cap), knocking out every enemy in its path.
 export class Shell extends Enemy {
-  constructor(x, feet) {
+  constructor(x, feet, xmas = false) {
     super('shell', x, feet - 18, 30, 18, 1, 100);
+    this.xmas = xmas;
     this.color = '#c48aff';
     this.kickLock = 0;
     this.bounces = 0;
@@ -160,6 +162,7 @@ export class Shell extends Enemy {
   }
 
   sprite(art) {
+    if (this.xmas) return art.jj2e.anims.turtleXmasShell.frames[0];
     const a = art.turtle.anims.turtleShell;
     return this.moving ? frameAt(a, this.t, 3) : a.frames[0];
   }

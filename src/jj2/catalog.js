@@ -57,6 +57,18 @@ export const PACKS = [
     blurb: 'The three levels of the shareware demo.',
     levels: ['Share1', 'Share2', 'Share3'].map((f) => ({ file: `${f}.j2l` })),
   },
+  // The Christmas Chronicles (JJ2-Christmas.zip, from tools/pack_jj2cc.ps1):
+  // its episode, then the Easter levels and holiday maps that came with it.
+  {
+    id: 'xmas', title: 'The Christmas Chronicles', zip: 'Levels/JJ2-Christmas.zip',
+    blurb: 'The holiday special: Snow Bunnies, Dashing thru the Snow and Tinsel Town, where Bilsy waits in a winter coat.',
+    levels: ['Xmas1', 'Xmas2', 'Xmas3'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'easter', title: 'Easter Levels', zip: 'Levels/JJ2-Christmas.zip', extras: true,
+    blurb: 'Six Easter levels that come with The Christmas Chronicles: egg hunts, hot cross bunnies, pinball eggs and elves.',
+    levels: ['XE-Easter', 'XE-Easter09', 'XE-Carrotiz', 'XE-Easter-b', 'XE-elves', 'XE-Easter2'].map((f) => ({ file: `${f}.j2l` })),
+  },
   {
     id: 'homecooked', title: 'Home Cooked Levels', zip: 'Levels/JJ2-Levels.zip', extras: true,
     blurb: 'The training level, and the community levels shipped with JJ2: Peach Beach, Sting in Your Tail, Queen of BoarD and more.',
@@ -72,6 +84,16 @@ export const PACKS = [
       ...['Treasur1', 'Treasur2', 'Treasur3', 'Sharetrs', 'Meztrs01', 'Meztrs02', 'Spam201'].map((f) => ({ file: `${f}.j2l`, mp: true, modes: ['treasure', 'battle'], title: MP_TITLES[f] })),
       // An unused copy of Voltage Village without a start.
       { file: 'Tube3.j2l', mp: true },
+    ],
+  },
+  {
+    id: 'xmasmp', title: 'Holiday Multiplayer', zip: 'Levels/JJ2-Christmas.zip',
+    blurb: "The Christmas Chronicles' battle arenas, its Easter battles (Easter Dream is a treasure hunt too) and the Fright Night capture the flag map.",
+    levels: [
+      ...['Xmbattle1', 'Xmbattle2', 'XB-Beaster', 'XB-Kings-ea', 'XB-Wacky-ea'].map((f) => ({ file: `${f}.j2l`, mp: true, modes: ['battle'] })),
+      // Easter Dream is strewn with 85 gems.
+      { file: 'XB-Easter-d.j2l', mp: true, modes: ['battle', 'treasure'] },
+      { file: 'XC-Frightni.j2l', mp: true, modes: ['ctf', 'battle'] },
     ],
   },
   {

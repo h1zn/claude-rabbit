@@ -47,7 +47,7 @@ const CHARACTERS = [
 // Episode pictures (JJ2's episode select) for this game and each level pack.
 // The original episodes have their own pictures; the other packs borrow one.
 const EPISODE_ART = {
-  prince: 'prince', rescue: 'time', flash: 'flashback', monk: 'monkeys', secretf: 'secret', share: 'demo', homecooked: 'homecooked',
+  prince: 'prince', rescue: 'time', flash: 'flashback', monk: 'monkeys', secretf: 'secret', share: 'demo', homecooked: 'homecooked', xmas: 'christmas', easter: 'secret',
   kip: 'christmas', xx: 'time', episode2: 'flashback', overgrown: 'monkeys', bl18: 'christmas', threed: 'secret', backintime: 'prince', stefan: 'flashback',
 };
 // Thumbnail colours per theme: sky, ground, back wall.

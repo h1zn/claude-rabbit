@@ -285,9 +285,14 @@ the menus (adding the missing `.j2t` brings them back). Included now:
   key skips to the menu), and beating Funky Monkeys plays the ending.
   `src/cinematic.js` decodes the `.j2v` films (after Jazz2 Resurrection).
   Without the cinematics zip the splash plays the intro track as before.
-  `tools/pack_jj2cc.ps1` packs the rest from The Christmas Chronicles
-  (Xmas1-3, its holiday multiplayer levels, two tile sets and `Data.j2d`)
-  into `JJ2-Christmas.zip`.
+- **The Christmas Chronicles** (`JJ2-Christmas.zip`, packed with
+  `tools/pack_jj2cc.ps1`): Snow Bunnies, Dashing thru the Snow and Tinsel
+  Town, with the wintry turtles and lizards and Bilsy in a winter coat
+  (Anims.j2a's Christmas sets); six Easter levels that came with it (Easter
+  Time! ends on the ending film); and its holiday maps in PARTY mode (six
+  battles, Easter Dream also a treasure hunt, Fright Night capture the flag).
+  The films' sound effects come from its `Data.j2d`: `tools/j2a.py cine`
+  turns the cue lists into `assets/cinematics.json` and `assets/sfx/cine/`.
 - **Xenobiotic Xeranthemum 2** (Blade): Oasis, Islands in the Sapphire Sea,
   Twilight Park, Space and Aztec, played in order.
 - **Episode 2** (KingofKoopas): all 17 levels in story order (Downtown
@@ -379,8 +384,8 @@ src/input.js            keyboard and gamepads sampled once per tick (held / pres
 src/player.js           the hero's movement and abilities
 src/entities.js         enemies, pickups, springs, poles, warps, hints, shots, effects
 src/weapons.js          the nine weapons: shots, aiming, explosions, TNT
-src/bosses.js           Queen, Schwartzenguard, Bilsy, Robot, Uterus, Devan Shell, Bubba,
-                        Bolly, Rocket Turtle, Tweedle
+src/bosses.js           Queen, Schwartzenguard, Bilsy (and Christmas Bilsy), Robot, Uterus,
+                        Devan Shell, Bubba, Bolly, Rocket Turtle, Tweedle
 src/birds.js            companion birds (Chuck and Birdy) from cages and the bird monitor
 src/level.js            tile map, collision and the level builder
 src/levels.js           the level list; designs in src/levels/ (kit.js: helpers, room maze)
