@@ -15,7 +15,65 @@ export const MODES = ['treasure', 'battle', 'ctf', 'race'];
 // `music` names the soundtrack of ours a level falls back to when its own
 // music can't play. `modes` lists the party games a level suits; `mp` keeps
 // a multiplayer-only level out of the single-player episode list.
+// The official maps that share a title get one each.
+const MP_TITLES = {
+  Battle1: 'Battle Game 1', Battle2: 'Battle Game 2', Battle3: 'Battle Game 3', Battlea: 'Battle Game A', Abattle1: 'City Battle',
+  Sharectf: 'Diamondus Warzone (demo)', Sharect2: 'Chemical Warfare (demo)', Sharetrs: 'Treasure Hunt (demo)',
+  Race1: 'Race Game 1', Race2: 'Race Game 2', Race3: 'Race Game 3', Arace1: 'Race Game A', Fastrace3: 'Fast Race 3',
+};
+
 export const PACKS = [
+  // The original game (JJ2-Levels.zip, packed from a JJ2 install by
+  // tools/pack_jj2.ps1): its episodes in the order of their .j2e files, each
+  // with its secret or bonus level last, then the community levels and the
+  // official multiplayer maps. Its music comes from JJ2-Music.zip.
+  {
+    id: 'prince', title: 'Formerly a Prince', zip: 'Levels/JJ2-Levels.zip',
+    blurb: 'Episode 1: Devan Shell has stolen Eva Earlong. From his castle dungeons, through Carrotus, to the lab of Labratory.',
+    levels: ['Castle1', 'Castle1n', 'Carrot1', 'Carrot1n', 'Labrat1', 'Labrat2', 'Labrat3'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'rescue', title: 'Jazz in Time', zip: 'Levels/JJ2-Levels.zip',
+    blurb: 'Episode 2: Victorian Colonius, the psychedelic Psych worlds and the beaches of Beach Bunny Bingo.',
+    levels: ['Colon1', 'Colon2', 'Psych1', 'Psych2', 'Beach', 'Beach2', 'Psych3'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'flash', title: 'Flashback', zip: 'Levels/JJ2-Levels.zip',
+    blurb: 'Episode 3: back to Diamondus and Tubelectric from the first game, then the medieval Medivo.',
+    levels: ['Diam1', 'Diam3', 'Tube1', 'Tube2', 'Medivo1', 'Medivo2', 'Diamsecr'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'monk', title: 'Funky Monkeys', zip: 'Levels/JJ2-Levels.zip',
+    blurb: 'Episode 4: the monkey jungles, Hell frozen and roasting, and Devan waiting at the bottom of Damnation.',
+    levels: ['Jung1', 'Jung2', 'Hell', 'Hell2', 'Damn', 'Damn2'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'secretf', title: 'The Secret Files', zip: 'Levels/JJ2-Levels.zip',
+    blurb: 'Easter eggs, haunted houses and Turtle Town: the expansion with Lori.',
+    levels: ['Easter1', 'Easter2', 'Easter3', 'Haunted1', 'Haunted2', 'Haunted3', 'Town1', 'Town2', 'Town3'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'share', title: 'Shareware Levels', zip: 'Levels/JJ2-Levels.zip',
+    blurb: 'The three levels of the shareware demo.',
+    levels: ['Share1', 'Share2', 'Share3'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'homecooked', title: 'Home Cooked Levels', zip: 'Levels/JJ2-Levels.zip', extras: true,
+    blurb: 'The training level, and the community levels shipped with JJ2: Peach Beach, Sting in Your Tail, Queen of BoarD and more.',
+    levels: ['Trainer', "70's grove", 'Funky chicken', 'Peachb', 'Creamclone', 'Diam001', 'Garglair', 'Ml_sting', 'Ml_qobmenu', 'Ml_qob', 'Ml_qobonus', 'Ml_qobclone', 'Ml_qobcred', 'Ml_qobpuke', 'Guess'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'jj2mp', title: 'JJ2 Multiplayer', zip: 'Levels/JJ2-Levels.zip',
+    blurb: "The original game's battle, capture the flag, race and treasure hunt maps.",
+    levels: [
+      ...['Battle1', 'Battle2', 'Battle3', 'Battlea', 'Abattle1', 'Elechaos', 'Undrsieg', 'Whitechristmas'].map((f) => ({ file: `${f}.j2l`, mp: true, modes: ['battle'], title: MP_TITLES[f] })),
+      ...['Capture1', 'Capture2', 'Capture3', 'Capture4', 'Sharectf', 'Sharect2', 'Bbswing', 'Bbswinga', 'Bocarrot', 'Dinolab1', 'Phils1', 'Spam003'].map((f) => ({ file: `${f}.j2l`, mp: true, modes: ['ctf', 'battle'], title: MP_TITLES[f] })),
+      ...['Race1', 'Race2', 'Race3', 'Arace1', 'Arace2', 'Fastrace3', 'Ddash2', 'Falkenrace'].map((f) => ({ file: `${f}.j2l`, mp: true, modes: ['race'], title: MP_TITLES[f] })),
+      ...['Treasur1', 'Treasur2', 'Treasur3', 'Sharetrs', 'Meztrs01', 'Meztrs02', 'Spam201'].map((f) => ({ file: `${f}.j2l`, mp: true, modes: ['treasure', 'battle'], title: MP_TITLES[f] })),
+      // An unused copy of Voltage Village without a start.
+      { file: 'Tube3.j2l', mp: true },
+    ],
+  },
   {
     id: 'xx',
     title: 'Xenobiotic Xeranthemum 2',
@@ -232,11 +290,17 @@ export const LIBRARIES = [];
 function tilesetSource(pack, name) {
   const lower = name.toLowerCase();
   if (inPack(pack, name)) return { pack, file: packFile(pack, name) };
-  for (const lib of [...LIBRARIES, ...PACKS.filter((p) => p !== pack && p.files)]) {
+  const sources = [pack, ...LIBRARIES, ...PACKS.filter((p) => p !== pack && p.files)].filter((p) => p.files);
+  for (const lib of sources.slice(1)) {
     const file = lib.files.find((f) => f.toLowerCase() === lower);
     if (file) return { pack: lib, file };
   }
-  return null;
+  // Last resort: the one tile set whose name starts with the one asked for
+  // (Spooky Sprint asks for HauntedH.j2t; the game ships HauntedH1.j2t).
+  const stem = lower.replace(/\.j2t$/, '');
+  const near = [];
+  for (const lib of sources) for (const f of lib.files) if (/\.j2t$/i.test(f) && f.toLowerCase().startsWith(stem) && !near.some((n) => n.file.toLowerCase() === f.toLowerCase())) near.push({ pack: lib, file: f });
+  return near.length === 1 ? near[0] : null;
 }
 
 function loadTileset(pack, name) {
@@ -288,7 +352,7 @@ export function jj2Def(key) {
   // Name and link the level from its own file first, so the menu shows its
   // real title (and a story chain can skip it) even if a tile set is missing.
   const readHeader = (level) => {
-    def.title = cleanText(level.title || '').split('\n')[0] || def.title;
+    def.title = entry.title || cleanText(level.title || '').split('\n')[0] || def.title;
     const bare = (f) => f.toLowerCase().replace(/\.j2l$/, '');
     const j = pack.levels.findIndex((l) => bare(l.file) === bare(level.next || ''));
     def.next = j >= 0 && j !== Number(n) ? `jj2:${pack.id}:${j}` : null;
@@ -388,6 +452,18 @@ async function scanPacks() {
   const zipped = new Set(found.filter((f) => f.zip).map((f) => f.zip.replace(/\.zip$/i, '').toLowerCase()));
   for (const f of found) {
     if (f.dir && zipped.has(f.dir.toLowerCase())) continue;
+    // Several packs can share one zip (the original game's episodes); its
+    // other levels go to the one marked `extras`.
+    const sharing = PACKS.filter((p) => f.zip && p.zip === `Levels/${f.zip}`);
+    if (sharing.length > 1) {
+      for (const p of sharing) { p.tilesets = f.tilesets; p.files = f.files; }
+      const home = sharing.find((p) => p.extras) || sharing[0];
+      const known = new Set(sharing.flatMap((p) => p.levels.map((l) => l.file.toLowerCase())));
+      for (const file of [...f.levels].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))) {
+        if (!known.has(file.toLowerCase())) { home.levels.push({ file }); added = true; }
+      }
+      continue;
+    }
     const dir = f.zip ? null : `Levels/${f.dir}/`;
     const zip = f.zip ? `Levels/${f.zip}` : null;
     if (f.library) {

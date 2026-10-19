@@ -45,7 +45,11 @@ const CHARACTERS = [
   { id: 'lori', moves: ['Copter ears: JUMP again in the air', 'Flying kick: DOWN, then JUMP'] },
 ];
 // Episode pictures (JJ2's episode select) for this game and each level pack.
-const EPISODE_ART = { kip: 'prince', xx: 'time', episode2: 'flashback', overgrown: 'monkeys', bl18: 'christmas', threed: 'secret' };
+// The original episodes have their own pictures; the other packs borrow one.
+const EPISODE_ART = {
+  prince: 'prince', rescue: 'time', flash: 'flashback', monk: 'monkeys', secretf: 'secret', share: 'demo', homecooked: 'homecooked',
+  kip: 'christmas', xx: 'time', episode2: 'flashback', overgrown: 'monkeys', bl18: 'christmas', threed: 'secret', backintime: 'prince', stefan: 'flashback',
+};
 // Thumbnail colours per theme: sky, ground, back wall.
 const THUMB = {
   meadow: ['#5aa8f0', '#e0b860', '#6a4a28'], castle: ['#1e120c', '#c88a50', '#4a2a1a'], town: ['#9a8aff', '#c070b0', '#3a2a4a'],

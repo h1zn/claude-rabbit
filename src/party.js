@@ -282,7 +282,10 @@ export class Party {
       if (near(tx, ty) || out.some((s) => s.tx === tx && s.ty === ty)) return;
       out.push({ tx, ty, start });
     };
-    const starts = level.allStarts || level.entities.filter((e) => e.ch === 'P').map((e) => [e.tx, e.ty]);
+    let starts = level.allStarts || level.entities.filter((e) => e.ch === 'P').map((e) => [e.tx, e.ty]);
+    // A race starts everybody together, at the first start (JJ2 race maps
+    // often have Jazz's and Spaz's starts far apart).
+    if (this.mode === 'race') starts = starts.slice(0, 1);
     for (const [tx, ty] of starts) add(tx, ty, true);
     if (!level.allStarts) for (const e of level.entities) if (e.ch === 'P') add(e.tx, e.ty, true);
     // A race starts everybody at the start line.

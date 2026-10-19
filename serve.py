@@ -28,6 +28,7 @@ import threading
 import zipfile
 
 WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+MUSIC = ('.j2b', '.it', '.mod', '.s3m', '.xm', '.ogg', '.mp3', '.mo3')
 MAX_FRAME = 64 * 1024  # party messages are small; anything bigger ends the connection
 # Room-code letters: no I/O (look like 1/0) and no M/P (the game's mute and
 # pause keys, which players type while entering a code).
@@ -162,7 +163,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def level_list(self):
         """The JJ2 level packs in Levels/: each folder's (or zip's) .j2l and .j2t files.
-        A folder or zip of tile sets only is a library other packs can borrow from."""
+        A folder or zip of tile sets or music only is a library other packs can borrow from."""
         packs = []
         root = os.path.join(self.directory, 'Levels')
         if os.path.isdir(root):
@@ -179,8 +180,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     tilesets = [f for f in files if f.lower().endswith('.j2t')]
                     if levels:
                         packs.append({'zip': name, 'levels': levels, 'files': files, 'tilesets': tilesets})
-                    elif tilesets:
-                        # Tile sets only: a library the other packs borrow from.
+                    elif tilesets or any(f.lower().endswith(MUSIC) for f in files):
+                        # Tile sets or music only: a library the other packs borrow from.
                         packs.append({'zip': name, 'library': True, 'levels': [], 'files': files, 'tilesets': tilesets})
                     continue
                 if not os.path.isdir(folder):
@@ -190,7 +191,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 tilesets = [f for f in files if f.lower().endswith('.j2t')]
                 if levels:
                     packs.append({'dir': name, 'levels': levels, 'files': files, 'tilesets': tilesets})
-                elif tilesets:
+                elif tilesets or any(f.lower().endswith(MUSIC) for f in files):
                     packs.append({'dir': name, 'library': True, 'levels': [], 'files': files, 'tilesets': tilesets})
         body = json.dumps(packs).encode()
         self.send_response(200)
