@@ -24,6 +24,7 @@ const WEATHER = { meadow: 'leaves', winter: 'snow', crystal: 'motes', grove: 'fi
 
 export class Game {
   constructor(audio, art) {
+    this.Particle = Particle;   // for modules that add particles (party effects)
     this.audio = audio;
     this.art = art;
     this.state = 'title';

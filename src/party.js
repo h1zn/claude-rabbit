@@ -22,6 +22,7 @@
 import { PLAYER, TILE } from './config.js';
 import { overlap, Pickup } from './entities.js';
 import { tr } from './lang.js';
+import { Items, placeBoxes } from './partyitems.js';
 import { Bullet, TNT } from './weapons.js';
 
 export const MAX_PLAYERS = 5;
@@ -190,6 +191,7 @@ export class Party {
     this.byId = new Map();      // every pickup, for bringing them back
     this.gone = new Map();      // host: pickup id -> tick it comes back
     this.spots = [];
+    this.items = new Items(this);
   }
 
   get host() { return this.id === 1; }
@@ -219,6 +221,7 @@ export class Party {
     // the starts as the level goes.
     if (this.mode === 'treasure' && !exits.length) this.placeExit(game);
     if (this.mode === 'treasure') this.layGems(game);
+    if (this.mode !== 'race') placeBoxes(game, this);
     // CTF bases (blue 0, red 1) from the level.
     this.bases = [0, 1].map((team) => {
       const o = game.level.objects.find((b) => b.type === 'base' && b.team === team);
@@ -305,9 +308,11 @@ export class Party {
     for (const g of groups) {
       const tx = Math.round(g.reduce((a, [x]) => a + x, 0) / g.length);
       const top = Math.min(...g.map(([, y]) => y));
-      for (let ty = top; ty < top + 10; ty++) {
-        if (this.standable(level, tx, ty)) { game.addExit(tx, ty); break; }
-      }
+      const bottom = Math.max(...g.map(([, y]) => y));
+      let ty = top;
+      while (ty < top + 10 && !this.standable(level, tx, ty)) ty++;
+      // No floor under it (an exit in the air or a tube): the sign marks the area.
+      game.addExit(tx, ty < top + 10 ? ty : bottom);
     }
   }
 
@@ -376,13 +381,19 @@ export class Party {
       p.invuln = 140;
       p.health = PARTY_HEARTS;
       game.effect('sparkle', p.cx, p.cy);
+      this.beam(game, p.cx, p.y + p.h);
       game.audio.play('secret');
     }
+    // Last seconds of the truce: 3, 2, 1.
+    const left = Math.ceil(this.truce / SECOND);
+    if (this.truce > 0 && left <= 3 && this.truce % Math.round(SECOND) === 0) game.audio.play('tally');
+    this.warnings(game);
     if (++this.stateTimer >= 3) {
       this.stateTimer = 0;
       this.net.send({
         t: 's', x: Math.round(p.x), y: Math.round(p.y), vx: +p.vx.toFixed(2), vy: +p.vy.toFixed(2), f: p.facing, a: p.anim,
         g: game.gems, d: p.dead ? 1 : 0, h: p.health, r: this.roasts, l: this.laps, c: this.carry,
+        e: (this.items.bubble ? 1 : 0) | (this.items.shrink ? 2 : 0),
       });
     }
     for (const r of this.rivals.values()) r.update();
@@ -405,6 +416,7 @@ export class Party {
       }
     }
     this.shots = this.shots.filter((s) => !s.dead);
+    this.items.tick(game);
     if (this.host) this.bringBack(game);
     if (this.mode === 'ctf') this.flags(game);
     this.feed = this.feed.filter((f) => ++f.t < 360);
@@ -482,6 +494,26 @@ export class Party {
 
   say(text) { this.feed.push({ text, t: 0 }); if (this.feed.length > 4) this.feed.shift(); }
 
+  // A column of light where a player comes back.
+  beam(game, x, y) {
+    for (let i = 0; i < 26; i++) {
+      game.particles.push(new game.Particle(x + (Math.random() - 0.5) * 18, y - Math.random() * 120, 0, -0.6 - Math.random(), i % 2 ? this.color : '#ffffff', 34, 3, 0, true));
+    }
+  }
+
+  // Someone close to winning: everyone hears about it, once.
+  warnings(game) {
+    if (this.result) return;
+    const near = Math.max(1, Math.round(this.goal * 0.1));
+    this.warned = this.warned || new Set();
+    for (const row of this.standings(game)) {
+      if (row.value < this.goal - near || this.warned.has(row.id) || this.mode === 'ctf') continue;
+      this.warned.add(row.id);
+      this.say(tr('{0} IS ALMOST THERE!', row.name));
+      if (row.me) game.audio.play('rank');
+    }
+  }
+
   // Gems knocked out of a player fly out; whoever dropped them can't grab
   // them back for the first 80 ticks.
   addDrops(game, drops, by) {
@@ -496,14 +528,24 @@ export class Party {
   // others hide it and ask the host, who grants it if it's still there.
   touch(game, k) {
     if (k.droppedBy === this.id && k.t < 80) return;
+    if (k.kind === 'itembox' && this.items.held) return;     // one item at a time
     if (this.host) {
-      k.collect(game);
+      const item = k.kind === 'itembox' ? Items.roll() : undefined;
+      this.grab(game, k, item);
       this.taken(game, k, this.id);
-      this.net.send({ t: 'got', id: k.id, by: this.id });
+      this.net.send({ t: 'got', id: k.id, by: this.id, item });
     } else if (!k.pending) {
       k.pending = true;
       this.net.send({ t: 'take', id: k.id, to: 1 });
     }
+  }
+
+  // Collect a pickup that's ours: an item box gives its item.
+  grab(game, k, item) {
+    if (k.kind !== 'itembox') { k.collect(game); return; }
+    k.taken = true;
+    game.effect('sparkle', k.x + k.w / 2, k.y + k.h / 2);
+    this.items.give(game, item);
   }
 
   // Our TNT went off: the others' copies (or a JJ2 bomb there) go off too.
@@ -582,6 +624,7 @@ export class Party {
   // ---------------------------------------------------------------- messages
 
   receive(game, m) {
+    if (this.items.receive(game, m)) return;
     const from = m.from;
     const find = (id) => game.pickups.find((k) => k.id === id && !k.taken);
     switch (m.t) {
@@ -589,7 +632,7 @@ export class Party {
         const r = this.rivals.get(from);
         if (!r) break;
         if (!r.seen) { r.x = m.x; r.y = m.y; r.prevX = m.x; r.prevY = m.y; }
-        Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, hearts: m.h, roasts: m.r, laps: m.l, carry: m.c, seen: true });
+        Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, hearts: m.h, roasts: m.r, laps: m.l, carry: m.c, bubble: !!(m.e & 1), shrink: !!(m.e & 2), seen: true });
         break;
       }
       case 'shot': {
@@ -608,14 +651,14 @@ export class Party {
         const k = find(m.id);
         if (k && !k.pending) {
           this.taken(game, k, from);
-          this.net.send({ t: 'got', id: m.id, by: from });
+          this.net.send({ t: 'got', id: m.id, by: from, item: k.kind === 'itembox' ? Items.roll() : undefined });
         } else this.net.send({ t: 'deny', id: m.id, to: from });
         break;
       }
       case 'got': {
         const k = this.byId.get(m.id);
         if (!k) break;
-        if (m.by === this.id) { if (!k.taken) { k.collect(game); this.taken(game, k, this.id); } } else if (!k.taken) this.taken(game, k, m.by);
+        if (m.by === this.id) { if (!k.taken) { this.grab(game, k, m.item); this.taken(game, k, this.id); } } else if (!k.taken) this.taken(game, k, m.by);
         break;
       }
       case 'deny': { const k = this.byId.get(m.id); if (k) k.pending = false; break; }

@@ -308,7 +308,8 @@ export class Player {
       // held), diagonally up while moving.
       const still = this.onGround ? Math.abs(this.vx) < 0.5 && !dir : !dir;
       this.aim = input.held('up') ? (still ? 'up' : 'diag') : null;
-      fire(game, this);
+      // A party item held is used instead of a shot.
+      if (!(game.party && game.party.items.use(game))) fire(game, this);
     }
 
     // ---- hazards

@@ -5,6 +5,7 @@ import { PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import { frameAt } from './sheets.js';
 import { tr } from './lang.js';
 import { SECOND, TEAMS } from './party.js';
+import { boxSprite, ITEMS } from './partyitems.js';
 import { AREA, BLOCKS } from './level.js';
 import { THEME_TILESET } from './tilesets.js';
 import { TNT, WEAPONS } from './weapons.js';
@@ -411,7 +412,7 @@ export class Renderer {
   pickups(game) {
     for (const k of game.pickups) {
       if (k.pending) continue;
-      const f = k.sprite(this.art);
+      const f = k.kind === 'itembox' ? boxSprite() : k.sprite(this.art);
       if (k.needsHit) { this.sprite(f, k.x + k.w / 2, k.y + k.h); continue; }
       const bob = Math.round(Math.sin(k.t / 12) * 2);
       this.centred(f, k.x + k.w / 2, k.y + k.h / 2 + bob);
@@ -598,7 +599,64 @@ export class Renderer {
       ctx.restore();
       return;
     }
-    ctx.drawImage(right ? f.right : f.left, x, y);
+    const items = game.party && game.party.items;
+    if (items && items.magnet > 0) this.glow(x + f.w / 2, y + f.h / 2, 40 + Math.sin(game.time / 4) * 6, 'rgba(255,90,140,0.35)');
+    this.drawHero(right ? f.right : f.left, x, y, f, items && items.shrink > 0, items && items.bubble > 0);
+  }
+
+  // A hero frame, maybe shrunk (shrink ray) or in a bubble (bubble trap).
+  drawHero(img, x, y, f, small, bubble) {
+    const ctx = this.ctx;
+    if (small) {
+      const k = 0.55;
+      ctx.drawImage(img, Math.round(x + (f.w * (1 - k)) / 2), Math.round(y + f.h * (1 - k)), Math.round(f.w * k), Math.round(f.h * k));
+    } else ctx.drawImage(img, x, y);
+    if (bubble) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(200,240,255,0.9)'; ctx.lineWidth = 2;
+      ctx.fillStyle = 'rgba(120,200,255,0.25)';
+      ctx.beginPath(); ctx.arc(x + f.w / 2, y + f.h / 2, Math.max(f.w, f.h) * 0.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Party traps (banana peels, spring mines) and item shots in flight.
+  partyItems(game) {
+    const ctx = this.ctx;
+    const items = game.party.items;
+    for (const t of items.traps) {
+      if (t.kind === 'peel') {
+        ctx.fillStyle = '#ffe05a'; ctx.strokeStyle = '#7a5a0a'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(t.x + 10, t.y + 8, 10, 4, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillRect(t.x + 2, t.y + 4, 4, 4); ctx.fillRect(t.x + 14, t.y + 4, 4, 4);
+      } else {
+        ctx.fillStyle = '#4a4a5a'; ctx.fillRect(t.x, t.y + 6, 20, 6);
+        ctx.fillStyle = game.time % 30 < 15 ? '#ff4a4a' : '#7a1a1a'; ctx.fillRect(t.x + 8, t.y + 2, 4, 4);
+        ctx.strokeStyle = '#c8c8d8'; ctx.beginPath();
+        for (let i = 0; i < 4; i++) { ctx.moveTo(t.x + 2 + i * 5, t.y + 6); ctx.lineTo(t.x + 4 + i * 5, t.y + 2); }
+        ctx.stroke();
+      }
+    }
+    for (const s of items.shots) {
+      const cx = s.cx; const cy = s.cy;
+      const col = (ITEMS[s.kind] || {}).color || '#ffffff';
+      this.glow(cx, cy, 14, 'rgba(255,255,255,0.25)');
+      ctx.save();
+      ctx.translate(cx, cy);
+      if (s.kind === 'boomerang') {
+        ctx.rotate(s.t * 0.5);
+        ctx.fillStyle = '#ff8a2a'; ctx.fillRect(-10, -3, 20, 6);
+        ctx.fillStyle = '#4ac84a'; ctx.fillRect(-12, -2, 4, 4);
+      } else if (s.kind === 'pie') {
+        ctx.fillStyle = '#c87a3a'; ctx.beginPath(); ctx.ellipse(0, 2, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, -1, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.strokeStyle = col; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, 6 + Math.sin(s.t / 3) * 2, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = col; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
   }
 
   // The shield around Kip: circling flames (fire), a wobbling gel sphere
@@ -652,6 +710,14 @@ export class Renderer {
     const party = game.party;
     const ctx = this.ctx;
     for (const s of party.shots) this.shot(game, s, alpha, true);
+    this.partyItems(game);
+    // The leader wears a crown.
+    const top = party.mode === 'ctf' ? null : party.standings(game)[0];
+    const leader = top && top.value > 0 ? top.id : null;
+    if (leader === party.id && !game.player.dead) {
+      const p = game.player;
+      this.crown(lerp(p.prevX, p.x, alpha) + p.w / 2, lerp(p.prevY, p.y, alpha) - 24, game.time);
+    }
     if (party.mode === 'ctf') {
       const carried = (team) => party.carry === team || [...party.rivals.values()].some((r) => r.carry === team && !r.dead);
       for (const b of party.bases) if (b && !carried(b.team)) this.flag(b.x, b.y, b.team, game.time);
@@ -666,7 +732,8 @@ export class Renderer {
       const right = r.facing > 0;
       const x = Math.round(lerp(r.prevX, r.x, alpha) + r.w / 2 - (right ? f.ax : f.w - f.ax));
       const y = Math.round(lerp(r.prevY, r.y, alpha) + r.h - f.ay + 2);
-      ctx.drawImage(right ? f.right : f.left, x, y);
+      this.drawHero(right ? f.right : f.left, x, y, f, r.shrink, r.bubble);
+      if (leader === r.id) this.crown(x + f.w / 2, y - 26, game.time);
       if (r.carry >= 0) this.flag(x + f.w / 2 + 4, y + 8, r.carry, game.time, 0.6);
       arcadeText(ctx, r.name, x + f.w / 2, y - 16, { size: 9, align: 'center', shadow: false, top: '#ffffff', bottom: r.color });
     }
@@ -674,6 +741,18 @@ export class Renderer {
       const p = game.player;
       this.flag(lerp(p.prevX, p.x, alpha) + p.w / 2 + 6, lerp(p.prevY, p.y, alpha) + 4, party.carry, game.time, 0.6);
     }
+  }
+
+  // A little gold crown centred at (x, y).
+  crown(x, y, t) {
+    const ctx = this.ctx;
+    const yy = Math.round(y + Math.sin(t / 10) * 1.5);
+    ctx.fillStyle = '#ffd54a'; ctx.strokeStyle = '#7a4a00'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x - 8, yy + 6); ctx.lineTo(x - 8, yy - 2); ctx.lineTo(x - 4, yy + 2); ctx.lineTo(x, yy - 4);
+    ctx.lineTo(x + 4, yy + 2); ctx.lineTo(x + 8, yy - 2); ctx.lineTo(x + 8, yy + 6); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff4a6a'; ctx.fillRect(Math.round(x) - 1, yy + 1, 2, 2);
   }
 
   // A team flag on its pole, its foot at (x, y).
@@ -715,6 +794,12 @@ export class Renderer {
     if (party.truce > 0) {
       arcadeText(ctx, tr('FIGHT IN {0}', clock), w / 2, 6, { size: 14, align: 'center', top: '#ffffff', bottom: '#ffb04a' });
       arcadeText(ctx, tr('NO FIGHTING YET'), w / 2, 22, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' });
+      // The last three seconds, big.
+      const left = Math.ceil(party.truce / SECOND);
+      if (left <= 3) {
+        const k = (party.truce % SECOND) / SECOND;
+        arcadeText(ctx, String(left), w / 2, 110 - k * 10, { size: Math.round(40 + k * 30), align: 'center', alpha: 0.4 + k * 0.6, top: '#ffffff', bottom: '#ff5a5a' });
+      }
     } else arcadeText(ctx, clock, w / 2, 6, { size: 14, align: 'center', top: '#ffffff', bottom: '#cfe6ff' });
     // Standings, top right under the hearts.
     party.standings(game).forEach((row, i) => {
@@ -723,6 +808,26 @@ export class Renderer {
       arcadeText(ctx, row.name, w - 102, y, { size: 9, shadow: false, top: row.me ? '#ffffff' : '#e0d8f0', bottom: row.dead ? '#8a7ab0' : row.color });
       arcadeText(ctx, String(row.value), w - 8, y, { size: 9, align: 'right', shadow: false, top: '#ffffff', bottom: '#ffd54a' });
     });
+    // The item held (FIRE uses it).
+    if (party.items.held) {
+      const it = ITEMS[party.items.held];
+      this.centred(boxSprite(), w / 2 - 70, VIEW_H - 22);
+      arcadeText(ctx, tr(it.name), w / 2 - 52, VIEW_H - 30, { size: 11, top: '#ffffff', bottom: it.color });
+      arcadeText(ctx, tr('FIRE TO USE'), w / 2 - 52, VIEW_H - 16, { size: 8, shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' });
+    }
+    // Hit by a pie: cream all over the screen, slowly sliding off.
+    if (party.items.pie > 0) {
+      const a = Math.min(1, party.items.pie / 40);
+      const slide = (210 - party.items.pie) * 0.3;
+      ctx.save();
+      ctx.globalAlpha = 0.92 * a;
+      ctx.fillStyle = '#fff6e8';
+      for (let i = 0; i < 9; i++) {
+        const cx = ((i * 97) % w) + 20; const cy = ((i * 61) % 260) + 40 + slide;
+        ctx.beginPath(); ctx.ellipse(cx, cy, 46 + (i % 3) * 14, 30 + (i % 2) * 12, i, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
     // Kill feed.
     party.feed.forEach((f, i) => {
       arcadeText(ctx, f.text, w - 8, 98 + i * 12, { size: 9, align: 'right', shadow: false, alpha: Math.min(1, (360 - f.t) / 60), top: '#ffffff', bottom: '#ffb0c0' });
@@ -738,6 +843,13 @@ export class Renderer {
       const text = res.left ? tr('GAME OVER') : res.team !== undefined ? tr('{0} TEAM WINS!', tr(TEAMS[res.team].name))
         : res.winner === party.id ? tr('YOU WIN!') : tr('{0} WINS!', party.nameOf(res.winner));
       const good = res.winner === party.id || (res.team !== undefined && res.team === party.team);
+      // Confetti for everyone.
+      for (let i = 0; i < 60; i++) {
+        const cx = (i * 53 + game.time * (1 + (i % 3))) % w;
+        const cy = ((i * 37 + game.time * (1.5 + (i % 4) * 0.5)) % (VIEW_H + 20)) - 10;
+        ctx.fillStyle = ['#ff5a5a', '#ffd54a', '#5ae08a', '#6ab8ff', '#c48aff'][i % 5];
+        ctx.fillRect(Math.round(cx), Math.round(cy), 4, 3 + (i % 3));
+      }
       arcadeText(ctx, text, w / 2, 70, { size: 30, align: 'center', top: good ? '#fff6c0' : '#ffd0d8', bottom: good ? '#ffb02e' : '#e8244a' });
       party.standings(game).forEach((row, i) => {
         const y = 118 + i * 18;
