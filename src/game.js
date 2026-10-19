@@ -2,6 +2,8 @@
 
 import { Backdrop, BACKDROP_SKY, BACKDROPS } from './backdrop.js';
 import { BOSS_CHARS } from './bosses.js';
+import { entitiesFor } from './difficulty.js';
+import { tr } from './lang.js';
 import { THEME_TILESET } from './tilesets.js';
 import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import {
@@ -14,6 +16,7 @@ import { JJ2View } from './jj2/view.js';
 import { LEVELS, levelDef } from './levels.js';
 import { PARTY_GOAL, PARTY_RESPAWN } from './party.js';
 import { Player } from './player.js';
+import { CONTINUES } from './save.js';
 import { Sky, Weather } from './sky.js';
 import { TerrainRenderer } from './terrain.js';
 import { Bullet, TNT, touches } from './weapons.js';
@@ -35,6 +38,9 @@ export class Game {
     this.unlocked = 1;
     this.party = null;      // a Party while a two-player hunt is running
     this.character = 'jazz'; // jazz | spaz | lori
+    this.difficulty = 'medium';
+    this.continues = CONTINUES;
+    this.viewW = VIEW_W;     // the view's width (half the screen in split screen)
   }
 
   // Start a two-player hunt on a level (both sides call this).
@@ -44,13 +50,38 @@ export class Game {
     this.loadLevel(index, true);
   }
 
-  newGame(startLevel = 0) {
+  // `continues`: what is left after a continue (a new game gets three).
+  newGame(startLevel = 0, continues = CONTINUES) {
     this.score = 0;
     this.gems = 0;
     this.coins = 0;
     this.lives = 3;
     this.food = 0;
+    this.continues = continues;
     this.loadLevel(startLevel, true);
+  }
+
+  // What a save slot keeps: the game as it was when this level began.
+  snapshot() {
+    return {
+      level: this.levelIndex, character: this.character, difficulty: this.difficulty, continues: this.continues,
+      stats: { ...this.startStats }, kit: this.startKit ? { ...this.startKit, ammo: [...this.startKit.ammo], powered: [...this.startKit.powered] } : null,
+    };
+  }
+
+  // Start a saved game: its level from the beginning, with what it had then.
+  loadSaved(slot) {
+    this.character = slot.character || this.character;
+    this.difficulty = slot.difficulty || 'medium';
+    this.continues = slot.continues ?? CONTINUES;
+    Object.assign(this, { score: 0, gems: 0, coins: 0, food: 0, lives: 3 }, slot.stats);
+    this.loadLevel(slot.level, true);
+    const k = slot.kit;
+    if (k) {
+      const p = this.player;
+      p.ammo = [...k.ammo]; p.powered = [...k.powered]; p.shotDelay = k.shotDelay; p.weapon = k.weapon;
+      this.startKit = { ...k, ammo: [...k.ammo], powered: [...k.powered] };
+    }
   }
 
   loadLevel(index, freshPlayer = false) {
@@ -59,7 +90,8 @@ export class Game {
     this.startStats = { score: this.score, gems: this.gems, coins: this.coins, food: this.food || 0, lives: this.lives };
     const kp = !freshPlayer && this.player;
     this.startKit = kp ? { ammo: [...kp.ammo], powered: [...kp.powered], shotDelay: kp.shotDelay, weapon: kp.weapon } : null;
-    this.level = levelDef(index)(this.party ? { party: true } : {});
+    const difficulty = this.party ? 'medium' : this.difficulty;
+    this.level = levelDef(index)(this.party ? { party: true } : { difficulty });
     const theme = this.level.meta.theme;
     if (this.level.jj2) {
       // An original JJ2 level draws its own layers.
@@ -84,7 +116,7 @@ export class Game {
     });
     let start = { x: 64, y: 64 };
     const totals = { gems: 0, enemies: 0, secrets: 0, coins: 0, food: 0 };
-    for (const e of this.level.entities) {
+    for (const e of entitiesFor(this.level, difficulty)) {
       const px = e.tx * TILE;
       const py = e.ty * TILE;
       const enemy = makeEnemy(e.ch, px, py) || (BOSS_CHARS[e.ch] && new BOSS_CHARS[e.ch](px, py));
@@ -142,13 +174,13 @@ export class Game {
     this.player.h = playerH;
     this.player.character = this.character || 'jazz';
     this.player.health = Math.max(this.player.health, 3);
-    this.cam = { x: this.player.cx - VIEW_W / 2, y: this.player.cy - VIEW_H / 2 };
+    this.cam = { x: this.player.cx - this.viewW / 2, y: this.player.cy - VIEW_H / 2 };
     this.clampCamera();
     this.prevCam = { ...this.cam };
     if (this.terrain) this.terrain.warm(this.player.cx, this.player.cy);
     this.state = 'play';
     if (this.party) this.party.begin(this);
-    this.banner(this.party ? `FIRST TO ${PARTY_GOAL} GEMS + EXIT WINS!` : this.level.meta.name.toUpperCase(), 160);
+    this.banner(this.party ? tr('FIRST TO {0} GEMS + EXIT WINS!', PARTY_GOAL) : this.level.meta.name.toUpperCase(), 160);
     this.voice('jazzHey');
     this.audio.startMusic(this.level.meta.music, { restart: true });
   }
@@ -178,10 +210,11 @@ export class Game {
     // An original level that ends with its boss: beating it ends the level
     // (the original's ExitType::Boss), however many others are about.
     // With several bosses, the level ends with the last of them.
-    if (this.level.bossEnds && !this.enemies.some((e) => e.boss && !e.dead && e !== boss)) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); this.bossEnd = 160; return; }
-    if (this.level.bossEnds) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); return; }
-    if (!boss.guard || this.bossGuarding()) { this.banner(`${boss.name.replace('!', '')} DEFEATED!`, 140); return; }
-    this.banner(`${boss.name.replace('!', '')} DEFEATED! EXIT OPEN!`, 140);
+    const name = boss.name.replace('!', '');
+    if (this.level.bossEnds && !this.enemies.some((e) => e.boss && !e.dead && e !== boss)) { this.banner(tr('{0} DEFEATED!', name), 140); this.bossEnd = 160; return; }
+    if (this.level.bossEnds) { this.banner(tr('{0} DEFEATED!', name), 140); return; }
+    if (!boss.guard || this.bossGuarding()) { this.banner(tr('{0} DEFEATED!', name), 140); return; }
+    this.banner(tr('{0} DEFEATED! EXIT OPEN!', name), 140);
   }
 
   // ---------------------------------------------------------------- effects and helpers
@@ -190,7 +223,7 @@ export class Game {
   // within half a screen beyond its edge, silent further away.
   sound(name, x, y) {
     const cam = this.cam || { x: 0, y: 0 };
-    const dx = Math.max(0, Math.abs(x - (cam.x + VIEW_W / 2)) - VIEW_W / 2);
+    const dx = Math.max(0, Math.abs(x - (cam.x + this.viewW / 2)) - this.viewW / 2);
     const dy = Math.max(0, Math.abs(y - (cam.y + VIEW_H / 2)) - VIEW_H / 2);
     const d = Math.hypot(dx, dy);
     if (d < 320) this.audio.play(name, 1 - d / 320);
@@ -207,7 +240,7 @@ export class Game {
     this.combo = (this.comboTimer > 0 ? this.combo : 0) + 1;
     this.comboTimer = 110;
     const mult = Math.min(4, 1 + Math.floor(this.combo / 4));
-    if (mult > (this.comboMult || 1)) { this.banner(`COMBO x${mult}!`, 50); this.audio.play('rank'); }
+    if (mult > (this.comboMult || 1)) { this.banner(tr('COMBO x{0}!', mult), 50); this.audio.play('rank'); }
     this.comboMult = mult;
     return mult;
   }
@@ -256,7 +289,7 @@ export class Game {
     this.audio.play('secret');
     this.flash('#ffffff', 8);
     this.effect('sparkle', p.cx, p.cy);
-    this.cam = { x: p.cx - VIEW_W / 2, y: p.cy - VIEW_H / 2 };
+    this.cam = { x: p.cx - this.viewW / 2, y: p.cy - VIEW_H / 2 };
     this.clampCamera();
     this.prevCam = { ...this.cam };
     if (this.terrain) this.terrain.warm(p.cx, p.cy);
@@ -329,7 +362,8 @@ export class Game {
   }
 
   // Jazz's voice lines (new/Sounds) play only when Jazz is the hero.
-  voice(name) { if (this.player && this.player.character === 'jazz') this.audio.play(name); }
+  // In split screen only the first player's game speaks.
+  voice(name) { if (this.player && this.player.character === 'jazz' && !this.quiet) this.audio.play(name); }
 
   startRush() {
     this.player.rush = PHYS.rushTicks;
@@ -633,7 +667,7 @@ export class Game {
     this.lead += Math.max(-CAMERA.leadStep, Math.min(CAMERA.leadStep, target - this.lead));
     const look = this.lead;
     const lookUp = p.anim === 'look' ? -70 : p.anim === 'crouch' ? 60 : p.stomping ? 60 : 0;
-    const tx = p.cx + look - VIEW_W / 2;
+    const tx = p.cx + look - this.viewW / 2;
     // Look down a shaft while falling fast.
     const lookFall = p.vy > 4 ? Math.min(90, (p.vy - 4) * 14) : 0;
     const ty = p.cy + CAMERA.verticalBias + lookUp + lookFall - VIEW_H / 2;
@@ -643,7 +677,7 @@ export class Game {
   }
 
   clampCamera() {
-    this.cam.x = Math.max(0, Math.min(this.level.pixelW - VIEW_W, this.cam.x));
+    this.cam.x = Math.max(0, Math.min(this.level.pixelW - this.viewW, this.cam.x));
     this.cam.y = Math.max(0, Math.min(this.level.pixelH - VIEW_H, this.cam.y));
   }
 

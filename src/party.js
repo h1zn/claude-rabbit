@@ -12,6 +12,7 @@
 
 import { PLAYER, TILE } from './config.js';
 import { overlap, Pickup } from './entities.js';
+import { tr } from './lang.js';
 import { Bullet, TNT } from './weapons.js';
 
 export const PARTY_GOAL = 100;
@@ -62,6 +63,32 @@ export class Net {
   }
 }
 
+// Split screen: two games on one computer, joined by a pair of these in
+// place of the relay. Each message is copied, as if it had been sent.
+class LocalNet {
+  constructor() {
+    this.inbox = [];
+    this.peer = null;
+    this.status = 'open';
+  }
+
+  send(msg) { if (this.peer && this.peer.status === 'open') this.peer.inbox.push(JSON.parse(JSON.stringify(msg))); }
+
+  take() {
+    const all = this.inbox;
+    this.inbox = [];
+    return all;
+  }
+
+  close() { this.status = 'closed'; }
+}
+
+export function localPair() {
+  const a = new LocalNet(); const b = new LocalNet();
+  a.peer = b; b.peer = a;
+  return [a, b];
+}
+
 // The rival as last reported, drawn between updates.
 class Rival {
   constructor() {
@@ -92,6 +119,7 @@ export class Party {
     this.result = null;         // 'win' | 'lose' | 'left'
     this.dropSeq = 0;
     this.stateTimer = 0;
+    this.local = false;         // split screen: both players on this computer
   }
 
   get host() { return this.role === 'host'; }
@@ -164,7 +192,7 @@ export class Party {
       p.vy = -4;
       game.audio.play('hurt');
       game.flash('#ff2a4a', 6);
-      game.banner(`-${lost} GEMS`, 50);
+      game.banner(tr('-{0} GEMS', lost), 50);
     } else {
       p.dead = true;
       p.vy = -8; p.vx = 0;
@@ -229,7 +257,8 @@ export class Party {
         if (m.h && m.w === 1) b.setWhammo(String(m.h));
         if (m.l) b.life = m.l;
         this.shots.push(b);
-        game.audio.play(b.weapon === 6 ? 'flame' : 'shoot');
+        // On one computer the shooter's own game already played it.
+        if (!this.local) game.audio.play(b.weapon === 6 ? 'flame' : 'shoot');
         break;
       }
       case 'drop': this.addDrops(game, m.drops, m.by); break;
@@ -248,7 +277,7 @@ export class Party {
         for (const s of game.shots) if (near(s) && s.placed) s.burst(game);
         break;
       }
-      case 'win': if (!this.result) { this.result = 'lose'; game.audio.play('gameover'); } break;
+      case 'win': if (!this.result) { this.result = 'lose'; if (!this.local) game.audio.play('gameover'); } break;
       case 'left': this.result = this.result || 'left'; break;
       default: break;
     }

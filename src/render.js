@@ -3,6 +3,7 @@
 import { arcadeText } from './art.js';
 import { PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import { frameAt } from './sheets.js';
+import { tr } from './lang.js';
 import { AREA, BLOCKS } from './level.js';
 import { THEME_TILESET } from './tilesets.js';
 import { TNT, WEAPONS } from './weapons.js';
@@ -40,6 +41,7 @@ export class Renderer {
     this.ctx = ctx;
     this.art = art;
     this.iced = iced;
+    this.w = VIEW_W;          // the view's width: half the screen in split screen
     ctx.imageSmoothingEnabled = false;
   }
 
@@ -197,15 +199,15 @@ export class Renderer {
 
   // Soft darkening toward the screen edges.
   vignette() {
-    if (!this.vig) {
+    if (!this.vig || this.vig.width !== this.w) {
       this.vig = document.createElement('canvas');
-      this.vig.width = VIEW_W; this.vig.height = VIEW_H;
+      this.vig.width = this.w; this.vig.height = VIEW_H;
       const v = this.vig.getContext('2d');
-      const g = v.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.45, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.62);
+      const g = v.createRadialGradient(this.w / 2, VIEW_H / 2, VIEW_H * 0.45, this.w / 2, VIEW_H / 2, this.w * 0.62);
       g.addColorStop(0, 'rgba(0,0,0,0)');
       g.addColorStop(1, 'rgba(0,0,0,0.38)');
       v.fillStyle = g;
-      v.fillRect(0, 0, VIEW_W, VIEW_H);
+      v.fillRect(0, 0, this.w, VIEW_H);
     }
     this.ctx.drawImage(this.vig, 0, 0);
   }
@@ -669,27 +671,31 @@ export class Renderer {
     const bar = (x, label, gems, color) => {
       ctx.fillStyle = '#1a0b1e'; ctx.fillRect(x - 2, 10, 124, 12);
       ctx.fillStyle = color; ctx.fillRect(x, 12, Math.round(Math.min(1, gems / 100) * 120), 8);
-      arcadeText(ctx, `${label} ${gems}`, x + 60, 24, { size: 11, align: 'center', top: '#ffffff', bottom: color });
+      arcadeText(ctx, `${tr(label)} ${gems}`, x + 60, 24, { size: 11, align: 'center', top: '#ffffff', bottom: color });
     };
-    bar(VIEW_W / 2 - 132, 'YOU', game.gems, '#5ae08a');
-    bar(VIEW_W / 2 + 12, 'RIVAL', party.rival.gems, '#ff5a5a');
-    arcadeText(ctx, '100 GEMS + EXIT', VIEW_W / 2, 40, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' });
+    // Split screen: each half names its player.
+    const me = party.local ? (party.host ? 'P1' : 'P2') : 'YOU';
+    const them = party.local ? (party.host ? 'P2' : 'P1') : 'RIVAL';
+    bar(this.w / 2 - 132, me, game.gems, '#5ae08a');
+    bar(this.w / 2 + 12, them, party.rival.gems, '#ff5a5a');
+    arcadeText(ctx, tr('100 GEMS + EXIT'), this.w / 2, 40, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' });
     if (party.respawn > 0) {
       this.dim(0.45);
-      arcadeText(ctx, 'KNOCKED OUT!', VIEW_W / 2, 130, { size: 26, align: 'center', top: '#ffd0d8', bottom: '#e8244a' });
-      arcadeText(ctx, `Back in ${Math.ceil(party.respawn / 70)}`, VIEW_W / 2, 170, { size: 16, align: 'center' });
+      arcadeText(ctx, tr('KNOCKED OUT!'), this.w / 2, 130, { size: 26, align: 'center', top: '#ffd0d8', bottom: '#e8244a' });
+      arcadeText(ctx, tr('Back in {0}', Math.ceil(party.respawn / 70)), this.w / 2, 170, { size: 16, align: 'center' });
     }
     if (party.result) {
       this.dim(0.6);
-      const text = { win: 'YOU WIN!', lose: 'RIVAL WINS!', left: 'RIVAL LEFT' }[party.result];
-      arcadeText(ctx, text, VIEW_W / 2, 120, { size: 36, align: 'center', top: party.result === 'win' ? '#fff6c0' : '#ffd0d8', bottom: party.result === 'win' ? '#ffb02e' : '#e8244a' });
-      arcadeText(ctx, 'Press ENTER for the menu', VIEW_W / 2, 190, { size: 13, align: 'center', alpha: Math.floor(game.time / 25) % 2 ? 1 : 0.4 });
+      const text = party.local ? (party.result === 'left' ? tr('GAME OVER') : tr('{0} WINS!', party.result === 'win' ? me : them))
+        : tr({ win: 'YOU WIN!', lose: 'RIVAL WINS!', left: 'RIVAL LEFT' }[party.result]);
+      arcadeText(ctx, text, this.w / 2, 120, { size: 36, align: 'center', top: party.result === 'win' ? '#fff6c0' : '#ffd0d8', bottom: party.result === 'win' ? '#ffb02e' : '#e8244a' });
+      arcadeText(ctx, tr('Press ENTER for the menu'), this.w / 2, 190, { size: 13, align: 'center', alpha: Math.floor(game.time / 25) % 2 ? 1 : 0.4 });
     }
   }
 
   dim(alpha) {
     this.ctx.fillStyle = `rgba(8,4,18,${alpha})`;
-    this.ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    this.ctx.fillRect(0, 0, this.w, VIEW_H);
   }
 
   particles(game) {
@@ -762,13 +768,15 @@ export class Renderer {
     // Score, top-left.
     if (!game.party) arcadeText(ctx, String(game.score).padStart(8, '0'), 8, 6, { size: 18, top: '#ffffff', bottom: '#ffc04a' });
     // Hearts, top-right.
-    if (!game.party) for (let i = 0; i < PLAYER.maxHealth; i++) this.heart(VIEW_W - 26 - (PLAYER.maxHealth - 1 - i) * 20, 8, i < p.health);
-    // Gems and coins under the score.
+    if (!game.party) for (let i = 0; i < PLAYER.maxHealth; i++) this.heart(this.w - 26 - (PLAYER.maxHealth - 1 - i) * 20, 8, i < p.health);
+    // Gems and coins under the score (in party games the gem bars show them).
     const items = this.art.items.anims;
-    this.centred(items.gemRed.frames[0], 18, 40);
-    arcadeText(ctx, `${game.gems}`, 32, 32, { size: 12, top: '#ffffff', bottom: '#ffb0c0' });
-    this.centred(items.coinSilver.frames[0], 84, 40);
-    arcadeText(ctx, `${game.coins}`, 96, 32, { size: 12, top: '#ffffff', bottom: '#ffe08a' });
+    if (!game.party) {
+      this.centred(items.gemRed.frames[0], 18, 40);
+      arcadeText(ctx, `${game.gems}`, 32, 32, { size: 12, top: '#ffffff', bottom: '#ffb0c0' });
+      this.centred(items.coinSilver.frames[0], 84, 40);
+      arcadeText(ctx, `${game.coins}`, 96, 32, { size: 12, top: '#ffffff', bottom: '#ffe08a' });
+    }
     if (p.fastFeet > 0) {
       this.centred(this.art.beta.anims.speedShoes.frames[0], 210, 40);
       arcadeText(ctx, `${Math.ceil(p.fastFeet / 70)}`, 226, 32, { size: 12, top: '#ffffff', bottom: '#7ae8ff' });
@@ -781,17 +789,17 @@ export class Renderer {
     if (!game.party && (game.food > 0 || p.rush > 0)) {
       const w = 90;
       const fill = p.rush > 0 ? p.rush / PHYS.rushTicks : game.food / PHYS.foodForRush;
-      ctx.fillStyle = '#1a0b1e'; ctx.fillRect(VIEW_W / 2 - w / 2 - 2, 8, w + 4, 10);
-      const g = ctx.createLinearGradient(VIEW_W / 2 - w / 2, 0, VIEW_W / 2 + w / 2, 0);
+      ctx.fillStyle = '#1a0b1e'; ctx.fillRect(this.w / 2 - w / 2 - 2, 8, w + 4, 10);
+      const g = ctx.createLinearGradient(this.w / 2 - w / 2, 0, this.w / 2 + w / 2, 0);
       if (p.rush > 0) { for (let i = 0; i <= 6; i++) g.addColorStop(i / 6, `hsl(${(i * 60 + game.time * 6) % 360},100%,60%)`); }
       else { g.addColorStop(0, '#ff7ac0'); g.addColorStop(1, '#ffd54a'); }
-      ctx.fillStyle = g; ctx.fillRect(VIEW_W / 2 - w / 2, 10, Math.round(w * fill), 6);
-      this.centred(this.art.items.anims.food.frames[4], VIEW_W / 2 - w / 2 - 14, 13);
-      if (p.rush === 0) arcadeText(ctx, `${game.food}`, VIEW_W / 2 + w / 2 + 6, 7, { size: 10, top: '#ffffff', bottom: '#ffb0d8' });
+      ctx.fillStyle = g; ctx.fillRect(this.w / 2 - w / 2, 10, Math.round(w * fill), 6);
+      this.centred(this.art.items.anims.food.frames[4], this.w / 2 - w / 2 - 14, 13);
+      if (p.rush === 0) arcadeText(ctx, `${game.food}`, this.w / 2 + w / 2 + 6, 7, { size: 10, top: '#ffffff', bottom: '#ffb0d8' });
     }
     // Measured: a sugar rush shows its seconds left, blinking in the last 140 ticks.
     if (p.rush > 0 && (p.rush > 140 || game.time % 8 < 5)) {
-      arcadeText(ctx, `${Math.ceil(p.rush / 70)}`, VIEW_W / 2, 24, { size: 22, align: 'center', top: '#ffffff', bottom: `hsl(${(game.time * 6) % 360},100%,65%)` });
+      arcadeText(ctx, `${Math.ceil(p.rush / 70)}`, this.w / 2, 24, { size: 22, align: 'center', top: '#ffffff', bottom: `hsl(${(game.time * 6) % 360},100%,65%)` });
     }
     // Lives, bottom-left.
     const face = (this.art.heroes[p.character] || this.art.hero).anims.icon.frames[0].right;
@@ -800,23 +808,23 @@ export class Renderer {
     // Weapon and ammo, bottom-right (the name shows for a moment after a switch).
     const wpn = WEAPONS[p.weapon];
     const iconName = p.weapon === 1 && p.character === 'spaz' ? (p.powered[1] ? 'ammoBlasterSpazP' : 'ammoBlasterSpaz') : p.powered[p.weapon] ? wpn.iconP : wpn.icon;
-    this.centred(frameAt(this.art.items.anims[iconName], game.time, 6), VIEW_W - 86, VIEW_H - 22);
+    this.centred(frameAt(this.art.items.anims[iconName], game.time, 6), this.w - 86, VIEW_H - 22);
     if (p.shotDelay < PLAYER.shotDelay) {
       // One gun icon per Fastfire collected.
       const n = Math.round((PLAYER.shotDelay - p.shotDelay) / PLAYER.fastfireStep);
-      for (let i = 0; i < Math.min(n, 10); i++) ctx.drawImage(this.art.items.anims.fastfire.frames[0].right, VIEW_W - 100 - i * 9, VIEW_H - 50, 12, 12);
+      for (let i = 0; i < Math.min(n, 10); i++) ctx.drawImage(this.art.items.anims.fastfire.frames[0].right, this.w - 100 - i * 9, VIEW_H - 50, 12, 12);
     }
     const ammo = p.weapon === 1 ? 'x∞' : `x${p.ammo[p.weapon]}`;
-    arcadeText(ctx, ammo, VIEW_W - 70, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: p.powered[p.weapon] ? '#ffd54a' : '#7ae8ff' });
+    arcadeText(ctx, ammo, this.w - 70, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: p.powered[p.weapon] ? '#ffd54a' : '#7ae8ff' });
     if (p.weaponShown > 0) {
-      arcadeText(ctx, wpn.name, VIEW_W - 8, VIEW_H - 66, { size: 12, align: 'right', alpha: Math.min(1, p.weaponShown / 20), top: '#ffffff', bottom: '#ffd54a' });
+      arcadeText(ctx, wpn.name, this.w - 8, VIEW_H - 66, { size: 12, align: 'right', alpha: Math.min(1, p.weaponShown / 20), top: '#ffffff', bottom: '#ffd54a' });
     }
     // Combo meter while a combo is running.
     if (game.comboMult > 1 && game.comboTimer > 0) {
       const a = Math.min(1, game.comboTimer / 30);
-      arcadeText(ctx, `COMBO x${game.comboMult}`, VIEW_W - 8, 32, { size: 14, align: 'right', alpha: a, top: '#ffffff', bottom: '#ff5ad8' });
+      arcadeText(ctx, tr('COMBO x{0}', game.comboMult), this.w - 8, 32, { size: 14, align: 'right', alpha: a, top: '#ffffff', bottom: '#ff5ad8' });
       ctx.fillStyle = `rgba(255,90,216,${a})`;
-      ctx.fillRect(VIEW_W - 8 - Math.round(game.comboTimer * 0.7), 50, Math.round(game.comboTimer * 0.7), 3);
+      ctx.fillRect(this.w - 8 - Math.round(game.comboTimer * 0.7), 50, Math.round(game.comboTimer * 0.7), 3);
     }
     // Hint sign text, in a box near the bottom.
     if (game.hintText && game.state === 'play') {
@@ -825,26 +833,26 @@ export class Renderer {
       const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 24;
       const h = lines.length * 16 + 12;
       ctx.fillStyle = 'rgba(10,4,26,0.8)';
-      ctx.fillRect(VIEW_W / 2 - w / 2, VIEW_H - 54 - h, w, h);
+      ctx.fillRect(this.w / 2 - w / 2, VIEW_H - 54 - h, w, h);
       ctx.strokeStyle = '#ffd54a';
-      ctx.strokeRect(VIEW_W / 2 - w / 2 + 0.5, VIEW_H - 54 - h + 0.5, w - 1, h - 1);
-      lines.forEach((l, i) => arcadeText(ctx, l, VIEW_W / 2, VIEW_H - 48 - h + i * 16, { size: 12, align: 'center', shadow: false, top: '#ffffff', bottom: '#cfe6ff' }));
+      ctx.strokeRect(this.w / 2 - w / 2 + 0.5, VIEW_H - 54 - h + 0.5, w - 1, h - 1);
+      lines.forEach((l, i) => arcadeText(ctx, l, this.w / 2, VIEW_H - 48 - h + i * 16, { size: 12, align: 'center', shadow: false, top: '#ffffff', bottom: '#cfe6ff' }));
     }
     if (game.party) this.partyHud(game);
     // Boss health, top centre, while a boss fight is on.
     const boss = game.activeBoss;
     if (boss && !boss.dead && boss.maxHp > 1) {
-      const w = 200; const x = VIEW_W / 2 - w / 2; const y = 26;
+      const w = 200; const x = this.w / 2 - w / 2; const y = 26;
       ctx.fillStyle = 'rgba(10,4,26,0.8)'; ctx.fillRect(x - 3, y - 3, w + 6, 12);
       const g = ctx.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, '#ff3a5a'); g.addColorStop(1, '#ffb02e');
       ctx.fillStyle = g; ctx.fillRect(x, y, Math.round((w * Math.max(0, boss.hp)) / boss.maxHp), 6);
-      arcadeText(ctx, boss.name.replace('!', ''), VIEW_W / 2, y + 10, { size: 10, align: 'center', top: '#ffffff', bottom: '#ffb0c0' });
+      arcadeText(ctx, boss.name.replace('!', ''), this.w / 2, y + 10, { size: 10, align: 'center', top: '#ffffff', bottom: '#ffb0c0' });
     }
     // Level banner.
     if (game.bannerTime > 0 && game.state === 'play') {
       const a = Math.min(1, game.bannerTime / 30);
       const s = 1 + Math.max(0, (game.bannerTime - 140) / 20);
-      arcadeText(ctx, game.bannerText, VIEW_W / 2, 70, { size: Math.round(24 * s), align: 'center', alpha: a });
+      arcadeText(ctx, tr(game.bannerText), this.w / 2, 70, { size: Math.round(24 * s), align: 'center', alpha: a });
     }
   }
 }

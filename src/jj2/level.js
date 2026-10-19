@@ -130,10 +130,12 @@ export class JJ2Level extends Level {
 
   // ---------------------------------------------------------------- conversion
 
-  convert({ party = false }) {
+  convert({ party = false, difficulty = 'medium' }) {
     const { file } = this;
     const w = this.w; const h = this.h;
-    const ok = (d) => (party ? d === 0 || d === 3 : d === 0);
+    // An event's difficulty: 0 every game, 1 Easy only, 2 Hard only,
+    // 3 party games only (party games play at Medium).
+    const ok = (d) => d === 0 || (party ? d === 3 : (d === 1 && difficulty === 'easy') || (d === 2 && difficulty === 'hard'));
     const starts = {};
     let exits = 0;
     const bosses = [];

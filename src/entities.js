@@ -2,6 +2,7 @@
 // hints), shots, sprite effects and particles.
 
 import { ENEMY, PHYS, PLAYER, TILE } from './config.js';
+import { tr } from './lang.js';
 import { hash2 } from './paint.js';
 import { frameAt } from './sheets.js';
 import { CRATE_WEAPONS, WEAPONS } from './weapons.js';
@@ -625,7 +626,7 @@ export class Pickup {
       p.shieldType = this.shield || 'fire';
       game.addScore(500, cx, this.y);
       game.audio.play('rush');
-      game.banner(`${s.name}!`, 80);
+      game.banner(`${tr(s.name)}!`, 80);
       game.explode(cx, cy, s.color);
     } else if (this.kind === 'morph') {
       // Manual: a Quick Change Monitor turns Jazz into Spaz (and here on to
@@ -636,7 +637,7 @@ export class Pickup {
       p.doubleJumped = false; p.hovering = false; p.special = 0;
       game.addScore(500, cx, this.y);
       game.audio.play('rank');
-      game.banner(`QUICK CHANGE: ${next.toUpperCase()}!`, 90);
+      game.banner(tr('QUICK CHANGE: {0}!', next.toUpperCase()), 90);
       game.effect('poof', p.cx, p.cy);
       game.ring(p.cx, p.cy, '#ffffff');
     } else if (this.kind === 'crate' && this.trigger) {
@@ -688,7 +689,7 @@ export class Pickup {
       p.selectWeapon(this.weapon);
       game.addScore(1000, cx, this.y);
       game.audio.play('rush');
-      game.banner(`${WEAPONS[this.weapon].name} POWER-UP!`, 80);
+      game.banner(tr('{0} POWER-UP!', WEAPONS[this.weapon].name), 80);
       game.explode(cx, cy, '#ffd54a');
     }
   }
