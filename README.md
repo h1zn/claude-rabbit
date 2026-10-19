@@ -303,9 +303,11 @@ tile sets, palettes and extra layers; collision from the tile masks, pixel
 for pixel; and the events turned into this game's things: gems, coins, food,
 carrots, springs, poles, checkpoints, warps and coin warps, text signs,
 exits, destructible/stomp/speed/collapsing scenery and enemies (each JJ2
-enemy moves like the closest one we have; fencers, fat chicks, fish, lab
-rats, Doggy Dogg, skeletons, ravens, bees, crabs and the Mad Hatter keep
-their own JJ2 art, cut from the enemies sheet in `Levels/`). Vines, hooks, tubes, water
+enemy moves like the closest one we have, drawn as itself: fencers, fat
+chicks, fish, lab rats, Doggy Dogg, skeletons, ravens, bees, crabs and the
+Mad Hatter from the enemies sheet in `Levels/`; sparks, suckers, witches,
+copter lizards, Helmut, rapiers, dragons, tough turtles, tube turtles and
+the smoking caterpillar from `Anims.j2a`). Vines, hooks, tubes, water
 (swimming), wind, belts, float-up columns, bridges and light zones work as in
 the original. Tracker music (.xm/.mod/.it/.s3m) plays through libopenmpt
 (`vendor/chiptune3`), and so does JJ2's own `.j2b` music; .ogg/.mp3/.wav play
@@ -320,11 +322,17 @@ faster) until a hit or water knocks you off; a weapon block
 whose gun the level never hands out (the original let you bring ammo from
 earlier levels) breaks with any shot, so no level is left impassable. The
 Queen, Schwartzenguard (Tuf Boss), Bilsy, the Robot and Uterus fight as in the
-original, and so does Devan Shell (from `Levels/Devan Shell.png`): he runs,
-leaps and fires along the floor, and at half health flies into a rage with
-triple shots and bombs. A level that ends with its boss ends when you beat
-it. Not supported yet: Bubba, Bolly and Tweedle (they stay ordinary
-enemies), the frog/bird morphs, and JJ2+ scripts.
+original, and so do Devan Shell (he runs, leaps, fires along the floor and
+lobs bombs, then at half health turns into the flying demon spitting
+fireballs), Bubba (hops, spits arcing fireballs, spins into a tornado),
+Bolly (a flying tank firing homing rockets) and the Rocket Turtle (dives
+and swoops past). A level that ends with its boss ends when you beat it.
+Not supported yet: Tweedle, the frog/bird morphs, and JJ2+ scripts.
+
+**Sound**: JJ2's own samples, cut from `Anims.j2a` by `tools/j2a.py`: every
+weapon, jump, landing, pickup, spring, crate, splat, warp and splash, the
+bosses, the menus, and Spaz's and Lori's voices; the copter ears and the
+airboard hum loop.
 
 `node tools/check_levels.mjs` checks every level: it searches the spots Kip
 can reach (jumps, super jumps, springs, poles, warps) and lists anything left
@@ -342,7 +350,8 @@ src/input.js            keyboard and gamepads sampled once per tick (held / pres
 src/player.js           the hero's movement and abilities
 src/entities.js         enemies, pickups, springs, poles, warps, hints, shots, effects
 src/weapons.js          the nine weapons: shots, aiming, explosions, TNT
-src/bosses.js           Queen, Schwartzenguard, Bilsy, Robot, Uterus, Devan Shell
+src/bosses.js           Queen, Schwartzenguard, Bilsy, Robot, Uterus, Devan Shell, Bubba,
+                        Bolly, Rocket Turtle
 src/level.js            tile map, collision and the level builder
 src/levels.js           the level list; designs in src/levels/ (kit.js: helpers, room maze)
 src/party.js            party mode: relay connection, players, sync, modes and rules
@@ -359,6 +368,8 @@ src/screens.js          splash intro, menus, level select, lobby, tally
 serve.py                web server + party relay (WebSocket /ws, rooms of 5, room list)
 tools/check_levels.mjs  reachability check for all levels
 tools/build_sprites.py  cuts sprite sheets in new/ into assets/*.png + .json
+tools/j2a.py            reads JJ2's Anims.j2a: named samples -> assets/sfx/jj2/, animations
+                        -> sprite sheets (assets/jj2_enemies from tools/jj2_enemies.json)
 tools/build_blocks.py   packs the special block tiles into assets/blocks.png
 tools/build_font.py     cuts the JJ2 menu fonts into assets/font_*.png
 tools/slice.py, boxes.py, tilegrid.py   helpers for finding frames and tiles in sheets

@@ -10,6 +10,12 @@ palette in JJ2Anims.Palettes.h); tools/j2a_names.json holds the names for the
     python j2a.py names AnimSetMapping.cpp OUT    (re)build j2a_names.json
     python j2a.py sfx Anims.j2a                   the samples src/sfxmap.js names
                                                   -> assets/sfx/jj2/<Category>_<name>.wav
+    python j2a.py sheet Anims.j2a SPEC.json OUT   animations -> OUT.png + OUT.json, the
+                                                  atlas format of build_sprites.py
+SPEC: {"anims": {name: {"j2a": "Category/name", "speed": ticks per frame (default:
+the animation's own fps at 70 ticks a second), "loop": true, "pick": [frame, ...]}}}
+Each frame's anchor is its feet: the hotspot's x, and the lowest row any frame of
+the animation reaches below the hotspot, so the frames line up as in the game.
 """
 import json
 import os
@@ -206,6 +212,48 @@ def main():
             open(os.path.join(out, n.replace('/', '_') + '.wav'), 'wb').write(data)
             total += len(data)
         print(len(wanted), 'samples,', total // 1024, 'KB ->', os.path.normpath(out))
+    elif cmd == 'sheet':
+        from PIL import Image
+        j = read_j2a(sys.argv[2])
+        spec = json.load(open(sys.argv[3]))
+        out = sys.argv[4]
+        names = json.load(open(os.path.join(HERE, 'j2a_names.json')))
+        by_name = {'/'.join(v[:2]): k for k, v in names['anims'].items()}
+        pal = sprite_palette()
+        lut = bytes(c for rgba in pal for c in rgba[:3])
+        placed, meta, anims = [], [], {}
+        x = y = rowh = 0
+        maxw = 1024
+        for name, a in spec['anims'].items():
+            s_, i_ = map(int, by_name[a['j2a']].split(':'))
+            an = j['anims'][(s_, i_)]
+            frames = an['frames']
+            if 'pick' in a:
+                frames = [frames[k] for k in a['pick'] if k < len(frames)]
+            feet = max(f['h'] + f['hy'] for f in frames)
+            ids = []
+            for f in frames:
+                w, h = f['w'], f['h']
+                if x + w + 1 > maxw:
+                    x, y, rowh = 0, y + rowh + 1, 0
+                img = Image.frombytes('P', (w, h), f['px'])
+                img.putpalette(lut)
+                rgba = img.convert('RGBA')
+                alpha = Image.frombytes('L', (w, h), bytes(0 if v == 0 else 255 for v in f['px']))
+                rgba.putalpha(alpha)
+                placed.append((rgba, x, y))
+                ids.append(len(meta))
+                meta.append({'x': x, 'y': y, 'w': w, 'h': h, 'ax': -f['hx'], 'ay': -f['hy'] + feet})
+                x += w + 1
+                rowh = max(rowh, h)
+            speed = a.get('speed') or max(1, round(70 / max(1, an['fps'])))
+            anims[name] = {'frames': ids, 'speed': speed, 'loop': a.get('loop', True)}
+        atlas = Image.new('RGBA', (maxw, y + rowh), (0, 0, 0, 0))
+        for img, ax_, ay_ in placed:
+            atlas.paste(img, (ax_, ay_))
+        atlas.save(out + '.png', optimize=True)
+        json.dump({'image': os.path.basename(out) + '.png', 'frames': meta, 'anims': anims}, open(out + '.json', 'w'))
+        print(len(meta), 'frames', atlas.size, '->', out)
     elif cmd == 'list':
         j = read_j2a(sys.argv[2])
         names = json.load(open(os.path.join(HERE, 'j2a_names.json')))

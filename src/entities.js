@@ -473,7 +473,51 @@ export class EnemyShot {
   }
 }
 
-const ENEMIES = { w: Turtle, k: Lizard, n: Demon, h: Frog, f: Bat, d: Dragonfly, J: Monkey, G: Bomber };
+// The caterpillar (JJ2 event 110): sits smoking its hookah, and its smoke
+// rings leave whoever they touch dizzy. Four hits.
+export class Caterpillar extends Enemy {
+  constructor(x, y) {
+    super('caterpillar', x, y - 70 + TILE, 44, 70, 4, 500);
+    this.color = '#ffd54a';
+    this.puff = 120 + Math.floor(Math.random() * 60);
+    this.rings = [];
+  }
+
+  update(game) {
+    this.begin();
+    this.vy = Math.min(this.vy + ENEMY.gravity, ENEMY.maxFall);
+    const hit = game.level.move(this, 0, this.vy, {});
+    if (hit.bottom) this.vy = 0;
+    const p = game.player;
+    this.facing = p.cx < this.cx ? -1 : 1;
+    if (--this.puff <= 0) this.puff = 150;
+    // Exhaling for the first 40 ticks of each cycle: a ring every 10.
+    if (this.puff > 110 && this.puff % 10 === 0) this.rings.push({ x: this.cx + this.facing * 24, y: this.y + 18, vx: this.facing * 1.4, t: 0 });
+    for (const r of this.rings) {
+      r.t++; r.x += r.vx; r.y -= 0.15;
+      if (!p.dead && Math.abs(r.x - p.cx) < 14 && Math.abs(r.y - p.cy) < 20) { p.dizzy = Math.max(p.dizzy, 150); r.t = 999; }
+    }
+    this.rings = this.rings.filter((r) => r.t < 120);
+  }
+
+  sprite(art) {
+    const a = art.jj2e.anims;
+    return this.puff > 110 ? frameAt(a.caterpillarExhale, 150 - this.puff, 5) : this.puff < 20 ? frameAt(a.caterpillarInhale, 20 - this.puff, 5) : a.caterpillar.frames[0];
+  }
+
+  draw(r, alpha) {
+    const f = this.sprite(r.art);
+    r.sprite(this.frozen > 0 ? r.iced(f) : f, this.prevX + (this.x - this.prevX) * alpha + this.w / 2, this.prevY + (this.y - this.prevY) * alpha + this.h + 2, this.facing > 0);
+    const smoke = r.art.jj2e.anims.caterpillarSmoke;
+    for (const ring of this.rings) {
+      r.ctx.globalAlpha = Math.max(0, 1 - ring.t / 120);
+      r.centred(frameAt(smoke, ring.t, 4), ring.x, ring.y);
+    }
+    r.ctx.globalAlpha = 1;
+  }
+}
+
+const ENEMIES = { w: Turtle, k: Lizard, n: Demon, h: Frog, f: Bat, d: Dragonfly, J: Monkey, G: Bomber, K: Caterpillar };
 
 export function makeEnemy(ch, px, py) {
   const Kind = ENEMIES[ch];

@@ -10,7 +10,7 @@ import { cleanText, decodeEvent, eventFields, tileMask } from './files.js';
 
 // JJ2 boss events -> our boss characters (src/bosses.js); other bosses stay
 // ordinary enemies.
-const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O', 200: 'D', 201: 'R' };
+const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O', 200: 'D', 201: 'R', 199: 'a', 235: 'e', 198: 'j' };
 
 // Event ids (JJ2 numbering).
 export const EV = {
@@ -36,15 +36,20 @@ const CHAR = {
   85: 'S', 86: 'T', 87: 'U', 60: 'T',
   // Enemies, by how they move: walkers, hoppers, flyers, shooters.
   117: 'w', 100: 'w', 248: 'w', 191: 'w', 125: 'w', 196: 'w', 118: 'w', 41: 'w',
-  104: 'k', 249: 'k', 102: 'k', 116: 'k', 110: 'k', 113: 'w',
+  104: 'k', 249: 'k', 102: 'k', 116: 'k', 110: 'K', 113: 'w', 109: 'w',
   120: 'n', 115: 'n', 126: 'n', 103: 'n',
-  108: 'f', 109: 'f', 152: 'f', 106: 'f', 197: 'f',
-  123: 'd', 105: 'd', 107: 'd', 225: 'd', 237: 'd', 127: 'd', 190: 'd',
+  108: 'f',
+  123: 'd', 105: 'd', 107: 'd', 225: 'd', 237: 'd', 127: 'd', 190: 'd', 152: 'd', 106: 'd', 197: 'd',
   124: 'J', 184: 'J', 183: 'd', 250: 'd',   // copter lizards hover and dive
 };
 // Enemies that move like one of ours but look like themselves
 // (assets/enemies2, from the enemies sheet in Levels/).
-const SKIN = { 126: 'fencer', 125: 'fatChick', 127: 'fish', 102: 'labRat', 116: 'dog', 115: 'skeleton', 190: 'raven', 105: 'bee', 225: 'bee', 196: 'crab', 113: 'hatter' };
+const SKIN = {
+  126: 'fencer', 125: 'fatChick', 127: 'fish', 102: 'labRat', 116: 'dog', 115: 'skeleton', 190: 'raven', 105: 'bee', 225: 'bee', 196: 'crab', 113: 'hatter',
+  // From Anims.j2a (assets/jj2_enemies).
+  107: 'sparks', 109: 'sucker', 152: 'suckerFloat', 197: 'witch', 183: 'lizardFloat', 250: 'lizardFloat', 118: 'helmut', 106: 'rapier',
+  103: 'dragon', 237: 'beeBoy', 100: 'tufTurt', 191: 'turtleTube',
+};
 for (let id = 141; id <= 147; id++) CHAR[id] = 'o';
 for (let id = 154; id <= 182; id++) CHAR[id] = 'o';
 const BOSSES = new Set([101, 114, 151, 195, 198, 199, 200, 201, 202, 235, 241]);

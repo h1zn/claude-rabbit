@@ -99,9 +99,12 @@ export async function buildArt() {
   const boards = await Promise.all(['jazz_board', 'spaz_board', 'lori_board'].map((n) => loadSheet(`assets/${n}.json`)));
   [jazz, spaz, lori].forEach((h, i) => Object.assign(h.anims, boards[i].anims));
   art.beta = beta;
-  [art.items, art.enemy, art.turtle, art.fx, art.queen, art.bilsy, art.robot, art.uterus, art.devan, art.enemy2] = await Promise.all(
-    ['items', 'enemies', 'turtles', 'fx', 'queen', 'bilsy', 'robot', 'uterus', 'devan', 'enemies2'].map((n) => loadSheet(`assets/${n}.json`)),
+  [art.items, art.enemy, art.turtle, art.fx, art.queen, art.bilsy, art.robot, art.uterus, art.devan, art.enemy2, art.jj2e] = await Promise.all(
+    ['items', 'enemies', 'turtles', 'fx', 'queen', 'bilsy', 'robot', 'uterus', 'devan', 'enemies2', 'jj2_enemies'].map((n) => loadSheet(`assets/${n}.json`)),
   );
+  // Enemies drawn as themselves (src/jj2/level.js SKIN): cut from the uploaded
+  // sheets (enemies2) and from Anims.j2a (jj2_enemies, tools/j2a.py sheet).
+  art.skins = { ...art.enemy2.anims, ...art.jj2e.anims };
   // Special blocks (see tools/build_blocks.py for the order).
   const blocks = await loadTileset('assets/blocks.png');
   art.blocks = Array.from({ length: blocks.w / 32 }, (_, i) => cutTiles(blocks.image, [i, 0, 1, 1]));

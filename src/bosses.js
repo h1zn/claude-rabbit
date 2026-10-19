@@ -1,5 +1,6 @@
 // Bosses (manual, "The Bosses"): the Queen and Schwartzenguard, plus Bilsy,
-// the Robot, Uterus and Devan Shell from the original's levels. Each guards the exit: the
+// the Robot, Uterus, Devan Shell, Bubba, Bolly and the Rocket Turtle from the
+// original's levels. Each guards the exit: the
 // exit sign stays locked until it is beaten. Behaviour follows Jazz2
 // Resurrection's reimplementation (Actors/Enemies/Bosses), converted from its
 // 60 fps frames to our 70 Hz ticks.
@@ -744,38 +745,42 @@ class Crab extends Enemy {
 // ---------------------------------------------------------------- Devan Shell
 
 // Devan himself (JJ2 event 200): runs at you, leaps, and fires his blaster
-// along the floor. Beaten down to half, he sparkles into a rage: quicker,
-// shots in threes, and cartoon bombs lobbed at you. Sprites: Levels/Devan
-// Shell.png (assets/devan).
+// along the floor. Beaten down to half, he turns into the demon he is in the
+// original: he flies at you and spits fireballs. Sprites: Levels/Devan
+// Shell.png (assets/devan) on foot, Anims.j2a (assets/jj2_enemies) as a demon.
 export class Devan extends Boss {
   constructor(x, y) {
     super('devan', x, y - 56 + TILE, 26, 56, 120, 10000, 'DEVAN SHELL!');
     this.facing = -1;
-    this.rage = false;
+    this.demon = false;
   }
 
-  reset() { super.reset(); this.rage = false; this.shielded = false; this.facing = -1; }
+  reset() {
+    if (this.demon) { this.w = 26; this.h = 56; }
+    super.reset();
+    this.demon = false; this.shielded = false; this.facing = -1;
+  }
 
   activate(game) { game.audio.play('devanLaugh'); this.think(game); }
 
-  // Pick the next move.
+  // Pick the next move on foot.
   think(game) {
     this.facePlayer(game);
     const far = Math.abs(game.player.cx - this.cx) > 160;
     const r = Math.random();
-    if (this.onGround && r < (this.rage ? 0.3 : 0.2)) {
+    if (this.onGround && r < 0.2) {
       // Leap at the player.
       this.state = 'jump'; this.play('jump');
-      this.vy = -5.2; this.vx = this.facing * (this.rage ? 2.6 : 2) * V; this.onGround = false;
+      this.vy = -5.2; this.vx = this.facing * 2 * V; this.onGround = false;
       game.audio.play('spring');
-    } else if (this.rage && r < 0.5) {
+    } else if (r < 0.32) {
       this.state = 'bomb'; this.play('bomb'); this.vx = 0;
     } else if (far && r < 0.7) {
       this.state = 'run'; this.anim = 'run'; this.st = Math.round(rand(30, 60) * T);
-      this.vx = this.facing * (this.rage ? 3 : 2.2) * V;
+      this.vx = this.facing * 2.2 * V;
     } else {
       this.state = 'aim'; this.play('aim'); this.vx = 0;
-      this.shots = this.rage ? 3 : 1 + Math.floor(Math.random() * 2);
+      this.shots = 1 + Math.floor(Math.random() * 2);
       game.audio.play('uppercutCharge');
     }
   }
@@ -783,6 +788,7 @@ export class Devan extends Boss {
   update(game) {
     this.begin();
     if (!this.wake(game)) { this.fall(game); return; }
+    if (this.demon) { this.fly(game); return; }
     const hit = this.fall(game);
     switch (this.state) {
       case 'run':
@@ -795,7 +801,7 @@ export class Devan extends Boss {
       case 'aim': if (this.at >= 16) { this.state = 'shoot'; this.play('shoot'); this.fire(game); } break;
       case 'shoot':
         if (this.at >= 14) {
-          if (--this.shots > 0) { this.play('shoot'); this.fire(game); } else this.idle(game, this.rage ? 16 : 30);
+          if (--this.shots > 0) { this.play('shoot'); this.fire(game); } else this.idle(game, 30);
         }
         break;
       case 'bomb':
@@ -807,11 +813,42 @@ export class Devan extends Boss {
         }
         if (this.at >= 55) this.idle(game, 14);
         break;
-      case 'morph':
-        if (this.at >= 50) { this.shielded = false; this.rage = true; game.banner('DEVAN IS FURIOUS!', 90); this.idle(game, 10); }
+      case 'transform':
+        // Stretching into the demon (76 ticks), then the wings (42).
+        if (this.at === 76) { this.state = 'transformEnd'; this.at = 0; game.audio.play('devanLaugh'); }
+        break;
+      case 'transformEnd':
+        if (this.at >= 42) {
+          // The demon is bigger: keep the feet where they were.
+          const feet = this.y + this.h; const cx = this.cx;
+          Object.assign(this, { demon: true, w: 56, h: 64, shielded: false });
+          this.x = cx - this.w / 2; this.y = feet - this.h; this.prevX = this.x; this.prevY = this.y;
+          game.banner('DEVAN IS A DEMON!', 90);
+          this.state = 'hover'; this.st = Math.round(90 * T);
+        }
         break;
       case 'idle': if (this.st === 0) this.think(game); break;
       default: break;
+    }
+  }
+
+  // The demon: hovers off to one side of the player, above, and spits a
+  // fireball now and then.
+  fly(game) {
+    const p = game.player;
+    this.facePlayer(game);
+    const side = this.cx < p.cx ? -1 : 1;
+    const tx = p.cx + side * 130 - this.w / 2; const ty = p.y - 34 + Math.sin(this.t / 30) * 30;
+    const dx = tx - this.x; const dy = ty - this.y; const d = Math.hypot(dx, dy);
+    const sp = this.state === 'spew' ? 0.6 * V : 1.8 * V;
+    if (d > 4) { this.x += (dx / d) * Math.min(sp, d); this.y += (dy / d) * Math.min(sp, d); }
+    if (this.state === 'hover' && this.st === 0) { this.state = 'spew'; this.play('spew'); }
+    if (this.state === 'spew') {
+      if (this.at === 42) {
+        game.audio.play('devanShoot');
+        game.enemyShots.push(new DemonFireball(this.cx + this.facing * 30, this.y + 34, p));
+      }
+      if (this.at >= 77) { this.state = 'hover'; this.st = Math.round(rand(70, 120) * T); }
     }
   }
 
@@ -820,31 +857,54 @@ export class Devan extends Boss {
   fire(game) {
     this.facePlayer(game);
     game.audio.play('devanShoot');
-    const x = this.cx + this.facing * 30; const y = this.y + 24;
-    const spread = this.rage ? [-1, 0, 1] : [0];
-    for (const k of spread) game.enemyShots.push(new DevanBlast(x, y, this.facing, k * 0.9));
+    game.enemyShots.push(new DevanBlast(this.cx + this.facing * 30, this.y + 24, this.facing, 0));
   }
 
   damage(game, amount) {
     if (!this.active || this.dead) return;
     super.damage(game, amount);
-    if (!this.rage && !this.dead && this.hp <= this.maxHp / 2 && this.state !== 'morph') {
-      // The rage: sparkling, untouchable for a moment.
-      this.state = 'morph'; this.play('morph'); this.vx = 0; this.shielded = true;
-      game.audio.play('secret'); game.flash('#ffe85a', 6);
+    if (!this.demon && !this.dead && this.hp <= this.maxHp / 2 && !this.state.startsWith('transform')) {
+      // Untouchable while he changes.
+      this.state = 'transform'; this.at = 0; this.vx = 0; this.shielded = true;
+      game.audio.play('scream'); game.flash('#ff5a3a', 6);
     }
   }
 
   frame(art) {
-    const a = art.devan.anims;
+    const a = art.devan.anims; const j = art.jj2e.anims;
+    if (this.state === 'transform') return frameAt(j.devanTransform, this.at, j.devanTransform.speed);
+    if (this.state === 'transformEnd') return frameAt(j.devanTransformEnd, this.at, j.devanTransformEnd.speed);
+    if (this.demon) return this.state === 'spew' ? frameAt(j.devanSpew, this.at, 7) : frameAt(j.devanDemon, this.t, 5);
     if (this.state === 'jump') return frameAt(a.jump, Math.min(this.at, 200), 3 + (this.vy > 0 ? 1 : 0));
     return super.frame(art);
   }
 
   draw(r, alpha) {
-    if (this.rage && this.t % 20 < 10) r.glow(this.cx, this.cy, 40, 'rgba(255,90,40,0.35)');
+    if (this.demon && this.t % 20 < 10) r.glow(this.cx, this.cy, 50, 'rgba(255,90,40,0.3)');
     super.draw(r, alpha);
   }
+}
+
+// The demon's fireball: flies at the player, steering a little.
+class DemonFireball extends BossShot {
+  constructor(x, y, target) {
+    const dx = target.cx - x; const dy = target.cy - y; const d = Math.hypot(dx, dy) || 1;
+    super('demonFire', x - 12, y - 10, (dx / d) * 3.5 * V, (dy / d) * 3.5 * V, { w: 24, h: 20, life: Math.round(200 * T), glowColor: 'rgba(255,120,40,0.6)', target });
+  }
+
+  move(game) {
+    const p = this.target;
+    if (p && !p.dead && this.t < 90) {
+      const dx = p.cx - (this.x + 12); const dy = p.cy - (this.y + 10); const d = Math.hypot(dx, dy) || 1;
+      const sp = Math.hypot(this.vx, this.vy);
+      this.vx += (dx / d) * 0.08; this.vy += (dy / d) * 0.08;
+      const n = Math.hypot(this.vx, this.vy) || 1; this.vx *= sp / n; this.vy *= sp / n;
+    }
+    this.x += this.vx; this.y += this.vy;
+    if (this.t % 3 === 0) game.trail(this.x + 12, this.y + 10, '#ff8a2a');
+  }
+
+  sprite(art) { return frameAt(art.jj2e.anims.devanFireball, this.t, 4); }
 }
 
 class DevanBlast extends BossShot {
@@ -857,7 +917,188 @@ class DevanBlast extends BossShot {
   sprite(art) { return frameAt(art.devan.anims.blast, this.t, 3); }
 }
 
+// ---------------------------------------------------------------- Bubba
+
+// Bubba (JJ2 event 199): hops after you, spits arcing fireballs, and now and
+// then spins into a tornado that tears across the floor. Anims.j2a sprites.
+export class Bubba extends Boss {
+  constructor(x, y) {
+    super('bubba', x, y - 44 + TILE, 30, 44, 90, 6000, 'BUBBA!');
+    this.facing = -1;
+    this.hops = 0;
+  }
+
+  activate(game) { this.rest(game, 30); }
+
+  rest(game, time) { this.state = 'rest'; this.vx = 0; this.st = Math.round(time * T); this.facePlayer(game); }
+
+  update(game) {
+    this.begin();
+    const hit = this.fall(game);
+    if (!this.wake(game)) return;
+    switch (this.state) {
+      case 'rest': {
+        if (this.st > 0) break;
+        const r = Math.random();
+        if (this.hops >= 2 && r < 0.3) {
+          this.state = 'tornado'; this.play('tornado'); this.st = Math.round(110 * T); this.hops = 0;
+          this.vx = this.facing * 3.6 * V; game.audio.play('bubbaTornado');
+        } else if (r < 0.6) {
+          this.state = 'spew'; this.play('spew');
+        } else {
+          this.state = 'hop'; this.play('hop'); this.hops++;
+          this.vy = -5; this.vx = this.facing * 2.4 * V; this.onGround = false; game.audio.play('bubbaHop');
+        }
+        break;
+      }
+      case 'hop':
+        if (this.onGround && this.at > 4) { this.vx = 0; game.shake(3); this.rest(game, 18); }
+        break;
+      case 'spew':
+        if (this.at === 56) {
+          game.audio.play('bubbaSneeze');
+          const dx = game.player.cx - this.cx;
+          game.enemyShots.push(new BubbaFireball(this.cx + this.facing * 16, this.y + 14, Math.max(-5, Math.min(5, dx / 45)) || this.facing * 2));
+        }
+        if (this.at >= 110) this.rest(game, 24);
+        break;
+      case 'tornado':
+        if (hit.left || hit.right || this.ledgeAhead(game)) { this.vx = -this.vx; this.facing = Math.sign(this.vx); }
+        if (this.t % 4 === 0) game.dust(this.cx, this.y + this.h, 1);
+        if (this.st === 0) this.rest(game, 40);
+        break;
+      default: break;
+    }
+  }
+
+  frame(art) {
+    const a = art.jj2e.anims;
+    if (this.state === 'hop') return this.vy < 0 ? frameAt(a.bubbaJump, this.at, 5) : frameAt(a.bubbaFall, this.at, 5);
+    if (this.state === 'spew') return frameAt(a.bubbaFire, this.at, 7);
+    if (this.state === 'tornado') return frameAt(a.bubbaTornado, this.at, 3);
+    return frameAt(a.bubba, this.t, 8);
+  }
+}
+
+class BubbaFireball extends BossShot {
+  constructor(x, y, vx) { super('bubbaFire', x - 14, y - 7, vx, -3.5, { w: 28, h: 14, life: Math.round(160 * T), glowColor: 'rgba(255,140,40,0.55)' }); }
+  move(game) {
+    this.vy = Math.min(this.vy + 0.14, 6);
+    this.x += this.vx; this.y += this.vy;
+    if (game.level.solidAt(this.x + 14, this.y + 7)) { this.dead = true; game.effect('explosion', this.x + 14, this.y + 7); }
+  }
+
+  sprite(art) { return frameAt(art.jj2e.anims.bubbaFireball, this.t, 4); }
+}
+
+// ---------------------------------------------------------------- Bolly
+
+// Bolly (JJ2 event 235): an armoured flying tank that drifts above you while
+// its turret fires homing rockets. Anims.j2a sprites.
+export class Bolly extends Boss {
+  constructor(x, y) {
+    super('bolly', x, y - 40, 70, 40, 100, 6000, 'BOLLY!');
+    this.freezable = false;
+  }
+
+  activate() { this.state = 'fly'; this.last = { x: this.x, y: this.y }; this.st = Math.round(90 * T); }
+
+  update(game) {
+    this.begin();
+    if (!this.wake(game)) return;
+    const p = game.player;
+    const dx = p.cx - this.w / 2 - this.last.x; const dy = p.y - 110 - this.last.y; const d = Math.hypot(dx, dy);
+    if (d > 30) { this.last.x += (dx / d) * 1.3 * V; this.last.y += (dy / d) * 1.3 * V; }
+    this.x = this.last.x + Math.sin(this.t / 40) * 40;
+    this.y = this.last.y + Math.sin(this.t / 23) * 10;
+    this.facePlayer(game);
+    if (this.st === 0) {
+      game.audio.play('bollyMissile');
+      game.enemyShots.push(new BollyRocket(this.cx, this.y - 6, p));
+      this.st = Math.round(rand(90, 140) * T);
+    }
+  }
+
+  frame(art) { return frameAt(art.jj2e.anims.bolly, this.t, 4); }
+
+  draw(r, alpha) {
+    if (!this.active) { super.draw(r, alpha); return; }
+    super.draw(r, alpha);
+    // The dome and the turret on top.
+    const x = this.prevX + (this.x - this.prevX) * alpha + this.w / 2;
+    const y = this.prevY + (this.y - this.prevY) * alpha;
+    const a = r.art.jj2e.anims;
+    r.sprite(frameAt(a.bollyTop, this.t, 5), x, y + 6, this.facing > 0);
+    r.centred(frameAt(a.bollyTurret, this.t, 5), x, y - 6, this.facing > 0);
+  }
+}
+
+class BollyRocket extends BossShot {
+  constructor(x, y, target) { super('bollyRocket', x - 15, y - 6, 0, -2.5, { w: 30, h: 13, life: Math.round(260 * T), solid: false, target }); }
+  move(game) {
+    // Climbs out, then homes in on the player at 3 px/tick.
+    const p = this.target;
+    if (this.t > 20 && p && !p.dead) {
+      const dx = p.cx - (this.x + 15); const dy = p.cy - (this.y + 6); const d = Math.hypot(dx, dy) || 1;
+      this.vx += (dx / d) * 0.12; this.vy += (dy / d) * 0.12;
+      const n = Math.hypot(this.vx, this.vy) || 1; if (n > 3 * V) { this.vx *= (3 * V) / n; this.vy *= (3 * V) / n; }
+    }
+    this.x += this.vx; this.y += this.vy;
+    if (this.t % 3 === 0) game.trail(this.x + 15 - Math.sign(this.vx) * 12, this.y + 6, '#c8c8c8');
+    if (game.level.solidAt(this.x + 15, this.y + 6)) { this.dead = true; game.effect('explosion', this.x + 15, this.y + 6); }
+  }
+
+  sprite(art) { return frameAt(art.jj2e.anims.bollyRocket, this.t, 3); }
+  draw(r, alpha) {
+    const x = this.prevX + (this.x - this.prevX) * alpha + 15; const y = this.prevY + (this.y - this.prevY) * alpha + 6;
+    r.ctx.save(); r.ctx.translate(Math.round(x), Math.round(y)); r.ctx.rotate(Math.atan2(this.vy, this.vx));
+    const f = this.sprite(r.art); r.ctx.drawImage(f.right, -f.w / 2, -f.h / 2); r.ctx.restore();
+  }
+}
+
+// ---------------------------------------------------------------- the Rocket Turtle
+
+// The turtle on a rocket (JJ2 event 198): dives to your height, swoops past
+// level with you (the moment to shoot it), and climbs away, over and over.
+// Anims.j2a sprites.
+export class RocketTurtle extends Boss {
+  constructor(x, y) {
+    super('turtleRocket', x, y - 40, 40, 40, 40, 4000, 'ROCKET TURTLE!');
+    this.freezable = false;
+  }
+
+  activate() { this.state = 'climb'; this.st = Math.round(40 * T); }
+
+  update(game) {
+    this.begin();
+    if (!this.wake(game)) return;
+    const p = game.player; const L = game.level;
+    if (this.state === 'climb' && (this.st === 0 || this.cy < p.cy - 170)) {
+      // Dive at where the player is now.
+      this.state = 'dive'; this.facePlayer(game);
+      const dx = p.cx - this.cx; const dy = Math.max(40, p.cy - this.cy); const d = Math.hypot(dx, dy) || 1;
+      this.vx = (dx / d) * 4.2 * V; this.vy = (dy / d) * 4.2 * V; this.st = Math.round(90 * T);
+      game.audio.play('missile');
+    } else if (this.state === 'dive' && (this.cy >= p.cy - 4 || this.st === 0)) {
+      // Level with the player: a flat pass.
+      this.state = 'swoop'; this.vy = 0; this.vx = this.facing * 3 * V; this.st = Math.round(60 * T);
+    } else if (this.state === 'swoop' && this.st === 0) {
+      this.state = 'climb'; this.vy = -3 * V; this.st = Math.round(rand(50, 80) * T);
+    }
+    if (this.state === 'swoop' && (L.solidAt(this.x + (this.vx > 0 ? this.w : 0), this.cy))) { this.vx = -this.vx; this.facing = Math.sign(this.vx); }
+    this.x = Math.max(0, Math.min(L.pixelW - this.w, this.x + this.vx));
+    this.y = Math.max(0, Math.min(L.pixelH - this.h, this.y + this.vy));
+    if (this.state === 'dive' && L.solidAt(this.cx, this.y + this.h)) this.st = 0;
+    if (this.t % 2 === 0) game.trail(this.cx - this.facing * 18, this.cy + 10, '#ffb02e');
+  }
+
+  frame(art) {
+    const a = art.jj2e.anims;
+    return frameAt(this.vy > 0 || this.state === 'swoop' ? a.turtleRocket : a.turtleRocketUp, this.t, 4);
+  }
+}
+
 // JJ2 boss events -> boss classes (others stay ordinary enemies).
-export const JJ2_BOSSES = { 101: Schwartzenguard, 151: Queen, 114: Bilsy, 202: Robot, 195: Uterus, 200: Devan, 201: Robot };
-// Level characters for our own levels.
-export const BOSS_CHARS = { Z: Queen, V: Schwartzenguard, B: Bilsy, R: Robot, O: Uterus, D: Devan };
+export const JJ2_BOSSES = { 101: Schwartzenguard, 151: Queen, 114: Bilsy, 202: Robot, 195: Uterus, 200: Devan, 201: Robot, 199: Bubba, 235: Bolly, 198: RocketTurtle };
+// Level characters for our own levels (a, e, j: only made by JJ2 levels).
+export const BOSS_CHARS = { Z: Queen, V: Schwartzenguard, B: Bilsy, R: Robot, O: Uterus, D: Devan, a: Bubba, e: Bolly, j: RocketTurtle };

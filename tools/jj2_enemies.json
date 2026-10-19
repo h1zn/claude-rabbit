@@ -1,0 +1,123 @@
+{
+  "anims": {
+    "sparks": {
+      "j2a": "Sparks/idle"
+    },
+    "caterpillar": {
+      "j2a": "Caterpillar/idle"
+    },
+    "caterpillarExhale": {
+      "j2a": "Caterpillar/exhale"
+    },
+    "caterpillarSmoke": {
+      "j2a": "Caterpillar/smoke"
+    },
+    "sucker": {
+      "j2a": "Sucker/walk"
+    },
+    "suckerFloat": {
+      "j2a": "Sucker/inflated"
+    },
+    "witch": {
+      "j2a": "Witch/idle"
+    },
+    "witchAttack": {
+      "j2a": "Witch/attack"
+    },
+    "witchMagic": {
+      "j2a": "Witch/bullet_magic"
+    },
+    "lizardFloat": {
+      "j2a": "Lizard/copter_idle"
+    },
+    "helmut": {
+      "j2a": "Helmut/walk"
+    },
+    "rapier": {
+      "j2a": "Rapier/idle"
+    },
+    "dragon": {
+      "j2a": "Dragon/idle"
+    },
+    "dragonAttack": {
+      "j2a": "Dragon/attack"
+    },
+    "beeBoy": {
+      "j2a": "Bee/bee"
+    },
+    "tufTurt": {
+      "j2a": "TurtleTough/walk"
+    },
+    "turtleTube": {
+      "j2a": "TurtleTube/idle"
+    },
+    "bubba": {
+      "j2a": "Bubba/hop"
+    },
+    "bubbaFire": {
+      "j2a": "Bubba/spew_fireball"
+    },
+    "bubbaFireball": {
+      "j2a": "Bubba/fireball"
+    },
+    "bubbaTornado": {
+      "j2a": "Bubba/tornado"
+    },
+    "tweedle": {
+      "j2a": "Tweedle/walk"
+    },
+    "tweedleSpin": {
+      "j2a": "Tweedle/spin"
+    },
+    "turtleRocket": {
+      "j2a": "TurtleRocket/downright"
+    },
+    "bolly": {
+      "j2a": "Bolly/bottom"
+    },
+    "bollyTop": {
+      "j2a": "Bolly/top"
+    },
+    "bollyRocket": {
+      "j2a": "Bolly/rocket"
+    },
+    "ghost": {
+      "j2a": "Sparks/ghost_idle"
+    },
+    "turtleRocketUp": {
+      "j2a": "TurtleRocket/upright"
+    },
+    "bubbaJump": {
+      "j2a": "Bubba/jump"
+    },
+    "bubbaFall": {
+      "j2a": "Bubba/jump_fall"
+    },
+    "devanTransform": {
+      "j2a": "Devan/demon_transform_start",
+      "speed": 2,
+      "loop": false
+    },
+    "devanTransformEnd": {
+      "j2a": "Devan/demon_transform_end",
+      "speed": 3,
+      "loop": false
+    },
+    "devanDemon": {
+      "j2a": "Devan/demon_fly"
+    },
+    "devanSpew": {
+      "j2a": "Devan/demon_spew_fireball",
+      "loop": false
+    },
+    "devanFireball": {
+      "j2a": "Devan/demon_fireball"
+    },
+    "bollyTurret": {
+      "j2a": "Bolly/turret"
+    },
+    "caterpillarInhale": {
+      "j2a": "Caterpillar/inhale"
+    }
+  }
+}
