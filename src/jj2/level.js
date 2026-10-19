@@ -22,6 +22,7 @@ export const EV = {
   DESTRUCT: 185, DESTRUCT_BOMB: 186, COLLAPSE: 187, BUTTSTOMP: 188, GEMSTOMP: 189,
   TUBE: 206, TEXT: 207, SET_WATER: 208, GENERATOR: 216, WARP_ORIGIN: 230, WARP_TARGET: 240, GEM_RING: 192,
   LAVA: 122, TRIGGER_CRATE: 95, ACTIVATE_BOSS: 28, WATER_BLOCK: 233, TRIGGER_AREA: 234, TRIGGER_ZONE: 246,
+  CTF_BASE: 244,
 };
 
 // Events that become an entity character of this game.
@@ -199,8 +200,16 @@ export class JJ2Level extends Level {
             (starts[id] = starts[id] || []).push([tx, ty]);
             break;
           case EV.EOL: case EV.EOL_WARP: case EV.SECRET_WARP:
-            if (!party) { this.objects.push({ type: 'exit', tx, ty }); exits++; }
+            // In party games the exit is the treasure hunt's goal or a race's
+            // finish line (a warp to a secret level isn't one).
+            if (party && id === EV.SECRET_WARP) break;
+            this.objects.push({ type: 'exit', tx, ty }); exits++;
             break;
+          case EV.CTF_BASE: {
+            const [team] = eventFields(ev.params, [1]);
+            this.objects.push({ type: 'base', tx, ty, team });
+            break;
+          }
           case EV.EOL_SIGN:
             put(tx, ty, 'E'); exits++;
             break;
@@ -210,8 +219,9 @@ export class JJ2Level extends Level {
             break;
           }
           case EV.WARP_ORIGIN: {
-            const [wid, coins] = eventFields(ev.params, [8, 8]);
-            this.objects.push({ type: 'warp', tx, ty, id: `o${tx},${ty}`, to: `t${wid}`, cost: coins, label: coins ? 'COIN WARP!' : null, exitOnly: false, hidden: !coins });
+            // SetLap: a race counts a lap here.
+            const [wid, coins, setLap] = eventFields(ev.params, [8, 8, 1]);
+            this.objects.push({ type: 'warp', tx, ty, id: `o${tx},${ty}`, to: `t${wid}`, cost: coins, label: coins ? 'COIN WARP!' : null, exitOnly: false, hidden: !coins, lap: !!setLap });
             break;
           }
           case EV.WARP_TARGET: {
@@ -355,6 +365,8 @@ export class JJ2Level extends Level {
 
     const start = (starts[EV.JAZZ_START] || starts[EV.SPAZ_START] || starts[EV.LORI_START] || starts[EV.MP_START] || [[2, 2]]);
     this.starts = starts[EV.MP_START] || start;
+    // Every start spot (party games spread their players over them).
+    this.allStarts = [EV.MP_START, EV.JAZZ_START, EV.SPAZ_START, EV.LORI_START].flatMap((id) => starts[id] || []);
     put(start[0][0], start[0][1], 'P');
     // A level that ends with a boss fight: beating the boss ends it (the exit
     // also waits where the boss was).

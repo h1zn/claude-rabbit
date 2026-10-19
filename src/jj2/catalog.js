@@ -1,14 +1,20 @@
 // The original JJ2 level packs in Levels/, as playable level definitions. A
 // definition is a function that builds a fresh level (like the ones in
 // src/levels.js) once `prepare()` has fetched and parsed its files. Keys look
-// like "jj2:xx:2" (pack id, level number).
+// like "jj2:xx:2" (pack id, level number). A pack is a folder, or a zip read
+// in place (`zip`).
 
 import { addTrack } from '../audio.js';
 import { applyMlleLayers, composeTileset, parseLevel, parseTileset } from './files.js';
 import { JJ2Level } from './level.js';
+import { openZip } from './zip.js';
+
+// Party game types (the manual's).
+export const MODES = ['treasure', 'battle', 'ctf', 'race'];
 
 // `music` names the soundtrack of ours a level falls back to when its own
-// music can't play.
+// music can't play. `modes` lists the party games a level suits; `mp` keeps
+// a multiplayer-only level out of the single-player episode list.
 export const PACKS = [
   {
     id: 'xx',
@@ -29,7 +35,7 @@ export const PACKS = [
     blurb: 'A battle arena by Laro B. - made for two players. Great for PARTY mode!',
     dir: 'Levels/overgrown/',
     party: true,
-    levels: [{ file: 'xlmovergrown.j2l', music: 'jungle' }],
+    levels: [{ file: 'xlmovergrown.j2l', music: 'jungle', modes: ['treasure', 'battle'] }],
   },
   {
     id: 'episode2',
@@ -44,6 +50,59 @@ export const PACKS = [
     blurb: 'A JJ2+ pack built on scripts and extra tile sets. Only the levels whose tile sets are in the folder are listed.',
     dir: 'Levels/BL18/',
     levels: ['BL18_level01', 'BL18_level02', 'BL18_level03', 'BL18_level04', 'BL18_level05', 'BL18_level06', 'BL18_level07', 'BL18_Guardian', 'BL18_save'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'rob',
+    title: 'Return of Blackraptor',
+    blurb: "Blackraptor's 2004 collection: treasure hunts, battle and flag arenas, races, and adventures aboard Devan's fighter ship.",
+    zip: 'Levels/RoBLevelsandStuff.zip',
+    levels: [
+      { file: 'ProjectALPHAlvl.j2l', music: 'jungle' },
+      { file: 'Swampbonus.j2l', music: 'jungle' },
+      { file: 'JTTCOC-Btlship.j2l', music: 'castle' },
+      { file: 'JTTCOC-Btlsecret.j2l', music: 'castle' },
+      { file: 'BRTREASURE1.j2l', mp: true, modes: ['treasure', 'battle'] },
+      { file: 'BRTREASURE2.j2l', mp: true, modes: ['treasure', 'battle'] },
+      { file: 'BRTREASURE3.j2l', mp: true, modes: ['treasure', 'battle'] },
+      { file: 'BRBATTLE1.j2l', mp: true, modes: ['battle'] },
+      { file: 'BRZeroxJB.j2l', mp: true, modes: ['battle'] },
+      { file: 'BRCataclysm.j2l', mp: true, modes: ['battle'] },
+      { file: 'BRARICHv2.j2l', mp: true, modes: ['ctf', 'battle'] },
+      { file: 'BRCENTRYv2.j2l', mp: true, modes: ['ctf', 'battle'] },
+      { file: 'BlackyRace5.j2l', mp: true, modes: ['race'] },
+      { file: 'BRTFL.j2l', mp: true, modes: ['race', 'battle'] },
+      { file: 'Crematoria.j2l', mp: true, modes: ['race', 'battle'] },
+    ],
+  },
+  {
+    id: 'seast', title: 'Astolfo', blurb: 'A battle arena with its own music.', zip: 'Levels/SEast.zip',
+    levels: [{ file: 'SEast.j2l', mp: true, modes: ['battle'] }],
+  },
+  {
+    id: 'ssr', title: 'ScreenShut Race', blurb: 'A one-screen race track: loop it lap after lap.', zip: 'Levels/ScreenShut_Race.zip',
+    levels: [{ file: 'ssr.j2l', mp: true, modes: ['race'] }],
+  },
+  {
+    id: 'teamrace',
+    title: 'Team Race',
+    blurb: "Violet CLM's Jazz 1 Medivo races. Needs the tile set jazz1Medivo.j2t added to the zip.",
+    zip: 'Levels/TeamRace.zip',
+    levels: [
+      { file: 'amedivorace.j2l', mp: true, modes: ['race'] },
+      { file: 'teamrace.j2l', mp: true, modes: ['race'] },
+      { file: 'twolapteamrace.j2l', mp: true, modes: ['race'] },
+    ],
+  },
+  {
+    id: 'ceramicus', title: 'Vault of Ceramicus', blurb: 'A tall Jazz 1 tribute crammed with gems - and a great treasure hunt.', zip: 'Levels/jj1ceramicusvault.zip',
+    levels: [{ file: 'JJ1CeramicusVault.j2l', modes: ['treasure'] }],
+  },
+  {
+    id: 'snooze',
+    title: 'Land of The Sn00zE',
+    blurb: 'A capture-the-flag map for up to 13. Needs the retail tile set Carrot1N.j2t added to the zip.',
+    zip: 'Levels/xlmlots.zip',
+    levels: [{ file: 'xlmlots.j2l', mp: true, modes: ['ctf', 'battle'] }],
   },
   {
     id: 'threed',
@@ -68,6 +127,26 @@ function fetchParsed(url, parse) {
 }
 
 const url = (pack, name) => pack.dir + name.split('/').map(encodeURIComponent).join('/');
+
+// A pack's file, parsed: fetched from its folder or read out of its zip.
+function packParsed(pack, name, parse) {
+  if (!pack.zip) return fetchParsed(url(pack, name), parse);
+  const key = `${pack.zip}!${name.toLowerCase()}`;
+  if (!files.has(key)) {
+    files.set(key, openZip(pack.zip).then((z) => z.read(name)).then(parse));
+    files.get(key).catch(() => files.delete(key));
+  }
+  return files.get(key);
+}
+
+// A playable URL for a pack's music file (zipped music becomes a blob).
+async function musicUrl(pack, name) {
+  if (!pack.zip) return url(pack, name);
+  if (!inPack(pack, name)) return null;
+  const z = await openZip(pack.zip);
+  const bytes = await z.read(packFile(pack, name)).catch(() => null);
+  return bytes && URL.createObjectURL(new Blob([bytes]));
+}
 const j2t = (name) => (/\.j2t$/i.test(name) ? name : `${name}.j2t`);
 // Is `name` in the pack's folder? (Unknown without the folder listing.)
 const inPack = (pack, name) => !pack.files || pack.files.some((f) => f.toLowerCase() === name.toLowerCase());
@@ -91,7 +170,7 @@ export function jj2Def(key) {
   const def = (opts = {}) => {
     if (!state.level) throw new Error('JJ2 level not loaded yet');
     const file = state.level;
-    const music = musicKey(pack, file.music, entry.music || 'jungle');
+    const music = musicKey(pack, file.music, entry.music || 'jungle', state.music);
     const meta = {
       name: file.title || entry.file, theme: 'jj2', music, jj2: true, playerH: 28,
       dark: null,
@@ -103,6 +182,8 @@ export function jj2Def(key) {
   def.pack = pack;
   def.title = entry.title || entry.file.replace(/\.j2l$/i, '');
   def.tip = pack.blurb;
+  def.mp = !!entry.mp;               // multiplayer only
+  def.modes = entry.modes || [];     // the party games it suits
   def.next = null;
   def.loaded = () => (state.level ? { file: state.level, ts: state.ts } : null);
   // Name and link the level from its own file first, so the menu shows its
@@ -122,7 +203,7 @@ export function jj2Def(key) {
   // missing extra sets get the full load's check).
   def.check = async () => {
     await discovered();
-    const level = await fetchParsed(url(pack, entry.file), parseLevel);
+    const level = await packParsed(pack, entry.file, parseLevel);
     readHeader(level);
     if (!inPack(pack, j2t(level.tileset))) throw new Error(`Needs the tile set ${j2t(level.tileset)}`);
     if (!pack.files || (level.mlle && level.mlle.tilesets.some((x) => !inPack(pack, j2t(x.name))))) await def.prepare();
@@ -130,15 +211,15 @@ export function jj2Def(key) {
   def.prepare = async () => {
     if (state.level) return def;
     await discovered();       // the folder listing gives the files' real names
-    const level = await fetchParsed(url(pack, entry.file), parseLevel);
+    const level = await packParsed(pack, entry.file, parseLevel);
     readHeader(level);
-    let ts = await fetchParsed(url(pack, packFile(pack, j2t(level.tileset))), parseTileset)
-      .catch(() => { throw new Error(`Needs the tile set ${j2t(level.tileset)}, which isn't in Levels/${pack.title}/`); });
+    let ts = await packParsed(pack, packFile(pack, j2t(level.tileset)), parseTileset)
+      .catch(() => { throw new Error(`Needs the tile set ${j2t(level.tileset)}, which isn't in ${pack.zip || `Levels/${pack.title}/`}`); });
     if (level.mlle) {
       // JJ2+ levels: extra tile sets (missing ones leave their tiles empty)
       // and extra layers from the level's MLLE data files.
       const extras = await Promise.all(level.mlle.tilesets.map(async (x) => ({
-        ...x, ts: inPack(pack, j2t(x.name)) ? await fetchParsed(url(pack, packFile(pack, j2t(x.name))), parseTileset).catch(() => null) : null,
+        ...x, ts: inPack(pack, j2t(x.name)) ? await packParsed(pack, packFile(pack, j2t(x.name)), parseTileset).catch(() => null) : null,
       })));
       def.missing = extras.filter((x) => !x.ts).map((x) => x.name);
       if (extras.length || level.mlle.palette || level.mlle.edited) ts = composeTileset(ts, extras, level.mlle.palette, level.mlle.edited);
@@ -159,9 +240,11 @@ export function jj2Def(key) {
       const files = Math.ceil(Math.max(0, (level.mlle.layers ? level.mlle.layers.length : 8) - 8) / 8);
       const base = entry.file.replace(/\.j2l$/i, '');
       const dataFile = (i) => `${base}-MLLE-Data-${i + 1}.j2l`;
-      const data = await Promise.all(Array.from({ length: files }, (_, i) => (inPack(pack, dataFile(i)) ? fetchParsed(url(pack, packFile(pack, dataFile(i))), parseLevel).catch(() => null) : null)));
+      const data = await Promise.all(Array.from({ length: files }, (_, i) => (inPack(pack, dataFile(i)) ? packParsed(pack, packFile(pack, dataFile(i)), parseLevel).catch(() => null) : null)));
       applyMlleLayers(level, data);
     }
+    // Music inside a zip gets a blob URL before the level is built.
+    if (pack.zip && /\.(ogg|mp3|xm|mod|it|s3m)$/i.test(level.music || '')) state.music = await musicUrl(pack, level.music);
     state.ts = ts;
     state.level = level;
     return def;
@@ -172,10 +255,12 @@ export function jj2Def(key) {
 
 // Level music: ogg and mp3 files play as they are, tracker modules through
 // libopenmpt. JJ2's own .j2b music isn't supported: a soundtrack of ours plays.
-function musicKey(pack, name, fallback) {
+function musicKey(pack, name, fallback, resolved) {
   const key = `jj2:${pack.id}:${name}`;
-  if (/\.(ogg|mp3)$/i.test(name || '')) addTrack(key, { url: url(pack, name) });
-  else if (/\.(xm|mod|it|s3m)$/i.test(name || '')) addTrack(key, { mod: url(pack, name), fallback });
+  if (pack.zip && !resolved) return fallback;      // not in the zip
+  const src = resolved || url(pack, name);
+  if (/\.(ogg|mp3)$/i.test(name || '')) addTrack(key, { url: src });
+  else if (/\.(xm|mod|it|s3m)$/i.test(name || '')) addTrack(key, { mod: src, fallback });
   else return fallback;
   return key;
 }
@@ -198,14 +283,16 @@ async function scanPacks() {
   } catch (e) { return false; }
   let added = false;
   for (const f of found) {
-    const dir = `Levels/${f.dir}/`;
-    let pack = PACKS.find((p) => p.dir === dir);
+    const dir = f.zip ? null : `Levels/${f.dir}/`;
+    const zip = f.zip ? `Levels/${f.zip}` : null;
+    let pack = PACKS.find((p) => (zip ? p.zip === zip : p.dir === dir));
     if (!pack) {
       // Ids key levels ("jj2:<id>:<n>"), so two folders that slug alike get a suffix.
-      const base = f.dir.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const name = f.zip ? f.zip.replace(/\.zip$/i, '') : f.dir;
+      const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       let id = base;
       for (let n = 2; PACKS.some((p) => p.id === id); n++) id = `${base}-${n}`;
-      pack = { id, title: f.dir, blurb: `Levels from Levels/${f.dir}/.`, dir, levels: [] };
+      pack = { id, title: name, blurb: `Levels from ${zip || dir}.`, dir, zip, levels: [] };
       PACKS.push(pack);
     }
     pack.tilesets = f.tilesets;
@@ -241,6 +328,9 @@ export function scanPlayable() {
 }
 
 export function playableJJ2() { return allJJ2().filter((d) => !d.unplayable); }
+
+// Single-player levels (multiplayer-only arenas and races left out).
+export function soloJJ2() { return playableJJ2().filter((d) => !d.mp); }
 
 // The level after `key` in its episode's chain, skipping unplayable ones.
 export function nextPlayable(key) {

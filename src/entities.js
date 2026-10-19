@@ -487,7 +487,7 @@ const GEMS = {
   b: { color: 'blue', value: 10, score: 1000 },
   v: { color: 'purple', value: 20, score: 2000 },
 };
-const GEM_ANIM = { red: 'gemRed', green: 'gemGreen', blue: 'gemBlue', purple: 'gemPurple' };
+const GEM_ANIM = { red: 'gemRed', green: 'gemGreen', blue: 'gemBlue', purple: 'gemPurple', gold: 'gemGold' };
 // The manual's three shields: each soaks hits (5 s off per hit) and gives
 // the Blaster its own Whammo Ammo (src/weapons.js).
 export const SHIELDS = {
@@ -497,7 +497,7 @@ export const SHIELDS = {
 };
 const SHIELD_OF = { Q: 'fire', L: 'bubble', N: 'plasma' };
 const HEROES = ['jazz', 'spaz', 'lori'];
-const RING = { red: '#ff6a8a', green: '#5ae08a', blue: '#6aa8ff', purple: '#c48aff' };
+const RING = { red: '#ff6a8a', green: '#5ae08a', blue: '#6aa8ff', purple: '#c48aff', gold: '#ffd54a' };
 
 export class Pickup {
   constructor(kind, x, y, extra = {}) {
@@ -580,7 +580,7 @@ export class Pickup {
     const p = game.player;
     if (this.kind === 'gem') {
       // Manual: gems earn extra lives as well as the end-of-level bonus.
-      if (Math.floor((game.gems + this.value) / 100) > Math.floor(game.gems / 100)) {
+      if (!game.party && Math.floor((game.gems + this.value) / 100) > Math.floor(game.gems / 100)) {
         game.lives++;
         game.banner('100 GEMS - 1UP!', 80);
       }
@@ -806,12 +806,16 @@ export class Sign {
       if (this.hit % 4 === 0) game.spark(this.x + 20 + (Math.random() - 0.5) * 30, this.y + 10, ['#ffd54a', '#5ee8ff', '#ff7ad9'][this.hit % 3]);
       if (this.hit === 70 && !game.party) game.completeLevel();
     } else if (game.party && game.state === 'play' && !game.player.dead && overlap(this, game.player)) {
-      // Party: the sign only counts with enough gems.
-      if (game.gems >= 100 && !game.party.result) {
+      // Party: a treasure hunt's exit counts with enough gems; a race's is
+      // the finish line (a lap); other games don't use it.
+      const party = game.party;
+      if (party.mode === 'race' && !party.result) {
+        party.lap(game);
+      } else if (party.mode === 'treasure' && party.canExit(game) && !party.result) {
         this.hit = 1;
         this.speed = 0.6 + Math.abs(game.player.vx) * 0.18;
-        game.party.win(game);
-      } else if (game.levelTime % 60 === 0) game.banner('NEED 100 GEMS!', 50);
+        party.win(game);
+      } else if (party.mode === 'treasure' && game.levelTime % 60 === 0) game.banner(tr('NEED {0} GEMS!', party.goal), 50);
     } else if (!game.party && game.state === 'play' && !game.player.dead && overlap(this, game.player) && game.bossGuarding()) {
       // A boss guards the exit.
       if (game.levelTime % 60 === 0) game.banner('DEFEAT THE BOSS FIRST!', 50);
@@ -881,6 +885,8 @@ export class Warp {
     }
     const target = game.warps.find((w) => w.id === this.to);
     if (!target) return;
+    // A race track's lap warp counts a lap on the way through.
+    if (this.lap && game.party && game.party.mode === 'race') game.party.lap(game, false);
     if (this.cost) {
       game.coins -= this.cost;
       game.banner(this.label || 'COIN WARP!', 90);

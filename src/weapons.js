@@ -187,7 +187,7 @@ export class Bullet {
     };
     if (this.remote) { if (!game.player.dead) consider(game.player); } else {
       for (const e of game.enemies) if (!e.dead && !e.hidden) consider(e);
-      if (game.party && game.party.rival.seen && !game.party.rival.dead) consider(game.party.rival);
+      if (game.party && !game.party.truce) for (const r of game.party.targets()) consider(r);
     }
     const sp = Math.min(6, Math.hypot(this.vx, this.vy) + 0.15);
     if (target) {
@@ -212,10 +212,10 @@ export class Bullet {
     if (!this.placed && --this.life <= 0) { this.burst(game); return; }
     if (this.armed > 0) return;
     const near = (o) => Math.abs(o.x + o.w / 2 - this.cx) < 40 && Math.abs(o.y + o.h / 2 - this.cy) < 40;
-    // A rival close by sets it off too (party mode has no enemies).
-    const rival = game.party && game.party.rival;
-    const close = this.remote ? !game.player.dead && near(game.player)
-      : game.enemies.some((e) => !e.dead && !e.hidden && near(e)) || (!this.placed && rival && rival.seen && !rival.dead && near(rival));
+    // Another player close by sets it off too (party mode has no enemies).
+    const rivals = game.party && !game.party.truce ? game.party.targets() : [];
+    const close = this.remote ? !game.player.dead && near(game.player) && !(game.party && game.party.truce)
+      : game.enemies.some((e) => !e.dead && !e.hidden && near(e)) || (!this.placed && rivals.some(near));
     if (close) this.burst(game);
   }
 
@@ -227,7 +227,7 @@ export class Bullet {
     // Party: TNT going off here goes off on the rival's screen too.
     if (this.weapon === TNT && !this.remote && game.party) game.party.boom(this.cx, this.cy);
     const r = this.weapon === TNT ? 72 : 30;
-    game.blast(this.cx, this.cy, r, { weapon: this.weapon, damage: this.weapon === TNT ? 5 : this.damage, remote: this.remote, big: this.weapon === TNT });
+    game.blast(this.cx, this.cy, r, { weapon: this.weapon, damage: this.weapon === TNT ? 5 : this.damage, remote: this.remote, big: this.weapon === TNT, by: this.owner });
   }
 
   // A shot touching an enemy: damage, freeze, or (electro) pass through.

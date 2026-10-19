@@ -14,7 +14,6 @@ import { Platform } from './jj2/platforms.js';
 import { Pushable } from './pushables.js';
 import { JJ2View } from './jj2/view.js';
 import { LEVELS, levelDef } from './levels.js';
-import { PARTY_GOAL, PARTY_RESPAWN } from './party.js';
 import { Player } from './player.js';
 import { CONTINUES } from './save.js';
 import { Sky, Weather } from './sky.js';
@@ -36,7 +35,7 @@ export class Game {
     this.player = null;
     this.time = 0;
     this.unlocked = 1;
-    this.party = null;      // a Party while a two-player hunt is running
+    this.party = null;      // a Party while a party game is running
     this.character = 'jazz'; // jazz | spaz | lori
     this.difficulty = 'medium';
     this.continues = CONTINUES;
@@ -46,6 +45,7 @@ export class Game {
   // Start a two-player hunt on a level (both sides call this).
   newParty(index, party) {
     this.party = party;
+    this.character = party.character;   // the hero of the player's slot
     this.score = 0; this.gems = 0; this.coins = 0; this.lives = 99; this.food = 0;
     this.loadLevel(index, true);
   }
@@ -181,10 +181,22 @@ export class Game {
     if (this.terrain) this.terrain.warm(this.player.cx, this.player.cy);
     this.state = 'play';
     if (this.party) this.party.begin(this);
-    this.banner(this.party ? tr('FIRST TO {0} GEMS + EXIT WINS!', PARTY_GOAL) : this.level.meta.name.toUpperCase(), 160);
+    this.banner(this.party ? this.partyBanner() : this.level.meta.name.toUpperCase(), 160);
     this.voice('jazzHey');
     this.audio.startMusic(this.level.meta.music, { restart: true });
   }
+
+  // What a party game is about, shown at its start.
+  partyBanner() {
+    const { mode, goal } = this.party;
+    if (mode === 'treasure') return tr('FIRST TO {0} GEMS + EXIT WINS!', goal);
+    if (mode === 'battle') return tr('FIRST TO {0} ROASTS WINS!', goal);
+    if (mode === 'race') return tr('{0} LAPS - GO!', goal);
+    return tr('CAPTURE THE FLAG: {0} TO WIN', goal);
+  }
+
+  // An exit sign at a tile (party games on levels without one).
+  addExit(tx, ty) { this.props.push(new Sign(tx, ty)); }
 
   // Undo a level's progress before restarting it.
   // Lives, ammo and power-ups too, so a restart can't farm them.
@@ -318,7 +330,7 @@ export class Game {
   // An explosion (missiles, TNT, bomb crates): hurts enemies, breaks blocks
   // and crates, and sets off other TNT within `r` px. Our own blasts never
   // hurt us; a party rival's (`remote`) can.
-  blast(x, y, r, { weapon = TNT, damage = 5, remote = false, big = false } = {}) {
+  blast(x, y, r, { weapon = TNT, damage = 5, remote = false, big = false, by = null } = {}) {
     this.effect('explosion', x, y, big ? 4 : 3);
     if (big) {
       for (const [dx, dy] of [[-22, -10], [20, -14], [0, 16]]) this.effect('explosion', x + dx, y + dy, 4);
@@ -328,7 +340,7 @@ export class Game {
     this.shake(big ? 12 : 5);
     const inside = (o) => Math.hypot(o.x + o.w / 2 - x, o.y + o.h / 2 - y) < r + Math.min(o.w, o.h) / 2;
     if (remote) {
-      if (this.party && inside(this.player)) this.party.hit(this, x);
+      if (this.party && inside(this.player)) this.party.hit(this, x, by);
       return;
     }
     // An RF missile going off right by the player throws them away from it.
@@ -436,13 +448,8 @@ export class Game {
   killPlayer() {
     const p = this.player;
     if (p.dead) return;
-    if (this.party) {
-      // Party: knocked out (falling off the world), back in 10 s.
-      p.dead = true; p.vy = -8; p.vx = 0; p.pole = null;
-      this.party.respawn = PARTY_RESPAWN;
-      this.audio.play('death');
-      return;
-    }
+    // Party: knocked out (falling off the world), back in 10 s.
+    if (this.party) { this.party.knockOut(this); return; }
     p.dead = true;
     p.pole = null;
     p.health = 0;

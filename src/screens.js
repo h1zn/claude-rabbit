@@ -5,11 +5,11 @@
 import { arcadeText, jjText, jjWidth } from './art.js';
 import { VIEW_H, VIEW_W } from './config.js';
 import { ACTION_NAMES, clearKey, connectedPads, defaultKeys, KEY_SLOTS, keyName, REBINDABLE } from './input.js';
-import { discoverPacks, PACKS, playableJJ2, scanPlayable } from './jj2/catalog.js';
+import { discoverPacks, MODES, PACKS, playableJJ2, scanPlayable, soloJJ2 } from './jj2/catalog.js';
 import { preview } from './jj2/preview.js';
 import { LANGS, tr } from './lang.js';
 import { LEVELS, levelDef } from './levels.js';
-import { PARTY_LEVELS } from './party.js';
+import { MAX_PLAYERS, MODE_INFO, partyLevels, SLOTS, TRUCES } from './party.js';
 import { cleanName, DIFFICULTIES, MISSIONS, SAVE_SLOTS, SCORE_ROWS, totalStars } from './save.js';
 import { AREA } from './level.js';
 import { frameAt, tilePixel } from './sheets.js';
@@ -66,15 +66,18 @@ export class Screens {
     this.episode = 0;
     this.pack = null;
     this.continueYes = true;
-    this.jj2 = playableJJ2();
+    this.jj2 = soloJJ2();
     this.jj2Index = 0;
     // Unplayable levels (missing tile sets) drop out once they're checked.
-    discoverPacks().then(() => scanPlayable()).then(() => { this.jj2 = playableJJ2(); });
+    this.jj2all = playableJJ2();
+    discoverPacks().then(() => scanPlayable()).then(() => { this.jj2 = soloJJ2(); this.jj2all = playableJJ2(); });
     this.pauseIndex = 0;
     this.thumbs = [];
     this.codeBuf = '';
     this.lobby = { status: 'idle' };   // filled in by main.js for the party lobby
-    this.partyLevel = 0;
+    // Party settings being picked (host and split screen): indexes into the
+    // game types, their levels, goals and truce lengths; `row` is the cursor.
+    this.ps = { row: 0, mode: 0, level: 0, goal: 0, truce: 0 };
     this.resetArmed = false;
     this.keyCol = 0;           // keyboard screen: which key slot
     this.capturing = null;     // keyboard screen: waiting for a key { action, col }
@@ -442,7 +445,10 @@ export class Screens {
     const T = this.typing;
     if (!T) return;
     this.panel(VIEW_W / 2 - 220, 70, 440, 200, 0.92);
-    if (T.kind === 'score') {
+    if (T.kind === 'pname' || T.kind === 'hostpw' || T.kind === 'pw') {
+      this.big({ pname: 'YOUR NAME', hostpw: 'ROOM PASSWORD', pw: 'PASSWORD' }[T.kind], VIEW_W / 2, 84, { align: 'center', scale: 0.55 });
+      this.med({ pname: 'The other players see it over your head', hostpw: 'Leave it empty for an open game', pw: tr('Room {0} is locked', T.code) }[T.kind], VIEW_W / 2, 124, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+    } else if (T.kind === 'score') {
       this.big('NEW HIGH SCORE!', VIEW_W / 2, 84, { align: 'center', scale: 0.6, wave: 2, t });
       this.med(`${tr('{0} POINTS', T.score)}   ${tr('RANK {0}', T.rank + 1)}`, VIEW_W / 2, 124, { align: 'center', scale: 0.65 });
       this.med('Type your name', VIEW_W / 2, 150, { align: 'center', scale: 0.55, color: '#c8b8e8' });
@@ -852,39 +858,90 @@ export class Screens {
     this.wrapTo(tips[this.menu], VIEW_W - 240, 0.5).forEach((line, i) => this.med(line, VIEW_W / 2, 282 + i * 12, { align: 'center', scale: 0.5, color: '#c8b8e8' }));
   }
 
+  // The party game being set up: { mode, level, goal, truce }.
+  partySettings() {
+    const ps = this.ps;
+    const mode = MODES[ps.mode % MODES.length];
+    const levels = partyLevels(mode, this.jj2all);
+    const goals = MODE_INFO[mode].goals;
+    return { mode, level: levels[ps.level % levels.length], levels, goal: goals[ps.goal % goals.length], truce: TRUCES[ps.truce % TRUCES.length] };
+  }
+
+  levelName(key) {
+    const lv = key === undefined || key === null ? null : levelDef(key);
+    if (!lv) return '-';
+    return lv.title;
+  }
+
+  // The settings rows (host and split screen); `edit`: the cursor shows.
+  settingsRows(st, y, t, edit, extra = []) {
+    const truce = st.truce ? `${Math.floor(st.truce / 60)}:${String(st.truce % 60).padStart(2, '0')}` : tr('OFF');
+    const rows = [
+      ['MODE', tr(MODE_INFO[st.mode].name)],
+      ['LEVEL', this.levelName(st.level)],
+      ['GOAL', `${st.goal} ${tr(MODE_INFO[st.mode].unit)}`],
+      ['NO FIGHTING FOR', truce],
+      ...extra,
+    ];
+    rows.forEach(([label, value], i) => {
+      const on = edit && i === this.ps.row;
+      const yy = y + i * 17;
+      if (on) this.ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], VIEW_W / 2 - 206, yy);
+      this.med(label, VIEW_W / 2 - 184, yy, { scale: on ? 0.58 : 0.54, color: on ? null : '#b8a8e0' });
+      const show = on && i < 4 ? `< ${value} >` : value;
+      this.fitMed(show, VIEW_W / 2 + 200, yy, 230, { align: 'right', scale: 0.54, color: on ? '#ffffff' : '#d8ccf4', raw: i === 1 });
+    });
+    return y + rows.length * 17;
+  }
+
+  // The players in the room, in their colours.
+  playerRows(players, me, y) {
+    const HERO = { jazz: 'JAZZ', spaz: 'SPAZ', lori: 'LORI' };
+    for (let i = 1; i <= MAX_PLAYERS; i++) {
+      const pl = players.find((q) => q.id === i);
+      const yy = y + (i - 1) * 14;
+      const slot = SLOTS[i];
+      this.ctx.fillStyle = pl ? slot.color : 'rgba(120,100,160,0.4)';
+      this.ctx.fillRect(VIEW_W / 2 - 184, yy + 2, 8, 8);
+      if (!pl) { this.med('- - -', VIEW_W / 2 - 170, yy, { scale: 0.48, color: '#6a5a8a' }); continue; }
+      const hero = `${slot.tint ? `${tr(slot.tint.toUpperCase())} ` : ''}${tr(HERO[slot.character])}`;
+      this.med(pl.name, VIEW_W / 2 - 170, yy, { scale: 0.5, color: pl.id === me ? '#ffffff' : '#ece4ff', raw: true });
+      this.med(`${hero}${i === 1 ? `  ${tr('HOST')}` : ''}${pl.id === me ? `  ${tr('YOU')}` : ''}`, VIEW_W / 2 + 200, yy, { align: 'right', scale: 0.46, color: slot.color });
+    }
+    return y + MAX_PLAYERS * 14;
+  }
+
   lobbyScreen(t, save) {
-    const ctx = this.ctx;
     const L = this.lobby;
     this.big('PARTY MODE', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
-    this.panel(VIEW_W / 2 - 220, 46, 440, 262, 0.88);
+    this.panel(VIEW_W / 2 - 220, 40, 440, 276, 0.88);
     const say = (text, y, opts = {}) => this.med(text, VIEW_W / 2, y, { align: 'center', scale: 0.55, ...opts });
+    if (this.typing) { this.nameScreen(t, save); return; }
     if (this.sub === 'party') {
-      say('Two players hunt gems. Shoot your rival to make', 66, { color: '#ece4ff' });
-      say('them drop gems; first to the exit with 100 wins!', 80, { color: '#ece4ff' });
-      this.menuList(['HOST A GAME', 'JOIN A GAME', 'SAME COMPUTER', 'BACK'], this.menu, 112, t, 34);
-      const tips = ['Run party.bat - serve.py --lan - so your friend can connect', 'Type the room code your friend sees',
-        'Split screen: Keyboard 1, Keyboard 2 and gamepads', ''];
-      say(tips[this.menu], 278, { scale: 0.45, color: '#c8b8e8' });
+      say('Up to five players: treasure hunt, battle,', 56, { color: '#ece4ff' });
+      say('capture the flag or race - on a network or online', 70, { color: '#ece4ff' });
+      const name = save.options.playerName || tr('NOT SET');
+      this.menuList(['HOST A GAME', 'JOIN A GAME', 'SAME COMPUTER', `${tr('NAME')}: ${name}`, 'BACK'], this.menu, 96, t, 30);
+      const tips = ['Run party.bat - serve.py --lan - so friends can connect', 'Pick a game from the list or type its code',
+        'Split screen: Keyboard 1, Keyboard 2 and gamepads', 'The name the other players see', ''];
+      say(tips[this.menu], 292, { scale: 0.45, color: '#c8b8e8' });
       return;
     }
     if (this.sub === 'local') {
-      say('TWO PLAYERS, ONE COMPUTER', 64, { scale: 0.65, color: null });
+      say('TWO PLAYERS, ONE COMPUTER', 52, { scale: 0.6, color: null });
       const keys = (field, second) => {
         const k = save.options[field] || defaultKeys(second);
         return `${keyName(k.left[0])} ${keyName(k.right[0])}  ${tr('jump')} ${keyName(k.jump[0])}  ${tr('fire')} ${keyName(k.shoot[0])}`;
       };
-      say('PLAYER 1 - LEFT: Keyboard 1', 98, { color: '#ffe8a0' });
-      say(keys('keys', false), 113, { scale: 0.48, color: '#ece4ff' });
-      say('PLAYER 2 - RIGHT: Keyboard 2', 140, { color: '#a8e0ff' });
-      say(keys('keys2', true), 155, { scale: 0.48, color: '#ece4ff' });
+      say('PLAYER 1 - LEFT: Keyboard 1', 74, { scale: 0.5, color: '#ffe8a0' });
+      say(keys('keys', false), 87, { scale: 0.45, color: '#ece4ff' });
+      say('PLAYER 2 - RIGHT: Keyboard 2', 104, { scale: 0.5, color: '#a8e0ff' });
+      say(keys('keys2', true), 117, { scale: 0.45, color: '#ece4ff' });
       const pads = connectedPads().length;
-      say(pads >= 2 ? 'Two gamepads: one each' : pads === 1 ? 'The gamepad plays player 2' : 'A gamepad plugged in plays player 2', 178, { scale: 0.48, color: pads ? '#7aff9a' : '#c8b8e8' });
-      const lv = levelDef(PARTY_LEVELS[this.partyLevel]);
-      const name = lv.loaded && !lv.loaded() && lv.pack ? lv.pack.title : lv.title;
-      say(`< ${name} >`, 210, { scale: 0.7, color: null });
-      say('LEFT / RIGHT: level', 230, { scale: 0.45, color: '#8a7ab0' });
-      if (this.lobby.status === 'loading') say('Loading...', 260, { scale: 0.6 });
-      else this.blink(t, 'Press ENTER to start', 260, 0.6);
+      say(pads >= 2 ? 'Two gamepads: one each' : pads === 1 ? 'The gamepad plays player 2' : 'A gamepad plugged in plays player 2', 134, { scale: 0.45, color: pads ? '#7aff9a' : '#c8b8e8' });
+      const y = this.settingsRows(this.partySettings(), 160, t, true, [['START', '']]);
+      if (this.lobby.status === 'loading') say('Loading...', y + 6, { scale: 0.55 });
+      say('UP / DOWN: setting   LEFT / RIGHT: change', 296, { scale: 0.45, color: '#8a7ab0' });
       return;
     }
     if (L.status === 'error') {
@@ -892,29 +949,42 @@ export class Screens {
       this.blink(t, 'Press ENTER', 250, 0.6);
       return;
     }
-    if (this.sub === 'host') {
+    if (this.sub === 'host' || (this.sub === 'join' && L.joined)) {
       if (!L.code) { say('Connecting' + '.'.repeat(1 + Math.floor(t / 20) % 3), 150, { scale: 0.7 }); return; }
-      say('ROOM CODE', 66, { color: '#c8b8e8' });
-      this.big(L.code.split('').join(' '), VIEW_W / 2, 84, { align: 'center', scale: 0.9 });
-      (L.urls || []).slice(0, 2).forEach((u, i) => say(tr('Friend opens {0}', u), 148 + i * 14, { scale: 0.48, color: '#ece4ff' }));
-      const lv = levelDef(PARTY_LEVELS[this.partyLevel]);
-      const name = lv.loaded && !lv.loaded() && lv.pack ? lv.pack.title : lv.title;
-      say(`< ${name} >`, 196, { scale: 0.7, color: null });
-      say('LEFT / RIGHT: level', 216, { scale: 0.45, color: '#8a7ab0' });
-      if (L.peer) this.blink(t, 'Player 2 is here! Press ENTER to start', 252, 0.6);
-      else say('Waiting for player 2' + '.'.repeat(1 + Math.floor(t / 20) % 3), 252, { scale: 0.6 });
+      this.med('ROOM CODE', VIEW_W / 2 - 184, 50, { scale: 0.5, color: '#c8b8e8' });
+      this.big(L.code.split('').join(' '), VIEW_W / 2 - 100, 46, { scale: 0.6 });
+      const url = (L.urls || [])[0];
+      if (url && this.sub === 'host') this.fitMed(tr('Friends open {0}', url), VIEW_W / 2 - 184, 70, 380, { scale: 0.42, color: '#ece4ff' });
+      let y = this.playerRows(L.players || [], L.id, 86);
+      if (this.sub === 'host') {
+        const extra = [['PASSWORD', L.password || tr('NONE')], ['START', '']];
+        y = this.settingsRows(this.partySettings(), y + 6, t, true, extra);
+        const n = (L.players || []).length;
+        say(n > 1 ? 'ENTER on START when everyone is in' : 'Waiting for players' + '.'.repeat(1 + Math.floor(t / 20) % 3), 298, { scale: 0.48, color: n > 1 ? '#7aff9a' : '#c8b8e8' });
+      } else {
+        if (L.settings) this.settingsRows(L.settings, y + 6, t, false);
+        say('Waiting for the host to start' + '.'.repeat(1 + Math.floor(t / 20) % 3), 298, { scale: 0.5 });
+      }
+      if (L.status === 'loading') say('Loading...', 280, { scale: 0.55 });
       return;
     }
-    // join
-    if (L.joined) {
-      say(tr('Joined room {0}', L.code), 120, { scale: 0.75, color: null });
-      say('Waiting for the host to start' + '.'.repeat(1 + Math.floor(t / 20) % 3), 160, { scale: 0.6 });
-      return;
-    }
-    say('Type the room code', 80, { scale: 0.6 });
-    this.big(this.codeBuf.padEnd(4, '_').split('').join(' '), VIEW_W / 2, 106, { align: 'center', scale: 0.9 });
-    if (L.error) say(L.error, 190, { color: '#ffb0b8' });
-    say('ENTER to join   ESC to go back', 270, { scale: 0.5, color: '#c8b8e8' });
+    // Join: the open games on the server, or a typed code.
+    this.med('OPEN GAMES', VIEW_W / 2 - 184, 50, { scale: 0.5, color: '#c8b8e8' });
+    const rooms = (L.rooms || []).slice(0, 7);
+    [...rooms, null].forEach((r, i) => {
+      const on = i === this.menu;
+      const y = 68 + i * 20;
+      if (on) this.ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], VIEW_W / 2 - 206, y);
+      if (!r) { this.med('REFRESH', VIEW_W / 2 - 184, y, { scale: on ? 0.58 : 0.54, color: on ? null : '#b8a8e0' }); return; }
+      this.fitMed(`${r.code}  ${r.title}`, VIEW_W / 2 - 184, y, 210, { scale: on ? 0.56 : 0.52, color: on ? null : r.playing || r.players >= r.max ? '#7a6aa0' : '#d8ccf4', raw: true });
+      const info = `${tr(MODE_INFO[r.mode] ? MODE_INFO[r.mode].name : 'TREASURE HUNT')}  ${r.players}/${r.max}${r.locked ? `  ${tr('LOCKED')}` : ''}${r.playing ? `  ${tr('PLAYING')}` : ''}`;
+      this.fitMed(info, VIEW_W / 2 + 200, y + 1, 170, { align: 'right', scale: 0.44, color: '#b8a8e0' });
+    });
+    if (!rooms.length) say(L.rooms ? 'No open games yet' : 'Looking for games...', 96, { scale: 0.5, color: '#8a7ab0' });
+    say('Or type a room code', 236, { scale: 0.5, color: '#c8b8e8' });
+    this.big(this.codeBuf.padEnd(4, '_').split('').join(' '), VIEW_W / 2, 250, { align: 'center', scale: 0.55 });
+    if (L.error) say(L.error, 282, { scale: 0.5, color: '#ffb0b8' });
+    say('ENTER to join   ESC to go back', 298, { scale: 0.45, color: '#c8b8e8' });
   }
 
   // Returns an action string when the player chooses something.
@@ -1101,35 +1171,73 @@ export class Screens {
         return 'video';
       }
       case 'party':
-        if (input.pressed('up')) move(-1, 4);
-        if (input.pressed('down')) move(1, 4);
-        if (back || (choose && this.menu === 3)) { this.sub = null; this.menu = mainIndex('party'); return null; }
+        if (input.pressed('up')) move(-1, 5);
+        if (input.pressed('down')) move(1, 5);
+        if (back || (choose && this.menu === 4)) { this.sub = null; this.menu = mainIndex('party'); return null; }
         if (!choose) return null;
         this.audio.play('select');
-        if (this.menu === 2) { this.sub = 'local'; this.lobby = { status: 'idle' }; return null; }
-        this.lobby = { status: 'connecting' };
-        if (this.menu === 0) { this.sub = 'host'; return 'host'; }
-        this.sub = 'join'; this.codeBuf = '';
-        return null;
-      case 'local':
+        if (this.menu === 3) { this.typing = { kind: 'pname', buf: cleanName(save.options.playerName || ''), fresh: true }; return null; }
+        if (this.menu === 2) { this.sub = 'local'; this.lobby = { status: 'idle' }; this.ps.row = 0; return null; }
+        this.lobby = { status: 'connecting', players: [] };
+        if (this.menu === 0) { this.sub = 'host'; this.ps.row = 0; return 'host'; }
+        this.sub = 'join'; this.codeBuf = ''; this.menu = 0;
+        return 'rooms';
+      case 'local': {
         if (back) { this.sub = 'party'; this.menu = 2; return null; }
-        if (input.pressed('left')) { this.partyLevel = (this.partyLevel + PARTY_LEVELS.length - 1) % PARTY_LEVELS.length; this.audio.play('menu'); }
-        if (input.pressed('right')) { this.partyLevel = (this.partyLevel + 1) % PARTY_LEVELS.length; this.audio.play('menu'); }
-        if (choose) { this.audio.play('select'); return `local-start:${PARTY_LEVELS[this.partyLevel]}`; }
+        if (this.lobby.status === 'loading') return null;
+        if (this.settingsInput(input, 5)) return null;
+        if (choose && this.ps.row === 4) { this.audio.play('select'); return 'local-start'; }
         return null;
-      case 'host':
+      }
+      case 'host': {
         if (back || (choose && this.lobby.status === 'error')) { this.sub = 'party'; this.menu = 0; return 'leave'; }
-        if (input.pressed('left')) { this.partyLevel = (this.partyLevel + PARTY_LEVELS.length - 1) % PARTY_LEVELS.length; this.audio.play('menu'); }
-        if (input.pressed('right')) { this.partyLevel = (this.partyLevel + 1) % PARTY_LEVELS.length; this.audio.play('menu'); }
-        if (choose && this.lobby.peer && this.lobby.status !== 'loading') return `party-start:${PARTY_LEVELS[this.partyLevel]}`;
+        if (!this.lobby.code || this.lobby.status === 'loading') return null;
+        const act = this.settingsInput(input, 6);
+        if (act) return act;
+        if (choose && this.ps.row === 4) { this.audio.play('select'); this.typing = { kind: 'hostpw', buf: cleanName(this.lobby.password || ''), fresh: true }; return null; }
+        if (choose && this.ps.row === 5) {
+          if ((this.lobby.players || []).length > 1) return 'party-start';
+          this.audio.play('denied');
+        }
         return null;
-      case 'join':
+      }
+      case 'join': {
         if (back || (choose && this.lobby.status === 'error')) { this.sub = 'party'; this.menu = 1; return 'leave'; }
-        if (choose && !this.lobby.joined && this.codeBuf.length === 4) return `join:${this.codeBuf}`;
-        return null;
+        if (this.lobby.joined) return null;
+        const rooms = (this.lobby.rooms || []).slice(0, 7);
+        const n = rooms.length + 1;
+        if (input.pressed('up')) move(-1, n);
+        if (input.pressed('down')) move(1, n);
+        if (!input.pressed('start')) return null;
+        // A typed code wins over the list.
+        if (this.codeBuf.length === 4) return `join:${this.codeBuf}`;
+        const r = rooms[this.menu];
+        if (!r) { this.audio.play('menu'); return 'rooms'; }
+        if (r.playing || r.players >= r.max) { this.audio.play('denied'); return null; }
+        if (r.locked) { this.typing = { kind: 'pw', buf: '', code: r.code }; return null; }
+        return `join:${r.code}`;
+      }
       default:
         return null;
     }
+  }
+
+  // UP / DOWN between the party settings rows (`count` with the extra rows),
+  // LEFT / RIGHT changes one. Returns 'settings' when one changed.
+  settingsInput(input, count) {
+    const ps = this.ps;
+    if (input.pressed('up')) { ps.row = (ps.row + count - 1) % count; this.audio.play('menu'); }
+    if (input.pressed('down')) { ps.row = (ps.row + 1) % count; this.audio.play('menu'); }
+    const d = (input.pressed('right') ? 1 : 0) - (input.pressed('left') ? 1 : 0);
+    if (!d || ps.row > 3) return null;
+    const st = this.partySettings();
+    const wrap = (v, n) => (v + d + n) % n;
+    if (ps.row === 0) { ps.mode = wrap(ps.mode, MODES.length); ps.level = 0; ps.goal = 0; }
+    if (ps.row === 1) ps.level = wrap(ps.level % st.levels.length, st.levels.length);
+    if (ps.row === 2) ps.goal = wrap(ps.goal % MODE_INFO[st.mode].goals.length, MODE_INFO[st.mode].goals.length);
+    if (ps.row === 3) ps.truce = wrap(ps.truce, TRUCES.length);
+    this.audio.play('menu');
+    return 'settings';
   }
 
   // Open a menu screen (from the main menu, the pause menu or an F key).
@@ -1155,6 +1263,9 @@ export class Screens {
       this.audio.play('select');
       return 'score-name';
     }
+    if (T.kind === 'pname') { if (done) this.typedName = T.buf; this.audio.play(done ? 'select' : 'menu'); return done ? 'pname' : null; }
+    if (T.kind === 'hostpw') { if (done) this.lobby.password = T.buf; this.audio.play(done ? 'select' : 'menu'); return done ? 'host-password' : null; }
+    if (T.kind === 'pw') { this.audio.play(done ? 'select' : 'menu'); return done ? `join:${T.code}:${T.buf}` : null; }
     if (cancel) { this.sub = 'save'; this.menu = T.slot; this.audio.play('menu'); return null; }
     this.typedName = T.buf;
     this.sub = null;

@@ -102,6 +102,7 @@ function toMenu() {
   if (net) { net.close(); net = null; }
   if (split) endSplit();
   game.party = null;
+  game.character = save.character || 'jazz';
   screens.sub = null;
   screens.menu = 0;
   go('title');
@@ -196,7 +197,9 @@ function loadSlot(i) {
 // Two players on one computer: two games joined like a party hunt, one in
 // each half of the screen. Player 1 plays on Keyboard 1 (less any keys of
 // Keyboard 2), player 2 on Keyboard 2; gamepads go one each.
-async function startSplit(index) {
+async function startSplit() {
+  const st = screens.partySettings();
+  const index = st.level;
   const def = levelDef(index);
   if (screens.lobby.status === 'loading') return;   // already on its way
   if (def.prepare) {
@@ -209,15 +212,14 @@ async function startSplit(index) {
   split = splitKit;
   const g2 = split.game;
   g2.video = save.options.video;
-  g2.character = game.character === 'spaz' ? 'jazz' : 'spaz';
   g2.quiet = true;
   game.viewW = VIEW_W / 2; g2.viewW = VIEW_W / 2;
   renderer.w = VIEW_W / 2; split.renderer.w = VIEW_W / 2;
   const [a, b] = localPair();
-  const p1 = new Party(a, 'host'); const p2 = new Party(b, 'guest');
-  p1.local = true; p2.local = true;
-  game.newParty(index, p1);
-  g2.newParty(index, p2);
+  const players = [{ id: 1, name: 'P1' }, { id: 2, name: 'P2' }];
+  const rules = { players, mode: st.mode, goal: st.goal, truce: st.truce, local: true };
+  game.newParty(index, new Party(a, { ...rules, id: 1 }));
+  g2.newParty(index, new Party(b, { ...rules, id: 2 }));
   split.input.setKeys(save.options.keys2);
   input.setKeys(save.options.keys, new Set(Object.values(split.input.bindings).flat().filter((c) => c !== 'Escape' && c !== 'Enter')));
   input.padRole = 'p1'; split.input.padRole = 'p2';
@@ -238,32 +240,48 @@ function endSplit() {
 
 // ---------------------------------------------------------------- party lobby
 
-async function hostParty() {
+const playerName = () => save.options.playerName || '';
+
+// Connect to the relay (once); false if it can't be reached.
+async function connect() {
+  if (net && net.status === 'open') return true;
   const conn = net = new Net();
   const ok = await conn.connect();
-  if (conn !== net) return;            // left while connecting
-  if (!ok) { screens.lobby = { status: 'error', error: conn.error }; return; }
-  conn.send({ t: 'host' });
+  if (conn !== net) return false;            // left while connecting
+  if (!ok) { screens.lobby = { status: 'error', error: conn.error }; return false; }
+  return true;
 }
 
-async function joinParty(code) {
-  if (!net) {
-    const conn = net = new Net();
-    const ok = await conn.connect();
-    if (conn !== net) return;
-    if (!ok) { screens.lobby = { status: 'error', error: conn.error }; return; }
-  }
-  net.send({ t: 'join', code });
+async function hostParty() {
+  if (!(await connect())) return;
+  const st = screens.partySettings();
+  net.send({ t: 'host', name: playerName(), mode: st.mode });
+}
+
+async function listRooms() {
+  if (await connect()) net.send({ t: 'rooms' });
+}
+
+async function joinParty(code, password) {
+  if (!(await connect())) return;
+  net.send({ t: 'join', code, name: playerName(), password });
+}
+
+// The host tells everyone what game is set up (and the server lists it).
+function sendSettings() {
+  if (!net || !screens.lobby.code || screens.sub !== 'host') return;
+  const st = screens.partySettings();
+  net.send({ t: 'settings', mode: st.mode, level: st.level, goal: st.goal, truce: st.truce });
 }
 
 // While a party level loads, the lobby stops reading messages so the
-// rival's first moves wait in the inbox for the game.
+// others' first moves wait in the inbox for the game.
 let partyLoading = null;        // the connection whose party level is loading
 
 // Load a party level; false if it failed or the player left meanwhile.
 async function preparePartyLevel(index) {
   const def = levelDef(index);
-  if (!def.prepare) return true;
+  if (!def || !def.prepare) return !!def;
   const conn = net;
   partyLoading = conn;
   screens.lobby.status = 'loading';
@@ -275,26 +293,31 @@ async function preparePartyLevel(index) {
   } finally {
     if (partyLoading === conn) partyLoading = null;
   }
+  if (screens.lobby.status === 'loading') screens.lobby.status = 'open';
   return !!net && net === conn && net.status === 'open' && scene === 'title' && screens.lobby.status !== 'error';
 }
 
-function startParty(index, role) {
-  game.newParty(index, new Party(net, role));
+function startParty(rules) {
+  game.newParty(rules.level, new Party(net, rules));
   irisTime = 0;
   go('play');
 }
 
-// The host loads the level first, then tells the guest to start.
+// The host loads the level first, then tells everyone to start.
 // Levels with nothing to load start at once, inside the same tick.
-async function hostStart(index) {
+async function hostStart() {
   if (!net || partyLoading === net) return;
-  if (levelDef(index).prepare && !(await preparePartyLevel(index))) return;
-  net.send({ t: 'start', level: index });
-  startParty(index, 'host');
+  const st = screens.partySettings();
+  if (!(await preparePartyLevel(st.level))) return;
+  const L = screens.lobby;
+  const rules = { level: st.level, mode: st.mode, goal: st.goal, truce: st.truce, players: L.players };
+  net.send({ t: 'start', ...rules });
+  startParty({ ...rules, id: L.id });
 }
 
-async function guestStart(index) {
-  if (!levelDef(index).prepare || await preparePartyLevel(index)) startParty(index, 'guest');
+async function guestStart(m) {
+  const rules = { level: m.level, mode: m.mode, goal: m.goal, truce: m.truce, players: m.players, id: screens.lobby.id };
+  if (await preparePartyLevel(m.level)) startParty(rules);
 }
 
 function lobbyTick() {
@@ -303,15 +326,20 @@ function lobbyTick() {
   for (let k = 0; k < msgs.length; k++) {
     const m = msgs[k];
     const L = screens.lobby;
-    if (m.t === 'hosted') Object.assign(L, { status: 'open', code: m.code, urls: m.urls });
-    else if (m.t === 'peer') L.peer = true;
-    else if (m.t === 'joined') Object.assign(L, { status: 'open', joined: true, code: m.code, error: null });
+    if (m.t === 'hosted') { Object.assign(L, { status: 'open', code: m.code, urls: m.urls, id: m.id, players: m.players }); sendSettings(); }
+    else if (m.t === 'joined') Object.assign(L, { status: 'open', joined: true, code: m.code, id: m.id, players: m.players, error: null });
+    else if (m.t === 'peer') { L.players = m.players; audio.play('select'); sendSettings(); }
+    else if (m.t === 'rooms') L.rooms = m.list;
+    else if (m.t === 'settings') L.settings = m;
     else if (m.t === 'error') L.error = m.why;
     else if (m.t === 'start') {
       net.inbox.unshift(...msgs.slice(k + 1));   // keep the rest for the game
-      guestStart(m.level);
+      guestStart(m);
       return;
-    } else if (m.t === 'left') { L.peer = false; if (L.joined) screens.lobby = { status: 'error', error: 'The host left.' }; }
+    } else if (m.t === 'left') {
+      if (m.closed && L.joined) { screens.lobby = { status: 'error', error: 'The host left.' }; return; }
+      L.players = (L.players || []).filter((pl) => pl.id !== m.id);
+    }
   }
 }
 
@@ -387,11 +415,15 @@ function tick() {
         writeSave(save);
         screens.open('scores');
         screens.highlight = rank;
-      } else if (action.startsWith('local-start:')) startSplit(levelKey(action.slice(12)));
+      } else if (action === 'local-start') startSplit();
       else if (action === 'host') hostParty();
-      else if (action.startsWith('join:')) joinParty(action.slice(5));
+      else if (action === 'rooms') listRooms();
+      else if (action.startsWith('join:')) { const [code, password] = action.slice(5).split(':'); joinParty(code, password); }
       else if (action === 'leave') { if (net) net.close(); net = null; }
-      else if (action.startsWith('party-start:')) hostStart(levelKey(action.slice(12)));
+      else if (action === 'settings') sendSettings();
+      else if (action === 'host-password') { if (net) net.send({ t: 'password', password: screens.lobby.password || '' }); }
+      else if (action === 'pname') { save.options.playerName = screens.typedName; writeSave(save); }
+      else if (action === 'party-start') hostStart();
       break;
     }
     case 'card':

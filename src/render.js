@@ -4,6 +4,7 @@ import { arcadeText } from './art.js';
 import { PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import { frameAt } from './sheets.js';
 import { tr } from './lang.js';
+import { SECOND, TEAMS } from './party.js';
 import { AREA, BLOCKS } from './level.js';
 import { THEME_TILESET } from './tilesets.js';
 import { TNT, WEAPONS } from './weapons.js';
@@ -98,7 +99,7 @@ export class Renderer {
     this.enemies(game, alpha);
     this.shots(game, alpha);
     this.enemyShots(game, alpha);
-    if (game.party) this.rival(game, alpha);
+    if (game.party) this.rivals(game, alpha);
     this.player(game, alpha);
     this.effects(game);
     this.particles(game);
@@ -571,7 +572,7 @@ export class Renderer {
     const ctx = this.ctx;
     const p = game.player;
     if (p.invuln > 0 && !p.dead && p.rush === 0 && Math.floor(p.invuln / 4) % 2) return;
-    const sheet = this.art.heroes[p.character] || this.art.hero;
+    const sheet = this.art.tinted(p.character, game.party && game.party.tint);
     let name = this.heroAnim(p);
     if (!sheet.anims[name]) name = HERO_FALLBACK[name] || 'idle';
     if (!this.heroState || this.heroState.name !== name) this.heroState = { name, start: game.time };
@@ -645,51 +646,105 @@ export class Renderer {
     }
   }
 
-  // The party-mode rival: the hero in red, drawn where it was last reported.
-  rival(game, alpha) {
-    const r = game.party.rival;
-    if (!r.seen) return;
-    for (const s of game.party.shots) this.shot(game, s, alpha, true);
-    if (r.dead) return;
-    const speed = Math.abs(r.vx);
-    const sheet = this.art.heroesRed[r.character] || this.art.heroRed;
-    const name = { run: speed > 4.2 ? 'run' : 'walk', jump: speed > 2 ? 'jumpFwd' : 'jump', fall: speed > 2 ? 'fallFwd' : 'fall', pole: 'spring' }[r.anim] || (sheet.anims[r.anim] ? r.anim : 'idle');
-    const anim = sheet.anims[name];
-    const f = frameAt(anim, game.time, anim.speed);
-    const right = r.facing > 0;
-    const x = Math.round(lerp(r.prevX, r.x, alpha) + r.w / 2 - (right ? f.ax : f.w - f.ax));
-    const y = Math.round(lerp(r.prevY, r.y, alpha) + r.h - f.ay + 2);
-    this.glow(x + f.w / 2, y + f.h / 2, 30, 'rgba(255,60,60,0.25)');
-    this.ctx.drawImage(right ? f.right : f.left, x, y);
-    arcadeText(this.ctx, `${r.gems}`, x + f.w / 2, y - 14, { size: 10, align: 'center', shadow: false, top: '#ffffff', bottom: '#ff8a8a' });
+  // The other players in a party game, each in their own colours with a
+  // name tag, drawn where they were last reported; CTF flags at the bases.
+  rivals(game, alpha) {
+    const party = game.party;
+    const ctx = this.ctx;
+    for (const s of party.shots) this.shot(game, s, alpha, true);
+    if (party.mode === 'ctf') {
+      const carried = (team) => party.carry === team || [...party.rivals.values()].some((r) => r.carry === team && !r.dead);
+      for (const b of party.bases) if (b && !carried(b.team)) this.flag(b.x, b.y, b.team, game.time);
+    }
+    for (const r of party.rivals.values()) {
+      if (!r.seen || r.dead) continue;
+      const speed = Math.abs(r.vx);
+      const sheet = this.art.tinted(r.character, r.tint);
+      const name = { run: speed > 4.2 ? 'run' : 'walk', jump: speed > 2 ? 'jumpFwd' : 'jump', fall: speed > 2 ? 'fallFwd' : 'fall', pole: 'spring' }[r.anim] || (sheet.anims[r.anim] ? r.anim : 'idle');
+      const anim = sheet.anims[name] || sheet.anims[HERO_FALLBACK[name]] || sheet.anims.idle;
+      const f = frameAt(anim, game.time, anim.speed);
+      const right = r.facing > 0;
+      const x = Math.round(lerp(r.prevX, r.x, alpha) + r.w / 2 - (right ? f.ax : f.w - f.ax));
+      const y = Math.round(lerp(r.prevY, r.y, alpha) + r.h - f.ay + 2);
+      ctx.drawImage(right ? f.right : f.left, x, y);
+      if (r.carry >= 0) this.flag(x + f.w / 2 + 4, y + 8, r.carry, game.time, 0.6);
+      arcadeText(ctx, r.name, x + f.w / 2, y - 16, { size: 9, align: 'center', shadow: false, top: '#ffffff', bottom: r.color });
+    }
+    if (party.carry >= 0 && !game.player.dead) {
+      const p = game.player;
+      this.flag(lerp(p.prevX, p.x, alpha) + p.w / 2 + 6, lerp(p.prevY, p.y, alpha) + 4, party.carry, game.time, 0.6);
+    }
   }
 
-  // Party HUD: both gem counts against the goal, and the knock-out timer.
+  // A team flag on its pole, its foot at (x, y).
+  flag(x, y, team, t, scale = 1) {
+    const ctx = this.ctx;
+    const h = 40 * scale;
+    ctx.fillStyle = '#d8d0c0';
+    ctx.fillRect(Math.round(x - 1), Math.round(y - h), 2, Math.round(h));
+    ctx.fillStyle = team ? '#ff4a4a' : '#4a9aff';
+    ctx.beginPath();
+    const w = 22 * scale; const top = y - h;
+    ctx.moveTo(x + 1, top);
+    for (let i = 0; i <= 4; i++) ctx.lineTo(x + 1 + (w * i) / 4, top + Math.sin(t * 0.15 + i) * 2 * scale);
+    for (let i = 4; i >= 0; i--) ctx.lineTo(x + 1 + (w * i) / 4, top + 12 * scale + Math.sin(t * 0.15 + i) * 2 * scale);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Party HUD: your goal (gems, roasts, laps or flags), the clock or the
+  // truce countdown, everyone's standing, the kill feed, and the knock-out
+  // and result screens.
   partyHud(game) {
     const ctx = this.ctx;
     const party = game.party;
-    const bar = (x, label, gems, color) => {
-      ctx.fillStyle = '#1a0b1e'; ctx.fillRect(x - 2, 10, 124, 12);
-      ctx.fillStyle = color; ctx.fillRect(x, 12, Math.round(Math.min(1, gems / 100) * 120), 8);
-      arcadeText(ctx, `${tr(label)} ${gems}`, x + 60, 24, { size: 11, align: 'center', top: '#ffffff', bottom: color });
-    };
-    // Split screen: each half names its player.
-    const me = party.local ? (party.host ? 'P1' : 'P2') : 'YOU';
-    const them = party.local ? (party.host ? 'P2' : 'P1') : 'RIVAL';
-    bar(this.w / 2 - 132, me, game.gems, '#5ae08a');
-    bar(this.w / 2 + 12, them, party.rival.gems, '#ff5a5a');
-    arcadeText(ctx, tr('100 GEMS + EXIT'), this.w / 2, 40, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' });
+    const w = this.w;
+    const unit = { treasure: 'GEMS', battle: 'ROASTS', race: 'LAPS', ctf: 'FLAGS' }[party.mode];
+    // Your progress, top left.
+    const mine = party.mode === 'treasure' ? game.gems : party.mode === 'battle' ? party.roasts : party.mode === 'race' ? party.laps : party.captures[party.team];
+    if (party.mode === 'treasure') this.centred(this.art.items.anims.gemRed.frames[0], 18, 18);
+    arcadeText(ctx, `${mine} / ${party.goal}`, party.mode === 'treasure' ? 38 : 8, 8, { size: 18, top: '#ffffff', bottom: party.mode === 'treasure' && mine >= party.goal ? '#7aff9a' : party.color });
+    arcadeText(ctx, party.mode === 'ctf' ? tr('{0} TEAM', tr(TEAMS[party.team].name)) : tr(unit), 8, 30, { size: 9, shadow: false, top: '#e8d8ff', bottom: party.mode === 'ctf' ? TEAMS[party.team].color : '#c8b8f0' });
+    if (party.mode === 'treasure' && mine >= party.goal) arcadeText(ctx, tr('FIND THE EXIT!'), 8, 42, { size: 10, shadow: false, top: '#ffffff', bottom: '#7aff9a' });
+    if (party.mode === 'ctf') {
+      arcadeText(ctx, `${tr('BLUE')} ${party.captures[0]} - ${party.captures[1]} ${tr('RED')}`, w / 2, 26, { size: 11, align: 'center', top: '#ffffff', bottom: '#ffd54a' });
+    }
+    // The clock, or the countdown to the fight.
+    const secs = Math.floor((party.truce || party.clock) / SECOND);
+    const clock = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+    if (party.truce > 0) {
+      arcadeText(ctx, tr('FIGHT IN {0}', clock), w / 2, 6, { size: 14, align: 'center', top: '#ffffff', bottom: '#ffb04a' });
+      arcadeText(ctx, tr('NO FIGHTING YET'), w / 2, 22, { size: 9, align: 'center', shadow: false, top: '#e8d8ff', bottom: '#c8b8f0' });
+    } else arcadeText(ctx, clock, w / 2, 6, { size: 14, align: 'center', top: '#ffffff', bottom: '#cfe6ff' });
+    // Standings, top right under the hearts.
+    party.standings(game).forEach((row, i) => {
+      const y = 30 + i * 12;
+      ctx.fillStyle = row.color; ctx.fillRect(w - 112, y + 3, 6, 6);
+      arcadeText(ctx, row.name, w - 102, y, { size: 9, shadow: false, top: row.me ? '#ffffff' : '#e0d8f0', bottom: row.dead ? '#8a7ab0' : row.color });
+      arcadeText(ctx, String(row.value), w - 8, y, { size: 9, align: 'right', shadow: false, top: '#ffffff', bottom: '#ffd54a' });
+    });
+    // Kill feed.
+    party.feed.forEach((f, i) => {
+      arcadeText(ctx, f.text, w - 8, 98 + i * 12, { size: 9, align: 'right', shadow: false, alpha: Math.min(1, (360 - f.t) / 60), top: '#ffffff', bottom: '#ffb0c0' });
+    });
     if (party.respawn > 0) {
       this.dim(0.45);
-      arcadeText(ctx, tr('KNOCKED OUT!'), this.w / 2, 130, { size: 26, align: 'center', top: '#ffd0d8', bottom: '#e8244a' });
-      arcadeText(ctx, tr('Back in {0}', Math.ceil(party.respawn / 70)), this.w / 2, 170, { size: 16, align: 'center' });
+      arcadeText(ctx, tr('KNOCKED OUT!'), w / 2, 130, { size: 26, align: 'center', top: '#ffd0d8', bottom: '#e8244a' });
+      arcadeText(ctx, tr('Back in {0}', Math.ceil(party.respawn / 70)), w / 2, 170, { size: 16, align: 'center' });
     }
     if (party.result) {
-      this.dim(0.6);
-      const text = party.local ? (party.result === 'left' ? tr('GAME OVER') : tr('{0} WINS!', party.result === 'win' ? me : them))
-        : tr({ win: 'YOU WIN!', lose: 'RIVAL WINS!', left: 'RIVAL LEFT' }[party.result]);
-      arcadeText(ctx, text, this.w / 2, 120, { size: 36, align: 'center', top: party.result === 'win' ? '#fff6c0' : '#ffd0d8', bottom: party.result === 'win' ? '#ffb02e' : '#e8244a' });
-      arcadeText(ctx, tr('Press ENTER for the menu'), this.w / 2, 190, { size: 13, align: 'center', alpha: Math.floor(game.time / 25) % 2 ? 1 : 0.4 });
+      this.dim(0.7);
+      const res = party.result;
+      const text = res.left ? tr('GAME OVER') : res.team !== undefined ? tr('{0} TEAM WINS!', tr(TEAMS[res.team].name))
+        : res.winner === party.id ? tr('YOU WIN!') : tr('{0} WINS!', party.nameOf(res.winner));
+      const good = res.winner === party.id || (res.team !== undefined && res.team === party.team);
+      arcadeText(ctx, text, w / 2, 70, { size: 30, align: 'center', top: good ? '#fff6c0' : '#ffd0d8', bottom: good ? '#ffb02e' : '#e8244a' });
+      party.standings(game).forEach((row, i) => {
+        const y = 118 + i * 18;
+        arcadeText(ctx, `${i + 1}. ${row.name}`, w / 2 - 90, y, { size: 13, top: '#ffffff', bottom: row.color });
+        arcadeText(ctx, `${row.value} ${tr(unit)}`, w / 2 + 110, y, { size: 13, align: 'right', top: '#ffffff', bottom: '#ffd54a' });
+      });
+      arcadeText(ctx, tr('Press ENTER for the menu'), w / 2, 230, { size: 13, align: 'center', alpha: Math.floor(game.time / 25) % 2 ? 1 : 0.4 });
     }
   }
 
@@ -765,10 +820,10 @@ export class Renderer {
   hud(game) {
     const ctx = this.ctx;
     const p = game.player;
-    // Score, top-left.
+    // Score, top-left (party games show their goal there instead).
     if (!game.party) arcadeText(ctx, String(game.score).padStart(8, '0'), 8, 6, { size: 18, top: '#ffffff', bottom: '#ffc04a' });
     // Hearts, top-right.
-    if (!game.party) for (let i = 0; i < PLAYER.maxHealth; i++) this.heart(this.w - 26 - (PLAYER.maxHealth - 1 - i) * 20, 8, i < p.health);
+    for (let i = 0; i < PLAYER.maxHealth; i++) this.heart(this.w - 26 - (PLAYER.maxHealth - 1 - i) * 20, 8, i < p.health);
     // Gems and coins under the score (in party games the gem bars show them).
     const items = this.art.items.anims;
     if (!game.party) {
@@ -802,7 +857,7 @@ export class Renderer {
       arcadeText(ctx, `${Math.ceil(p.rush / 70)}`, this.w / 2, 24, { size: 22, align: 'center', top: '#ffffff', bottom: `hsl(${(game.time * 6) % 360},100%,65%)` });
     }
     // Lives, bottom-left.
-    const face = (this.art.heroes[p.character] || this.art.hero).anims.icon.frames[0].right;
+    const face = this.art.tinted(p.character, game.party && game.party.tint).anims.icon.frames[0].right;
     ctx.drawImage(face, 6, VIEW_H - face.height - 6);
     if (!game.party) arcadeText(ctx, `x${Math.max(0, game.lives)}`, 44, VIEW_H - 30, { size: 16, top: '#ffffff', bottom: '#ffb04a' });
     // Weapon and ammo, bottom-right (the name shows for a moment after a switch).

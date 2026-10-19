@@ -43,9 +43,22 @@ function gradientMap(ts, stops) {
   ctx.putImageData(img, 0, 0);
 }
 
-// A copy of a sheet with its greens turned red (the party-mode rival), or,
-// for characters without green (`wash`), everything washed toward red.
-function tintSheet(sheet, wash = false) {
+// Pixel recolourings (r, g, b) -> [r, g, b] for sheet copies.
+const TINTS = {
+  // Jazz's greens turned red (the old party rival), or for characters
+  // without green, everything washed toward red.
+  red: (r, g, b) => (g > r * 1.15 && g > b * 1.05 ? [g, r * 0.6, b * 0.7] : null),
+  wash: (r, g, b) => [Math.min(255, r * 0.7 + 90), g * 0.35, b * 0.35],
+  // Party players 4 and 5: Jazz's green fur purple, Spaz's orange fur blue.
+  purple: (r, g, b) => (g > r * 1.15 && g > b * 1.05 ? [g * 0.82, r * 0.45, Math.min(255, g * 1.05)] : null),
+  blue: (r, g, b) => (r > g * 1.12 && r > b * 1.35 ? [b * 0.8, g * 0.85, Math.min(255, r * 1.05)] : null),
+  // The treasure hunt's gold gem, from the red one.
+  gold: (r, g, b) => [Math.min(255, r * 1.05 + 20), Math.max(g, r * 0.8), b * 0.35],
+};
+
+// A copy of a sheet with its pixels recoloured by TINTS[tint].
+function tintSheet(sheet, tint) {
+  const fn = TINTS[tint];
   const recolor = (src) => {
     const c = document.createElement('canvas');
     c.width = src.width; c.height = src.height;
@@ -54,11 +67,9 @@ function tintSheet(sheet, wash = false) {
     const img = ctx.getImageData(0, 0, c.width, c.height);
     const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
-      const r = d[i]; const g = d[i + 1]; const b = d[i + 2];
       if (!d[i + 3]) continue;
-      // Green-dominant pixels swap their green and red channels.
-      if (wash) { d[i] = Math.min(255, r * 0.7 + 90); d[i + 1] = Math.round(g * 0.35); d[i + 2] = Math.round(b * 0.35); }
-      else if (g > r * 1.15 && g > b * 1.05) { d[i] = g; d[i + 1] = Math.round(r * 0.6); d[i + 2] = Math.round(b * 0.7); }
+      const out = fn(d[i], d[i + 1], d[i + 2]);
+      if (out) { d[i] = out[0]; d[i + 1] = out[1]; d[i + 2] = out[2]; }
     }
     ctx.putImageData(img, 0, 0);
     return c;
@@ -92,7 +103,8 @@ export async function buildArt() {
   const blocks = await loadTileset('assets/blocks.png');
   art.blocks = Array.from({ length: blocks.w / 32 }, (_, i) => cutTiles(blocks.image, [i, 0, 1, 1]));
   // Menus and the HUD draw gems as plain images.
-  for (const [color, anim] of [['red', 'gemRed'], ['green', 'gemGreen'], ['blue', 'gemBlue'], ['purple', 'gemPurple']]) {
+  art.items.anims.gemGold = tintSheet({ frames: [], anims: { gemGold: art.items.anims.gemRed } }, 'gold').anims.gemGold;
+  for (const [color, anim] of [['red', 'gemRed'], ['green', 'gemGreen'], ['blue', 'gemBlue'], ['purple', 'gemPurple'], ['gold', 'gemGold']]) {
     art.gems[color] = art.items.anims[anim].frames.map((f) => f.right);
   }
   art.tilesets = {};
@@ -114,8 +126,15 @@ export async function buildArt() {
   art.episodes = {};
   await Promise.all(['prince', 'time', 'flashback', 'monkeys', 'demo', 'homecooked', 'christmas', 'secret'].map(async (n) => { art.episodes[n] = await loadImage(`assets/episodes/${n}.png`); }));
   art.charsel = await loadSheet('assets/charsel.json');
-  art.heroRed = tintSheet(art.hero);
-  art.heroesRed = { jazz: art.heroRed, spaz: tintSheet(spaz, true), lori: tintSheet(lori, true) };
+  // A hero in another colour (party players 4 and 5), made when first asked for.
+  const tintCache = new Map();
+  art.tinted = (character, tint) => {
+    const sheet = art.heroes[character] || art.hero;
+    if (!tint) return sheet;
+    const key = `${character}:${tint}`;
+    if (!tintCache.has(key)) tintCache.set(key, tintSheet(sheet, tint));
+    return tintCache.get(key);
+  };
   // Screens draw the hero through `art.kip[anim][i].right/left`.
   const pick = (name) => art.hero.anims[name].frames;
   art.kip = {
