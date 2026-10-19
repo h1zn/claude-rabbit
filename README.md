@@ -327,9 +327,24 @@ Queen, Schwartzenguard (Tuf Boss), Bilsy, the Robot and Uterus fight as in the
 original, and so do Devan Shell (he runs, leaps, fires along the floor and
 lobs bombs, then at half health turns into the flying demon spitting
 fireballs), Bubba (hops, spits arcing fireballs, spins into a tornado),
-Bolly (a flying tank firing homing rockets) and the Rocket Turtle (dives
-and swoops past). A level that ends with its boss ends when you beat it.
-Not supported yet: Tweedle, the frog/bird morphs, and JJ2+ scripts.
+Bolly (a flying tank firing homing rockets), the Rocket Turtle (dives and
+swoops past) and Tweedle (magnet pull, your own stolen blaster, cartwheel
+spin; he also guards the exit of Candy Clouds). A level that ends with its
+boss ends when you beat it.
+
+**Frog and birds**: JJ2's frog areas turn you into a frog (slow, no
+shooting, copter or specials; FIRE standing still flicks the tongue) until
+a revert area or a death turns you back. Breaking a bird cage or the bird
+monitor brings a companion: Chuck shoots at enemies ahead, Birdy dives at
+them, and either flies off when you get hit.
+
+**JJ2+ scripts**: a level's `.j2as` script is read by a small interpreter
+(`src/jj2/script.js`). It runs the level's start-up code and the
+onFunction hooks JJ2+ text areas call, with statements, conditions, the
+script's own functions and the commonly used JJ2+ calls: triggers, music,
+water level, sign texts, boss activation, warps and player moves. Scripted
+objects, custom weapons, palette effects and drawing hooks don't run, so
+script-heavy packs like BL18 play without those extras.
 
 **Sound**: JJ2's own samples, cut from `Anims.j2a` by `tools/j2a.py`: every
 weapon, jump, landing, pickup, spring, crate, splat, warp and splash, the
@@ -353,7 +368,8 @@ src/player.js           the hero's movement and abilities
 src/entities.js         enemies, pickups, springs, poles, warps, hints, shots, effects
 src/weapons.js          the nine weapons: shots, aiming, explosions, TNT
 src/bosses.js           Queen, Schwartzenguard, Bilsy, Robot, Uterus, Devan Shell, Bubba,
-                        Bolly, Rocket Turtle
+                        Bolly, Rocket Turtle, Tweedle
+src/birds.js            companion birds (Chuck and Birdy) from cages and the bird monitor
 src/level.js            tile map, collision and the level builder
 src/levels.js           the level list; designs in src/levels/ (kit.js: helpers, room maze)
 src/party.js            party mode: relay connection, players, sync, modes and rules
@@ -363,6 +379,7 @@ src/lang.js             on-screen text in six languages
 src/difficulty.js       Easy / Hard enemies in this game's own levels
 src/jj2/                original JJ2 levels: files.js (.j2l/.j2t reader), level.js
                         (masks -> collision, events -> entities), view.js (layers), zip.js (packs in .zip),
+                        script.js (JJ2+ .j2as level scripts),
                         play.js (light/water/collapse), catalog.js (packs), preview.js,
                         platforms.js (moving platforms on chains)
 vendor/chiptune3/       libopenmpt player for tracker music (MIT / BSD)

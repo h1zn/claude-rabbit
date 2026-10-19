@@ -68,6 +68,8 @@ export function candyClouds() {
   L.put(237, 31, 'X').put(236, 30, '1');
   shape(L, 222, 26, 'arc', 'o');
   L.put(244, 28, 'E');
+  // Tweedle guards the way out.
+  L.put(239, 28, 'l');
   L.hint(240, 28, 'You made it across!');
   L.warp(226, 28, 'coin8', 'bonus8', { cost: 20, label: 'COIN WARP!' });
 

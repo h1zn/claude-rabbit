@@ -10,7 +10,7 @@ import { cleanText, decodeEvent, eventFields, tileMask } from './files.js';
 
 // JJ2 boss events -> our boss characters (src/bosses.js); other bosses stay
 // ordinary enemies.
-const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O', 200: 'D', 201: 'R', 199: 'a', 235: 'e', 198: 'j' };
+const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O', 200: 'D', 201: 'R', 199: 'a', 235: 'e', 198: 'j', 241: 'l' };
 
 // Event ids (JJ2 numbering).
 export const EV = {

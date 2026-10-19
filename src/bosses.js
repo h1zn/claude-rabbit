@@ -1,6 +1,6 @@
 // Bosses (manual, "The Bosses"): the Queen and Schwartzenguard, plus Bilsy,
-// the Robot, Uterus, Devan Shell, Bubba, Bolly and the Rocket Turtle from the
-// original's levels. Each guards the exit: the
+// the Robot, Uterus, Devan Shell, Bubba, Bolly, the Rocket Turtle and Tweedle
+// from the original's levels. Each guards the exit: the
 // exit sign stays locked until it is beaten. Behaviour follows Jazz2
 // Resurrection's reimplementation (Actors/Enemies/Bosses), converted from its
 // 60 fps frames to our 70 Hz ticks.
@@ -1098,7 +1098,114 @@ export class RocketTurtle extends Boss {
   }
 }
 
+// ---------------------------------------------------------------- Tweedle
+
+// Tweedle (JJ2 event 241): strolls up, pulls you in with a horseshoe magnet,
+// fires your own blaster at you (Jazz's or Spaz's, whichever you are), and
+// cartwheels across the floor. Every 25 damage leaves him dizzy for a moment;
+// at half health he shoots more and cartwheels faster. Anims.j2a sprites.
+export class Tweedle extends Boss {
+  constructor(x, y) {
+    super('tweedle', x, y - 60 + TILE, 30, 60, 100, 8000, 'TWEEDLE!');
+    this.facing = -1;
+    this.dizzyAt = 75;
+  }
+
+  reset() { super.reset(); this.facing = -1; this.dizzyAt = 75; }
+
+  activate(game) { this.walk(game); }
+
+  get angry() { return this.hp <= this.maxHp / 2; }
+
+  walk(game) { this.state = 'walk'; this.facePlayer(game); this.vx = this.facing * 1.4 * V; this.st = Math.round(rand(50, 90) * T); }
+
+  update(game) {
+    this.begin();
+    const hit = this.fall(game);
+    if (!this.wake(game)) return;
+    const p = game.player;
+    switch (this.state) {
+      case 'walk':
+        if (hit.left || hit.right || this.ledgeAhead(game)) { this.vx = -this.vx; this.facing = Math.sign(this.vx); }
+        if (this.st === 0) {
+          this.vx = 0; this.facePlayer(game);
+          const r = Math.random();
+          if (r < 0.34) { this.state = 'magnetStart'; this.play('magnetStart'); }
+          else if (r < 0.7) { this.state = 'shoot'; this.play('shoot'); this.spazGun = p.character === 'spaz'; }
+          else { this.state = 'spin'; this.play('spin'); this.vx = this.facing * (this.angry ? 5 : 4) * V; this.st = Math.round(80 * T); game.audio.play('bubbaTornado'); }
+        }
+        break;
+      case 'magnetStart': if (this.at >= 60) { this.state = 'magnet'; this.st = Math.round(130 * T); game.audio.play('uppercutCharge'); } break;
+      case 'magnet':
+        // The pull: the player slides toward him whatever they press.
+        if (!p.dead && Math.abs(p.cy - this.cy) < 80) {
+          const dir = Math.sign(this.cx - p.cx);
+          game.level.move(p, dir * 1.3, 0, { climb: p.onGround });
+          if (this.t % 6 === 0) game.trail(this.cx + this.facing * 26, this.y + 26, '#ff5a8a');
+        }
+        if (this.st === 0) { this.state = 'magnetEnd'; this.play('magnetEnd'); }
+        break;
+      case 'magnetEnd': if (this.at >= 18) this.walk(game); break;
+      case 'shoot':
+        // The blaster goes off on frame 11 (and again, angry).
+        if (this.at === 66 || (this.angry && this.at === 80)) this.fire(game);
+        if (this.at >= 90) this.walk(game);
+        break;
+      case 'spin':
+        if (hit.left || hit.right || this.ledgeAhead(game)) { this.vx = -this.vx; this.facing = Math.sign(this.vx); }
+        if (this.t % 4 === 0) game.dust(this.cx, this.y + this.h, 1);
+        if (this.st === 0) { this.vx = 0; this.walk(game); }
+        break;
+      case 'dizzy': if (this.st === 0) this.walk(game); break;
+      default: break;
+    }
+  }
+
+  fire(game) {
+    this.facePlayer(game);
+    game.audio.play(game.player.character === 'spaz' ? 'shootSpaz' : 'shoot');
+    const a = Math.atan2(game.player.cy - (this.y + 28), game.player.cx - this.cx);
+    const fan = this.angry ? [-0.25, 0, 0.25] : [-0.12, 0.12];
+    for (const da of fan) game.enemyShots.push(new TweedleShot(this.cx + this.facing * 26, this.y + 28, a + da));
+  }
+
+  damage(game, amount) {
+    if (!this.active || this.dead) return;
+    super.damage(game, amount);
+    if (!this.dead && this.hp <= this.dizzyAt) {
+      this.dizzyAt -= 25;
+      this.state = 'dizzy'; this.play('hurt'); this.vx = 0; this.st = Math.round(70 * T);
+      game.audio.play('scream');
+    }
+  }
+
+  frame(art) {
+    const a = art.jj2e.anims;
+    switch (this.state) {
+      case 'walk': return frameAt(a.tweedle, this.t, 5);
+      case 'magnetStart': return frameAt(a.tweedleMagnetStart, this.at, 6);
+      case 'magnet': return frameAt(a.tweedleMagnet, this.t, 4);
+      case 'magnetEnd': return frameAt(a.tweedleMagnetEnd, this.at, 6);
+      case 'shoot': return frameAt(this.spazGun ? a.tweedleShootSpaz : a.tweedleShootJazz, this.at, 6);
+      case 'spin': return frameAt(a.tweedleSpin, this.t, 3);
+      case 'dizzy': return frameAt(a.tweedleHurt, this.at, 8);
+      default: return frameAt(a.tweedleIdle, this.t, 6);
+    }
+  }
+}
+
+// Tweedle's shots: the blaster's, flying straight.
+class TweedleShot extends BossShot {
+  constructor(x, y, angle) { super('tweedleShot', x - 8, y - 6, Math.cos(angle) * 6 * V, Math.sin(angle) * 6 * V, { w: 16, h: 12, life: Math.round(120 * T), solid: false, glowColor: 'rgba(255,240,160,0.5)' }); }
+  move(game) {
+    this.x += this.vx; this.y += this.vy;
+    if (game.level.solidAt(this.x + 8, this.y + 6)) { this.dead = true; game.effect('hitSpark', this.x + 8, this.y + 6); }
+  }
+
+  sprite(art) { return frameAt(art.fx.anims.blaster, this.t, 3); }
+}
+
 // JJ2 boss events -> boss classes (others stay ordinary enemies).
-export const JJ2_BOSSES = { 101: Schwartzenguard, 151: Queen, 114: Bilsy, 202: Robot, 195: Uterus, 200: Devan, 201: Robot, 199: Bubba, 235: Bolly, 198: RocketTurtle };
+export const JJ2_BOSSES = { 101: Schwartzenguard, 151: Queen, 114: Bilsy, 202: Robot, 195: Uterus, 200: Devan, 201: Robot, 199: Bubba, 235: Bolly, 198: RocketTurtle, 241: Tweedle };
 // Level characters for our own levels (a, e, j: only made by JJ2 levels).
-export const BOSS_CHARS = { Z: Queen, V: Schwartzenguard, B: Bilsy, R: Robot, O: Uterus, D: Devan, a: Bubba, e: Bolly, j: RocketTurtle };
+export const BOSS_CHARS = { Z: Queen, V: Schwartzenguard, B: Bilsy, R: Robot, O: Uterus, D: Devan, a: Bubba, e: Bolly, j: RocketTurtle, l: Tweedle };
