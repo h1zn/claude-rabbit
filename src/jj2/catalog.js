@@ -5,7 +5,7 @@
 // in place (`zip`).
 
 import { addTrack } from '../audio.js';
-import { applyMlleLayers, composeTileset, parseLevel, parseTileset } from './files.js';
+import { applyMlleLayers, cleanText, composeTileset, parseLevel, parseTileset } from './files.js';
 import { JJ2Level } from './level.js';
 import { openZip } from './zip.js';
 
@@ -47,8 +47,8 @@ export const PACKS = [
   {
     id: 'bl18',
     title: 'BL18',
-    blurb: 'A JJ2+ pack built on scripts and extra tile sets. Only the levels whose tile sets are in the folder are listed.',
-    dir: 'Levels/BL18/',
+    blurb: 'A JJ2+ pack built on scripts and extra tile sets: Valen Village to the Guardian.',
+    zip: 'Levels/BL18.zip',
     levels: ['BL18_level01', 'BL18_level02', 'BL18_level03', 'BL18_level04', 'BL18_level05', 'BL18_level06', 'BL18_level07', 'BL18_Guardian', 'BL18_save'].map((f) => ({ file: `${f}.j2l` })),
   },
   {
@@ -116,9 +116,51 @@ export const PACKS = [
     levels: [{ file: 'ChristMasBe.j2l', mp: true, modes: ['battle'] }],
   },
   {
+    id: 'backintime',
+    title: 'Back in Time',
+    blurb: 'Nine levels on the retail tile sets: Diamondus by day and night, a snowy Christmas, then the monkey jungle.',
+    zip: 'Levels/Back In Time Episode.zip',
+    levels: ['DiamClassic1', 'DiamClassic2', 'DiamClassic3', 'XmasTime1', 'XmasTime2', 'XmasTime3', 'MonkeysJung1', 'MonkeysJung2', 'MonkeysJung3'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'stefan',
+    title: 'JJ2 Remake by SteFan',
+    blurb: "Part 1 of SteFan's remake of the original JJ2: castles, Carrotus and the lab, then Colonius, Psychedelia and the beach.",
+    zip: 'Levels/jj2-remake-by-SteFan-part-1.zip',
+    levels: ['Trainer v2', 'Castle2', 'Castle2n', 'ICCarrot1', 'ICCarrot1n', 'NOKALabrat1', 'NOKALabrat2', 'Colon1N', 'Colon2D', 'Psych1D', 'Psych2N', 'Beach+', 'Beach2+', 'NOKALabrat3'].map((f) => ({ file: `${f}.j2l` })),
+  },
+  {
+    id: 'streetwars',
+    title: 'Street Wars',
+    blurb: 'A city-street battle arena on the retail Colonius tile set.',
+    zip: 'Levels/Abattle1edit.zip',
+    levels: [{ file: 'sw.j2l', mp: true, modes: ['battle'] }],
+  },
+  {
+    id: 'summer',
+    title: 'Summer Twilights',
+    blurb: 'A small evening-field battle arena for up to six.',
+    zip: 'Levels/Summer Twilights.zip',
+    levels: [{ file: 'xlmfieldseve.j2l', mp: true, modes: ['battle'] }],
+  },
+  {
+    id: 'magma',
+    title: 'Magma Hills',
+    blurb: 'A tight volcanic battle arena.',
+    zip: 'Levels/damn+.zip',
+    levels: [{ file: 'xlmmhills.j2l', mp: true, modes: ['battle'] }],
+  },
+  {
+    id: 'lake',
+    title: 'Lake Party',
+    blurb: 'A lakeside battle by night, with its own music.',
+    zip: 'Levels/xlmlake.zip',
+    levels: [{ file: 'xlmlake.j2l', mp: true, modes: ['battle'] }],
+  },
+  {
     id: 'threed',
     title: 'Threed Realms',
-    blurb: 'Needs the retail tile sets Jungle1, Town1 and Diam1 (.j2t) copied into Levels/ThreedRealms v3/ to play.',
+    blurb: 'Three worlds in one level, on the retail Jungle, Town and Diamondus tile sets.',
     dir: 'Levels/ThreedRealms v3/',
     levels: [{ file: 'ThreedRealms.j2l' }],
   },
@@ -157,6 +199,24 @@ async function musicUrl(pack, name) {
   const z = await openZip(pack.zip);
   const bytes = await z.read(packFile(pack, name)).catch(() => null);
   return bytes && URL.createObjectURL(new Blob([bytes]));
+}
+
+const MUSIC = /\.(ogg|mp3|wav|xm|mod|it|s3m|j2b)$/i;
+// Where a level's music is: its own pack first, then the libraries and other
+// packs (JJ2 levels name retail songs like "jungle" without the .j2b).
+// { pack, file } or null.
+function musicSource(pack, name) {
+  if (!name) return null;
+  const tries = /\.[a-z0-9]{2,4}$/i.test(name) ? [name] : [`${name}.j2b`, name];
+  for (const p of [pack, ...LIBRARIES, ...PACKS.filter((q) => q !== pack)]) {
+    if (!p.files) continue;
+    for (const t of tries) {
+      const file = p.files.find((f) => f.toLowerCase() === t.toLowerCase());
+      if (file && MUSIC.test(file)) return { pack: p, file };
+    }
+  }
+  // No folder listing: trust the name.
+  return !pack.files && !pack.zip && MUSIC.test(name) ? { pack, file: name } : null;
 }
 const j2t = (name) => (/\.j2t$/i.test(name) ? name : `${name}.j2t`);
 // Is `name` in the pack's folder? (Unknown without the folder listing.)
@@ -203,7 +263,7 @@ export function jj2Def(key) {
   const def = (opts = {}) => {
     if (!state.level) throw new Error('JJ2 level not loaded yet');
     const file = state.level;
-    const music = musicKey(pack, file.music, entry.music || 'jungle', state.music);
+    const music = musicKey(state.musicPack || pack, state.musicFile, entry.music || 'jungle', state.music);
     const meta = {
       name: file.title || entry.file, theme: 'jj2', music, jj2: true, playerH: 28,
       dark: null,
@@ -222,7 +282,7 @@ export function jj2Def(key) {
   // Name and link the level from its own file first, so the menu shows its
   // real title (and a story chain can skip it) even if a tile set is missing.
   const readHeader = (level) => {
-    def.title = (level.title || '').trim() || def.title;
+    def.title = cleanText(level.title || '').split('\n')[0] || def.title;
     const bare = (f) => f.toLowerCase().replace(/\.j2l$/, '');
     const j = pack.levels.findIndex((l) => bare(l.file) === bare(level.next || ''));
     def.next = j >= 0 && j !== Number(n) ? `jj2:${pack.id}:${j}` : null;
@@ -277,7 +337,8 @@ export function jj2Def(key) {
       applyMlleLayers(level, data);
     }
     // Music inside a zip gets a blob URL before the level is built.
-    if (pack.zip && /\.(ogg|mp3|xm|mod|it|s3m)$/i.test(level.music || '')) state.music = await musicUrl(pack, level.music);
+    const song = musicSource(pack, level.music);
+    if (song) Object.assign(state, { music: await musicUrl(song.pack, song.file), musicFile: song.file, musicPack: song.pack });
     state.ts = ts;
     state.level = level;
     return def;
@@ -286,15 +347,14 @@ export function jj2Def(key) {
   return def;
 }
 
-// Level music: ogg and mp3 files play as they are, tracker modules through
-// libopenmpt. JJ2's own .j2b music isn't supported: a soundtrack of ours plays.
-function musicKey(pack, name, fallback, resolved) {
+// Level music: ogg, mp3 and wav files play as they are, tracker modules and
+// JJ2's own .j2b through libopenmpt. Music nowhere to be found: a soundtrack
+// of ours plays.
+function musicKey(pack, name, fallback, src) {
+  if (!src || !name) return fallback;
   const key = `jj2:${pack.id}:${name}`;
-  if (pack.zip && !resolved) return fallback;      // not in the zip
-  const src = resolved || url(pack, name);
-  if (/\.(ogg|mp3)$/i.test(name || '')) addTrack(key, { url: src });
-  else if (/\.(xm|mod|it|s3m)$/i.test(name || '')) addTrack(key, { mod: src, fallback });
-  else return fallback;
+  if (/\.(ogg|mp3|wav)$/i.test(name)) addTrack(key, { url: src });
+  else addTrack(key, { mod: src, fallback });
   return key;
 }
 
@@ -315,7 +375,10 @@ async function scanPacks() {
     found = await r.json();
   } catch (e) { return false; }
   let added = false;
+  // A folder that is also there zipped (BL18 and BL18.zip): the zip wins.
+  const zipped = new Set(found.filter((f) => f.zip).map((f) => f.zip.replace(/\.zip$/i, '').toLowerCase()));
   for (const f of found) {
+    if (f.dir && zipped.has(f.dir.toLowerCase())) continue;
     const dir = f.zip ? null : `Levels/${f.dir}/`;
     const zip = f.zip ? `Levels/${f.zip}` : null;
     if (f.library) {

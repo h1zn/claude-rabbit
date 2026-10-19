@@ -251,6 +251,26 @@ export class Party {
     return ch !== '^' && ch !== '~';
   }
 
+  // Standable cells joined through open air to the given spots (so none is
+  // in a sealed room), every third column.
+  openFloor(level, from) {
+    const { w, h } = level;
+    const seen = new Uint8Array(w * h);
+    const air = (tx, ty) => tx >= 0 && ty >= 0 && tx < w && ty < h && !level.solidAt(tx * TILE + 16, ty * TILE + 16);
+    const queue = [];
+    for (const s of from) if (air(s.tx, s.ty)) { seen[s.ty * w + s.tx] = 1; queue.push(s.ty * w + s.tx); }
+    const out = [];
+    for (let i = 0; i < queue.length; i++) {
+      const tx = queue[i] % w; const ty = (queue[i] - tx) / w;
+      if (tx % 3 === 0 && this.standable(level, tx, ty)) out.push([tx, ty]);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = tx + dx; const ny = ty + dy;
+        if (air(nx, ny) && !seen[ny * w + nx]) { seen[ny * w + nx] = 1; queue.push(ny * w + nx); }
+      }
+    }
+    return out;
+  }
+
   // Spawn spots: the level's starts, then places just under its pickups
   // (put where players can get to), none near an exit, spread as far apart
   // as they go. Every side works out the same list.
@@ -279,6 +299,9 @@ export class Party {
       const p = game.player;
       out.push({ tx: Math.floor(p.cx / TILE), ty: Math.floor((p.y + p.h - 1) / TILE), start: true });
     }
+    // Few pickups (small arenas): any floor in the open air the starts are
+    // in, every few columns, so five players still start apart.
+    if (this.mode !== 'race' && out.length < 12) for (const [tx, ty] of this.openFloor(level, out)) add(tx, ty, false);
     // Farthest-point order: starts first, then each next spot the farthest
     // from those already picked.
     const picked = [out.find((s) => s.start) || out[0]];
@@ -286,7 +309,9 @@ export class Party {
     while (rest.length && picked.length < 12) {
       let best = 0; let bestD = -1;
       rest.forEach((s, i) => {
-        const d = Math.min(...picked.map((q) => Math.hypot(q.tx - s.tx, q.ty - s.ty))) + (s.start ? 6 : 0);
+        // Level starts come first, unless crowded against one already picked.
+        const gap = Math.min(...picked.map((q) => Math.hypot(q.tx - s.tx, q.ty - s.ty)));
+        const d = gap + (s.start && gap >= 4 ? 6 : 0);
         if (d > bestD) { bestD = d; best = i; }
       });
       picked.push(rest.splice(best, 1)[0]);

@@ -124,8 +124,9 @@ slow for a while) and gem magnet (pulls loose gems to you).
 Shores, Carrotus Town, Candy Clouds and Tubelectric; then Overgrown and the
 multiplayer packs in `Levels/`: Return of Blackraptor (treasure, battle, CTF
 and race levels), Astolfo (SEast, battle), ScreenShut Race, the Jazz 1 Medivo
-race (Team Race), Land of The Sn00zE (xlmlots, CTF and battle) and The Night
-Before Christmas (an airboard battle). Packs can stay zipped: the game reads
+race (Team Race), Land of The Sn00zE (xlmlots, CTF and battle), The Night
+Before Christmas (an airboard battle), and the battle arenas Street Wars,
+Summer Twilights, Magma Hills and Lake Party. Packs can stay zipped: the game reads
 the `.zip` files itself, and each level is offered only in the modes it was
 made for. (Team Race's two team versions rely on host-operated trigger
 crates and are left out.)
@@ -277,23 +278,24 @@ the menus (adding the missing `.j2t` brings them back). Included now:
 
 - **Xenobiotic Xeranthemum 2** (Blade): Oasis, Islands in the Sapphire Sea,
   Twilight Park, Space and Aztec, played in order.
-- **Episode 2** (KingofKoopas): 14 of its 17 levels in story order; Downtown
-  Chaos (both parts) and Fight Night Street need the retail tile sets
-  `Colon1.j2t` and `Colon2.j2t`, and the story skips them.
+- **Episode 2** (KingofKoopas): all 17 levels in story order (Downtown
+  Chaos and Fight Night Street borrow the retail Colonius sets).
 - **Overgrown** (Laro B.): a battle arena, also in PARTY mode.
 - **Vault of Ceramicus** and the multiplayer packs (see Party mode), read
   straight from their `.zip` files.
+- **Back in Time**: nine levels on the retail Diamondus, Christmas and
+  Jungle tile sets.
+- **JJ2 Remake by SteFan** (part 1): 14 remade JJ2 levels, castles to the beach.
 
 **Tile sets borrowed between packs**: a level whose pack lacks a tile set
 takes it from a tile set library (a folder or zip in `Levels/` holding only
 `.j2t` files, like **jj1-conversions.zip** with its 91 Jazz 1 conversions),
 or else from another pack that has it. That is how Team Race gets its Medivo
 set and xlmlots its Carrotus Night (from ChristmasJarVos.ZIP).
-- **BL18**: a JJ2+ pack built on scripts and extra tile sets. Valen Village
-  and Thermal R.7 play (with small gaps where missing extra sets go); the
-  other seven need tile sets that aren't in the folder.
-- **Threed Realms**: hidden until the retail tile sets `Jungle1`, `Town1` and
-  `Diam1` are copied into its folder.
+- **BL18** (`BL18.zip`): a JJ2+ pack built on scripts and extra tile sets;
+  all but No Smoke Without Fire (it needs `Damn1.j2t`) play.
+- **Threed Realms**: three worlds in one level, on the retail Jungle, Town
+  and Diamondus sets (borrowed from the packs that include them).
 
 The game reads the files itself (1.20 to TSF/JJ2+): all layers with their
 parallax, animated tiles and the warp-horizon sky; JJ2+ (MLLE) levels' extra
@@ -306,7 +308,9 @@ rats, Doggy Dogg, skeletons, ravens, bees, crabs and the Mad Hatter keep
 their own JJ2 art, cut from the enemies sheet in `Levels/`). Vines, hooks, tubes, water
 (swimming), wind, belts, float-up columns, bridges and light zones work as in
 the original. Tracker music (.xm/.mod/.it/.s3m) plays through libopenmpt
-(`vendor/chiptune3`); .ogg/.mp3 play as they are.
+(`vendor/chiptune3`), and so does JJ2's own `.j2b` music; .ogg/.mp3/.wav play
+as they are. A level naming a song its pack lacks (JJ2 levels often name
+retail songs like "jungle") takes it from another pack that has it.
 
 Drop another pack folder into `Levels/` and it appears in the episode select
 when you run `serve.py`. Weapons, ammo, ammo crates, power-up monitors,
