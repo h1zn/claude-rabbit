@@ -109,7 +109,8 @@ export class Game {
     Object.assign(this, {
       enemies: [], enemyShots: [], pickups: [], props: [], shots: [], particles: [], popups: [], debris: [], effects: [], warps: [],
       platforms: [...(this.level.platforms || []).map((o) => new Platform(o)),
-        ...this.level.objects.filter((o) => o.type === 'push').map((o) => new Pushable(o))],
+        // (A box or rock an original level keeps inside a wall stays out.)
+        ...this.level.objects.filter((o) => o.type === 'push' && !this.level.solidAt(o.tx * TILE + TILE / 2, o.ty * TILE + TILE / 2)).map((o) => new Pushable(o))],
       levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null, hintHold: null,
       combo: 0, comboTimer: 0, comboMult: 1, activeBoss: null, bossCall: false, bossEnd: 0,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,

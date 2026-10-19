@@ -114,6 +114,9 @@ export function addScore(save, entry) {
 // (score, lives, weapons), so loading starts that level over: like RESTART
 // LEVEL, it can't be used to collect a level's gems twice.
 export function saveSlot(save, i, slot) {
-  save.slots[i] = { ...slot, name: cleanName(slot.name) || `GAME ${i + 1}`, date: new Date().toISOString().slice(0, 16).replace('T', ' ') };
+  const d = new Date();
+  const p2 = (n) => String(n).padStart(2, '0');
+  const date = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;   // local time
+  save.slots[i] = { ...slot, name: cleanName(slot.name) || `GAME ${i + 1}`, date };
   writeSave(save);
 }
