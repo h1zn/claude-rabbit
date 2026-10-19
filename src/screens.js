@@ -1106,7 +1106,7 @@ export class Screens {
         if (back || (choose && this.menu === 3)) { this.sub = null; this.menu = mainIndex('party'); return null; }
         if (!choose) return null;
         this.audio.play('select');
-        if (this.menu === 2) { this.sub = 'local'; return null; }
+        if (this.menu === 2) { this.sub = 'local'; this.lobby = { status: 'idle' }; return null; }
         this.lobby = { status: 'connecting' };
         if (this.menu === 0) { this.sub = 'host'; return 'host'; }
         this.sub = 'join'; this.codeBuf = '';

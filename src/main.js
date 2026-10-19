@@ -184,6 +184,8 @@ function startPendingLevel() {
 function loadSlot(i) {
   const slot = save.slots[i];
   if (!slot) return;
+  // A classic level whose files have gone since it was saved.
+  if (!levelDef(slot.level)) { audio.play('denied'); screens.say('THAT LEVEL CAN NOT LOAD'); return; }
   game.character = slot.character || game.character;
   showCard(slot.level, false);
   pendingLevel.saved = slot;
@@ -196,6 +198,7 @@ function loadSlot(i) {
 // Keyboard 2), player 2 on Keyboard 2; gamepads go one each.
 async function startSplit(index) {
   const def = levelDef(index);
+  if (screens.lobby.status === 'loading') return;   // already on its way
   if (def.prepare) {
     screens.lobby.status = 'loading';
     try { await def.prepare(); } catch (e) { screens.lobby.status = 'idle'; screens.say('THAT LEVEL CAN NOT LOAD'); return; }
@@ -336,8 +339,9 @@ function optionsAction(action) {
 // F6 save. True when one was handled.
 function specialKeys() {
   if (screens.typing || screens.capturing) return false;
-  if (input.pressed('smaller')) { resize(-1); return true; }
-  if (input.pressed('bigger')) { resize(1); return true; }
+  // Screen size changes anywhere, without holding up the game.
+  if (input.pressed('smaller')) resize(-1);
+  if (input.pressed('bigger')) resize(1);
   const key = ['help', 'load', 'save'].find((k) => input.pressed(k));
   if (!key) return false;
   if (scene === 'title') {
