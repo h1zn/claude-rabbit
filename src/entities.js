@@ -1010,6 +1010,27 @@ export class Hint {
   }
 }
 
+// A JJ2+ text area marked AngelScript: stepping into it runs the level
+// script's onFunction<n> once (again after stepping out and back in), or
+// only once at all when it vanishes.
+export class ScriptArea {
+  constructor(o) {
+    this.kind = 'script';
+    Object.assign(this, o);
+    this.x = o.tx * TILE; this.y = o.ty * TILE; this.w = TILE; this.h = TILE;
+    this.inside = false;
+  }
+
+  update(game) {
+    const now = overlap(this, game.player);
+    if (now && !this.inside && !this.used && game.script) {
+      game.script.hook(this.fn, this.arg);
+      if (this.vanish) this.used = true;
+    }
+    this.inside = now;
+  }
+}
+
 // ---------------------------------------------------------------- effects and particles
 
 // A one-shot sprite animation from the effects sheet, centred on (x, y).

@@ -267,6 +267,12 @@ export function jj2Def(key) {
     const meta = {
       name: file.title || entry.file, theme: 'jj2', music, jj2: true, playerH: 28,
       dark: null,
+      // The JJ2+ script, and its jjMusicLoad(): a track key, or null.
+      script: state.script,
+      loadMusic: async (name) => {
+        const song = musicSource(pack, name);
+        return song ? musicKey(song.pack, song.file, null, await musicUrl(song.pack, song.file)) : null;
+      },
     };
     return new JJ2Level(file, state.ts, meta, opts);
   };
@@ -337,6 +343,9 @@ export function jj2Def(key) {
       applyMlleLayers(level, data);
     }
     // Music inside a zip gets a blob URL before the level is built.
+    // JJ2+ levels: their script (<level>.j2as) beside them.
+    const scriptFile = entry.file.replace(/\.j2l$/i, '.j2as');
+    if (pack.files && inPack(pack, scriptFile)) state.script = await packParsed(pack, packFile(pack, scriptFile), (buf) => new TextDecoder('latin1').decode(buf)).catch(() => null);
     const song = musicSource(pack, level.music);
     if (song) Object.assign(state, { music: await musicUrl(song.pack, song.file), musicFile: song.file, musicPack: song.pack });
     state.ts = ts;

@@ -7,9 +7,11 @@ import { tr } from './lang.js';
 import { THEME_TILESET } from './tilesets.js';
 import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import {
-  Checkpoint, Effect, Hint, makeEnemy, overlap, Particle, Pickup, Pole, SecretZone, Sign, Spring, SPRING_CHARS, Warp,
+  Checkpoint, Effect, Hint, ScriptArea, makeEnemy, overlap, Particle, Pickup, Pole, SecretZone, Sign, Spring, SPRING_CHARS, Warp,
 } from './entities.js';
 import { jj2Tick } from './jj2/play.js';
+import { cleanText } from './jj2/files.js';
+import { LevelScript } from './jj2/script.js';
 import { Platform } from './jj2/platforms.js';
 import { Pushable } from './pushables.js';
 import { JJ2View } from './jj2/view.js';
@@ -149,6 +151,7 @@ export class Game {
     for (const o of this.level.objects) {
       if (o.type === 'warp') { const w = new Warp(o); this.warps.push(w); this.props.push(w); }
       if (o.type === 'hint') this.props.push(new Hint(o));
+      if (o.type === 'script') this.props.push(new ScriptArea(o));
       if (o.type === 'exit') this.props.push(new Sign(o.tx, o.ty, true));
       if (o.type === 'pole') this.props.push(new Pole(o.tx, o.ty, o.vertical, true));
       // JJ2 bombs: TNT lying in wait.
@@ -186,6 +189,44 @@ export class Game {
     this.banner(this.party ? this.partyBanner() : this.level.meta.name.toUpperCase(), 160);
     this.voice('jazzHey');
     this.audio.startMusic(this.level.meta.music, { restart: true });
+    // A JJ2+ level's script (src/jj2/script.js): its set-up runs now.
+    this.script = this.level.meta.script ? new LevelScript(this.level.meta.script, this.scriptHost()) : null;
+    if (this.script) { this.script.call('onLevelLoad'); this.script.call('onLevelBegin'); }
+  }
+
+  // What a JJ2+ script can reach (src/jj2/script.js).
+  scriptHost() {
+    const level = this.level;
+    return {
+      difficulty: { easy: 0, medium: 1, hard: 2 }[this.difficulty] ?? 1,
+      maxHealth: PLAYER.maxHealth,
+      player: () => this.player,
+      water: () => (level.water === Infinity ? level.pixelH : level.water),
+      setWater: (y) => { level.water = y; level.waterTarget = y; },
+      levelName: (n) => { level.meta.name = cleanText(n); },
+      trigger: (n) => !!(level.triggerState && level.triggerState.has(n)),
+      setTrigger: (n, on) => { if (level.setTrigger) level.setTrigger(n, on); },
+      helpString: (i, s) => { if (level.texts) level.texts[i] = cleanText(s); },
+      // Music loads in the background; jjMusicLoad() answers at once.
+      music: (name) => {
+        if (!level.meta.loadMusic) return false;
+        level.meta.loadMusic(name).then((key) => {
+          if (key && this.level === level) { level.meta.music = key; this.audio.startMusic(key, { restart: true }); }
+        });
+        return true;
+      },
+      stopMusic: () => this.audio.stopMusic(),
+      clearTile: (x, y) => { if (level.clearTile) level.clearTile(x, y); },
+      alert: (t) => this.banner(cleanText(t), 120),
+      showText: (t) => {
+        const text = typeof t === 'number' ? level.texts && level.texts[t] : cleanText(t);
+        if (text) this.hintHold = { text, t: 210 };
+      },
+      activateBoss: () => { this.bossCall = true; },
+      offsetPlayer: (dx, dy) => { const p = this.player; p.x += dx; p.y += dy; p.prevX = p.x; p.prevY = p.y; },
+      warpToID: (id) => { const w = this.warps.find((q) => q.id === `t${id}`); if (w) this.warpTo(w); },
+      hurt: () => this.player.hurt(this, this.player.cx),
+    };
   }
 
   // What a party game is about, shown at its start.

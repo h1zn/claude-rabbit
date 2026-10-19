@@ -57,7 +57,7 @@ export class Player {
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, shieldType: 'fire', pushing: 0, dash: 0, jumpCut: false,
-      hang: null, hangCool: 0, board: false, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
+      hang: null, hangCool: 0, board: false, noFire: false, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0, dizzy: 0, aim: null, fastFeet: 0,
     });
   }
@@ -312,7 +312,7 @@ export class Player {
     // ---- shooting. Measured timing: holding fire shoots every 35 ticks, but
     // releasing the button cuts the wait to 5 ticks, so tapping fires faster.
     if (input.released('shoot')) this.shotCooldown = Math.min(this.shotCooldown, PLAYER.tapDelay);
-    if (controlled && input.held('shoot') && this.shotCooldown === 0 && !this.stomping) {
+    if (controlled && input.held('shoot') && this.shotCooldown === 0 && !this.stomping && !this.noFire) {
       if (this.weapon !== 1 && this.ammo[this.weapon] <= 0) this.nextWeapon(-1);
       this.shotCooldown = fireDelay(this);
       this.shootPose = 8;

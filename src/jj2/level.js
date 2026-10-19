@@ -222,8 +222,11 @@ export class JJ2Level extends Level {
             put(tx, ty, 'E'); exits++;
             break;
           case EV.TEXT: {
-            const [text] = eventFields(ev.params, [8]);
-            if (this.texts[text]) this.objects.push({ type: 'hint', tx, ty, text: this.texts[text], hidden: true });
+            // JJ2+: AngelScript set, it calls the level script's onFunction<text>
+            // (src/jj2/script.js) instead of showing a text.
+            const [text, vanish, script, offset] = eventFields(ev.params, [8, 1, 1, 8]);
+            if (script) this.objects.push({ type: 'script', tx, ty, fn: text, arg: offset, vanish: !!vanish });
+            else if (this.texts[text]) this.objects.push({ type: 'hint', tx, ty, text: this.texts[text], hidden: true });
             break;
           }
           case EV.WARP_ORIGIN: {
@@ -425,6 +428,15 @@ export class JJ2Level extends Level {
       if (this.onBreak) this.onBreak(tx, ty);
     }
     return true;
+  }
+
+  // A JJ2+ script's jjTileSet(4, x, y, 0): the tile is gone.
+  clearTile(tx, ty) {
+    if (tx < 0 || ty < 0 || tx >= this.w || ty >= this.h) return;
+    const i = ty * this.w + tx;
+    this.layer[i] = 0; this.masks[i] = null;
+    if (this.kind[i] !== ONE_WAY) this.tiles[ty][tx] = '.';
+    if (this.onBreak) this.onBreak(tx, ty);
   }
 
   solidCell(tx, ty) {
