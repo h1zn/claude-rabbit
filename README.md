@@ -276,6 +276,15 @@ from `Levels/`: each folder holds `.j2l` levels with their `.j2t` tile sets
 (and music). Levels whose tile sets aren't in their folder are left out of
 the menus (adding the missing `.j2t` brings them back). Included now:
 
+- **The original game** (`JJ2-Levels.zip`, `JJ2-Music.zip` and
+  `JJ2-Cinematics.zip`, packed from a JJ2 install with `tools/pack_jj2.ps1`):
+  Formerly a Prince, Jazz in Time, Flashback, Funky Monkeys, The Secret Files,
+  the shareware levels and the Home Cooked levels, each level with its own
+  song; the 35 official multiplayer maps are in PARTY mode. The first key
+  plays JJ2's own intro (the Epic logo, then the film with its music; any
+  key skips to the menu), and beating Funky Monkeys plays the ending.
+  `src/cinematic.js` decodes the `.j2v` films (after Jazz2 Resurrection).
+  Without the cinematics zip the splash plays the intro track as before.
 - **Xenobiotic Xeranthemum 2** (Blade): Oasis, Islands in the Sapphire Sea,
   Twilight Park, Space and Aztec, played in order.
 - **Episode 2** (KingofKoopas): all 17 levels in story order (Downtown
@@ -384,6 +393,7 @@ src/jj2/                original JJ2 levels: files.js (.j2l/.j2t reader), level.
                         platforms.js (moving platforms on chains)
 vendor/chiptune3/       libopenmpt player for tracker music (MIT / BSD)
 src/screens.js          splash intro, menus, level select, lobby, tally
+src/cinematic.js        JJ2's .j2v films (intro, ending): four zlib streams -> 8-bit frames
 serve.py                web server + party relay (WebSocket /ws, rooms of 5, room list)
 tools/check_levels.mjs  reachability check for all levels
 tools/build_sprites.py  cuts sprite sheets in new/ into assets/*.png + .json

@@ -1,15 +1,17 @@
 // Entry point: fixed-step loop (14 ms ticks, resync after 35 behind, as
 // measured) with interpolated rendering, and the screen flow:
-// splash (press a key, intro track) -> menu -> level card -> play
+// splash (press a key: JJ2's intro film, or the intro track) -> menu ->
+// level card -> play
 // (pause / clear tally / game over / win) -> high score name -> table,
 // the party lobby -> party play, and split screen (two players, one computer).
 
 import { buildArt } from './art.js';
 import { Audio } from './audio.js';
+import { parseJ2V } from './cinematic.js';
 import { MAX_CATCHUP_TICKS, TICK_MS, VIEW_H, VIEW_W } from './config.js';
 import { Game } from './game.js';
 import { bindKey, defaultKeys, Input } from './input.js';
-import { nextPlayable } from './jj2/catalog.js';
+import { cinematicFile, nextPlayable, songKey } from './jj2/catalog.js';
 import { setLang, tr } from './lang.js';
 import { LEVELS, levelDef } from './levels.js';
 import { localPair, Net, Party } from './party.js';
@@ -81,11 +83,14 @@ let irisTime = 0;
 let pendingLevel = null;
 let gated = true;          // the splash waits for a key so audio may start
 let net = null;            // party connection while in the lobby or a hunt
+let cinema = null;         // the films playing: { reels, i, film, next, then }
 
 // Debug handle for playtesting from the browser console.
 window.kip = {
   game, input, audio, screens,
   go: (s) => go(s),
+  scene: () => scene,
+  cinema: () => cinema,
   play: async (index = 0) => {
     const def = levelDef(index);
     if (def.prepare) await def.prepare();
@@ -94,6 +99,7 @@ window.kip = {
 };
 
 function go(next) {
+  if (next !== 'cinema') cinema = null;
   scene = next;
   sceneTime = 0;
 }
@@ -137,13 +143,56 @@ function pauseWith(sub) {
 }
 
 // Browsers only allow audio after a gesture: the first key or click starts
-// it, and the intro track with it; the menu follows when the track ends.
+// it, and JJ2's own intro with it (the Epic logo, then the film, from
+// JJ2-Cinematics.zip); without the films, the intro track plays over the
+// splash. The menu follows.
+const INTRO = [{ name: 'Logo.j2v' }, { name: 'Intro.j2v', song: 'Intro.j2b' }];
+const ENDING = [{ name: 'Ending.j2v', song: 'Ending.j2b' }];
 function unlock() {
   audio.unlock();
   if (!gated) return;
   gated = false;
   sceneTime = 0;
-  audio.startMusic('intro', { restart: true, onEnd: () => { if (scene === 'splash') toMenu(); } });
+  playFilms(INTRO, toMenu, () => {
+    go('splash');
+    audio.startMusic('intro', { restart: true, onEnd: () => { if (scene === 'splash') toMenu(); } });
+  });
+}
+
+// ---------------------------------------------------------------- cinematics
+
+// A film and its song, loaded: { film, song } (film null if it isn't there).
+async function loadReel(reel) {
+  const [bytes, song] = await Promise.all([cinematicFile(reel.name), reel.song ? songKey(reel.song) : null]);
+  const film = bytes && await parseJ2V(bytes).catch(() => null);
+  return { film, song };
+}
+
+// Play films one after another, then `then`; any key skips them all.
+// `missing` runs instead if the first film isn't there.
+function playFilms(reels, then, missing = then) {
+  const c = { reels, i: 0, film: null, next: loadReel(reels[0]), then };
+  cinema = c;
+  audio.stopMusic();
+  go('cinema');
+  startReel(c, missing);
+}
+
+async function startReel(c, missing) {
+  const { film, song } = await c.next;
+  if (cinema !== c) return;            // skipped while it loaded
+  if (!film) { cinema = null; if (c.i === 0) missing(); else c.then(); return; }
+  c.film = film;
+  c.next = c.i + 1 < c.reels.length ? loadReel(c.reels[c.i + 1]) : null;
+  if (song) audio.startMusic(song, { restart: true });
+  else audio.stopMusic();
+}
+
+function endFilms() {
+  const { then } = cinema;
+  cinema = null;
+  audio.stopMusic();
+  then();
 }
 window.addEventListener('keydown', unlock);
 canvas.addEventListener('pointerdown', unlock);
@@ -400,6 +449,18 @@ function tick() {
     case 'splash':
       if (!gated && sceneTime > 40 && (input.pressed('start') || input.pressed('jump') || input.pressed('pause'))) toMenu();
       break;
+    case 'cinema': {
+      const c = cinema;
+      if (sceneTime > 20 && ['start', 'jump', 'pause', 'fire'].some((k) => input.pressed(k))) { endFilms(); break; }
+      // The film's frames go by its own clock; the next film loads meanwhile.
+      if (c.film && c.film.advance(TICK_MS)) {
+        c.last = c.film;
+        c.film = null;
+        if (++c.i < c.reels.length) startReel(c);
+        else endFilms();
+      }
+      break;
+    }
     case 'title': {
       game.time++;
       lobbyTick();
@@ -459,8 +520,11 @@ function tick() {
       if (game.state === 'clear' && game.clearTime > 280 && input.pressed('start')) {
         game.result = null;
         const def = levelDef(game.levelIndex);
-        if (def.jj2) { const next = nextPlayable(def.next); if (next) showCard(next, false); else endGame(); }
-        else if (game.levelIndex + 1 < LEVELS.length) showCard(game.levelIndex + 1, false);
+        if (def.jj2) {
+          const next = nextPlayable(def.next);
+          // Past the last level of the game: the ending film first.
+          if (next) showCard(next, false); else if (def.ending) playFilms(ENDING, endGame); else endGame();
+        } else if (game.levelIndex + 1 < LEVELS.length) showCard(game.levelIndex + 1, false);
         else game.nextLevel();
       } else if (game.state === 'gameover') {
         // "Continue?": YES starts the level again with fresh lives, but
@@ -523,8 +587,16 @@ function renderSplit(alpha) {
   ctx.fillRect(W - 1, 0, 2, VIEW_H);
 }
 
+// The film, or the last one's last frame while the next loads (black before any).
+function drawCinema() {
+  const film = cinema && (cinema.film || cinema.last);
+  if (film) film.draw(ctx, VIEW_W, VIEW_H);
+  else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+}
+
 function render(alpha) {
   if (scene === 'splash') return screens.splash(sceneTime, gated);
+  if (scene === 'cinema') return drawCinema();
   if (scene === 'split') return renderSplit(alpha);
   if (scene === 'title') return screens.title(game.time, save);
   if (scene === 'card') return screens.card(game, sceneTime, save);

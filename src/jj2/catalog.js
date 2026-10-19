@@ -356,6 +356,8 @@ export function jj2Def(key) {
     const bare = (f) => f.toLowerCase().replace(/\.j2l$/, '');
     const j = pack.levels.findIndex((l) => bare(l.file) === bare(level.next || ''));
     def.next = j >= 0 && j !== Number(n) ? `jj2:${pack.id}:${j}` : null;
+    // The last level of the game: the ending cinematic follows.
+    def.ending = /^ending/i.test(level.next || '');
     // No gems, coins or food anywhere: a story level (text, then on).
     const ids = new Set();
     for (const w of level.events || []) ids.add(w & 0xff);
@@ -429,6 +431,28 @@ function musicKey(pack, name, fallback, src) {
   if (/\.(ogg|mp3|wav)$/i.test(name)) addTrack(key, { url: src });
   else addTrack(key, { mod: src, fallback });
   return key;
+}
+
+// The original game's cinematics and their songs (JJ2-Cinematics.zip and
+// JJ2-Music.zip, or any pack or library with them). A cinematic's bytes, or
+// null; read each time, as a film is big and plays once.
+export async function cinematicFile(name) {
+  await discovered();
+  const lower = name.toLowerCase();
+  const pack = [...LIBRARIES, ...PACKS].find((p) => p.files && p.files.some((f) => f.toLowerCase() === lower));
+  try {
+    if (pack && !pack.zip) return await fetch(url(pack, packFile(pack, name))).then((r) => (r.ok ? r.arrayBuffer() : null));
+    // No folder listing: where tools/pack_jj2.ps1 puts them.
+    return await (await openZip(pack ? pack.zip : 'Levels/JJ2-Cinematics.zip')).read(name);
+  } catch (e) { return null; }
+}
+
+// A song from any pack or library ("Intro.j2b"): a track key, or null.
+export async function songKey(name) {
+  await discovered();
+  const song = musicSource({ id: 'none', files: [] }, name);
+  if (!song) return null;
+  return musicKey(song.pack, song.file, null, await musicUrl(song.pack, song.file).catch(() => null)) || null;
 }
 
 // Packs dropped into Levels/ that aren't listed above (serve.py lists the
