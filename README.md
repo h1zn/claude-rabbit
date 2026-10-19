@@ -285,6 +285,9 @@ the menus (adding the missing `.j2t` brings them back). Included now:
   key skips to the menu), and beating Funky Monkeys plays the ending.
   `src/cinematic.js` decodes the `.j2v` films (after Jazz2 Resurrection).
   Without the cinematics zip the splash plays the intro track as before.
+  `tools/pack_jj2cc.ps1` packs the rest from The Christmas Chronicles
+  (Xmas1-3, its holiday multiplayer levels, two tile sets and `Data.j2d`)
+  into `JJ2-Christmas.zip`.
 - **Xenobiotic Xeranthemum 2** (Blade): Oasis, Islands in the Sapphire Sea,
   Twilight Park, Space and Aztec, played in order.
 - **Episode 2** (KingofKoopas): all 17 levels in story order (Downtown
