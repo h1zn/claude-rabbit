@@ -102,6 +102,7 @@ export class Renderer {
     this.enemyShots(game, alpha);
     if (game.party) this.rivals(game, alpha);
     this.player(game, alpha);
+    if (game.bird) game.bird.draw(this, alpha);
     this.effects(game);
     this.particles(game);
     this.debris(game);
@@ -354,6 +355,7 @@ export class Renderer {
         ctx.restore();
       } else if (prop.kind === 'warp') this.warp(game, prop);
       else if (prop.kind === 'pole') this.pole(prop);
+      else if (prop.draw) prop.draw(this);
       else if (prop.kind === 'hint') ctx.drawImage(this.art.decor.sign, prop.tx * TILE + TILE / 2 - this.art.decor.sign.width / 2, prop.ty * TILE + TILE - this.art.decor.sign.height);
     }
   }
@@ -535,6 +537,17 @@ export class Renderer {
     ctx.restore();
   }
 
+  // The frog's animation (or the transformation playing).
+  frogAnim(p) {
+    if (p.morph > 0) return `${p.morphDir}${p.character[0].toUpperCase()}${p.character.slice(1)}`;
+    if (p.dead || p.knock > 0) return 'hurt';
+    if (p.tongue > 0) return 'tongue';
+    if (!p.onGround) return p.vy < 0 ? 'jump' : 'fall';
+    if (Math.abs(p.vx) > 0.4) return 'run';
+    if (p.anim === 'crouch') return 'crouch';
+    return 'idle';
+  }
+
   // Which hero animation fits the player's current state.
   heroAnim(p) {
     const speed = Math.abs(p.vx);
@@ -575,8 +588,10 @@ export class Renderer {
     const ctx = this.ctx;
     const p = game.player;
     if (p.invuln > 0 && !p.dead && p.rush === 0 && Math.floor(p.invuln / 4) % 2) return;
-    const sheet = this.art.tinted(p.character, game.party && game.party.tint);
-    let name = this.heroAnim(p);
+    // The frog (and the change into it or back) comes from its own sheet.
+    const frogging = p.frog || p.morph > 0;
+    const sheet = frogging ? this.art.morphs : this.art.tinted(p.character, game.party && game.party.tint);
+    let name = frogging ? this.frogAnim(p) : this.heroAnim(p);
     if (!sheet.anims[name]) name = HERO_FALLBACK[name] || 'idle';
     if (!this.heroState || this.heroState.name !== name) this.heroState = { name, start: game.time };
     const anim = sheet.anims[name] || sheet.anims.idle;
@@ -727,8 +742,8 @@ export class Renderer {
     for (const r of party.rivals.values()) {
       if (!r.seen || r.dead) continue;
       const speed = Math.abs(r.vx);
-      const sheet = this.art.tinted(r.character, r.tint);
-      const name = { run: speed > 4.2 ? 'run' : 'walk', jump: speed > 2 ? 'jumpFwd' : 'jump', fall: speed > 2 ? 'fallFwd' : 'fall', pole: 'spring' }[r.anim] || (sheet.anims[r.anim] ? r.anim : 'idle');
+      const sheet = r.frog ? this.art.morphs : this.art.tinted(r.character, r.tint);
+      const name = r.frog ? (sheet.anims[r.anim] ? r.anim : 'idle') : { run: speed > 4.2 ? 'run' : 'walk', jump: speed > 2 ? 'jumpFwd' : 'jump', fall: speed > 2 ? 'fallFwd' : 'fall', pole: 'spring' }[r.anim] || (sheet.anims[r.anim] ? r.anim : 'idle');
       const anim = sheet.anims[name] || sheet.anims[HERO_FALLBACK[name]] || sheet.anims.idle;
       const f = frameAt(anim, game.time, anim.speed);
       const right = r.facing > 0;

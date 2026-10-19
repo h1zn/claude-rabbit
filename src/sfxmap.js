@@ -97,6 +97,8 @@ export const JJ2_SFX = {
   bubbaTornado: ['Bubba/tornado'],
   bubbaSneeze: ['Bubba/sneeze'],
   bollyMissile: ['Bolly/missile_1', 'Bolly/missile_2', 'Bolly/missile_3'],
+  frogMorph: ['Frog/transform'],
+  tongue: ['Frog/tongue'],
 };
 // Looping sounds: the copter ears and the airboard's hum.
 export const JJ2_LOOPS = { hover: 'Common/copter_noise', board: 'Common/char_airboard' };

@@ -12,6 +12,8 @@ const KICK_WINDUP = 8;   // tuned: Spaz's and Lori's kicks
 const KICK_END = 30;
 // Airboard speeds (tuned): across, across holding Run, and up or down.
 const BOARD = { walk: 5, run: 7, climb: 3 };
+// The frog's top speed (Resurrection: the dizzy speed).
+const FROG_SPEED = 2.5;
 
 export class Player {
   constructor(x, y) {
@@ -57,7 +59,7 @@ export class Player {
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, shieldType: 'fire', pushing: 0, dash: 0, jumpCut: false,
-      hang: null, hangCool: 0, board: false, noFire: false, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
+      hang: null, hangCool: 0, board: false, noFire: false, frog: false, morph: 0, morphDir: null, tongue: 0, tongueHit: null, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0, dizzy: 0, aim: null, fastFeet: 0,
     });
   }
@@ -76,7 +78,7 @@ export class Player {
     this.prevX = this.x;
     this.prevY = this.y;
     this.animTime++;
-    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube', 'weaponShown', 'djWindow', 'rfBlast', 'dizzy', 'fastFeet']) if (this[k] > 0) this[k]--;
+    for (const k of ['invuln', 'knock', 'shotCooldown', 'shootPose', 'dropThrough', 'skid', 'poleCool', 'springLock', 'hangCool', 'inTube', 'weaponShown', 'djWindow', 'rfBlast', 'dizzy', 'fastFeet', 'tongue']) if (this[k] > 0) this[k]--;
     if (this.rush > 0 && --this.rush === 0) game.endRush();
     if (this.shield > 0) this.shield--;
     if (this.pushing > 0) this.pushing--;
@@ -107,8 +109,16 @@ export class Player {
     // Original JJ2 levels: tubes, vines and hooks take over movement.
     if (level.areas && this.jj2Move(game, input)) return;
     if (this.board && (this.swimming || this.hang || this.inTube)) this.loseBoard(game);
+    // Turning into a frog or back: a moment out of control.
+    if (this.morph > 0) {
+      this.morph--;
+      this.vx = approach(this.vx, 0, 0.3);
+      this.fall(game);
+      this.anim = 'morph';
+      return;
+    }
 
-    const controlled = this.knock === 0 && this.special === 0 && this.springLock === 0;
+    const controlled = this.knock === 0 && this.special === 0 && this.springLock === 0 && this.tongue === 0;
     const dir = controlled ? (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0) : 0;
     // Dash: holding Run (or a sugar rush) keeps it active; it outlives the
     // key by 16 ticks and then the speed snaps straight back to walk speed.
@@ -117,7 +127,7 @@ export class Player {
     const dashing = this.dash > 0;
     const boost = this.rush > 0 ? PHYS.rushSpeedScale : this.fastFeet > 0 ? PHYS.fastFeetScale : 1;
     const accel = (dashing ? PHYS.runAccel : PHYS.walkAccel) * boost;
-    const max = this.board ? (dashing ? BOARD.run : BOARD.walk) : this.swimming ? (dashing ? 4 : 2.5) : (dashing && !this.hovering ? PHYS.runMax : PHYS.walkMax) * boost;
+    const max = this.board ? (dashing ? BOARD.run : BOARD.walk) : this.frog ? FROG_SPEED : this.swimming ? (dashing ? 4 : 2.5) : (dashing && !this.hovering ? PHYS.runMax : PHYS.walkMax) * boost;
     const crouching = controlled && this.onGround && input.held('down') && !dir;
     this.crouchT = crouching ? this.crouchT + 1 : 0;
     if (dir) {
@@ -145,7 +155,7 @@ export class Player {
     // input: crouch first, standing still, then Jump (Down and Jump together,
     // or a crouch still sliding, give a jump instead). Measured timing:
     // 16-tick wind-up, then rise with vy = (t - 256) * 2048 / 65536 until tick 45.
-    if (this.special === 0 && this.knock === 0 && controlled && this.onGround && !this.swimming && !this.board && input.pressed('jump')
+    if (this.special === 0 && this.knock === 0 && controlled && this.onGround && !this.swimming && !this.board && !this.frog && input.pressed('jump')
       && this.crouchT >= PHYS.superJumpCoil && Math.abs(this.vx) < PHYS.specialStillSpeed
       && !level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE))) {   // one-way: drop through instead
       this.special = 1;
@@ -220,7 +230,7 @@ export class Player {
         this.jumping = true;
         audio.play('jump');
         game.dust(this.cx, this.y + this.h, 4);
-      } else if (this.character === 'spaz' && controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && !this.launched) {
+      } else if (this.character === 'spaz' && !this.frog && controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && !this.launched) {
         // Spaz: one extra jump in the air instead of the copter ears
         // (measured: a straight 8 px/tick launch, within the window).
         if (!this.doubleJumped && this.djWindow > 0) {
@@ -231,13 +241,13 @@ export class Player {
           audio.play('doubleJump');
           game.ring(this.cx, this.y + this.h, '#ffffff');
         }
-      } else if (controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && !this.launched && this.vy > -PHYS.hoverEngage) {
+      } else if (controlled && !this.frog && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && !this.launched && this.vy > -PHYS.hoverEngage) {
         // Original copter: each press re-arms 70 ticks; it only engages near
         // the top of a jump or while falling.
         this.hovering = true;
         this.hoverLeft = PHYS.hoverTicks;
         this.jumpBuffer = 0;
-      } else if (controlled && input.pressed('down') && !this.onGround && !this.stomping) {
+      } else if (controlled && !this.frog && input.pressed('down') && !this.onGround && !this.stomping) {
         // Buttstomp: brief hang, then slam down.
         this.stomping = true;
         this.hovering = false;
@@ -312,7 +322,23 @@ export class Player {
     // ---- shooting. Measured timing: holding fire shoots every 35 ticks, but
     // releasing the button cuts the wait to 5 ticks, so tapping fires faster.
     if (input.released('shoot')) this.shotCooldown = Math.min(this.shotCooldown, PLAYER.tapDelay);
-    if (controlled && input.held('shoot') && this.shotCooldown === 0 && !this.stomping && !this.noFire) {
+    // The frog can't shoot: standing still, FIRE flicks its tongue out
+    // (enemies just in front take it).
+    if (this.frog) {
+      if (controlled && input.pressed('shoot') && this.onGround && Math.abs(this.vx) < 0.5) {
+        this.tongue = 42; this.tongueHit = new Set(); this.vx = 0;
+        audio.play('tongue');
+      }
+      if (this.tongue > 10 && this.tongue < 34) {
+        const reach = { x: this.facing > 0 ? this.cx : this.cx - 64, y: this.cy - 10, w: 64, h: 20 };
+        for (const e of game.enemies) {
+          if (e.dead || this.tongueHit.has(e) || e.harmless || !(reach.x < e.x + e.w && e.x < reach.x + reach.w && reach.y < e.y + e.h && e.y < reach.y + reach.h)) continue;
+          this.tongueHit.add(e);
+          e.damage(game, 2);
+        }
+      }
+    }
+    if (controlled && input.held('shoot') && this.shotCooldown === 0 && !this.stomping && !this.noFire && !this.frog) {
       if (this.weapon !== 1 && this.ammo[this.weapon] <= 0) this.nextWeapon(-1);
       this.shotCooldown = fireDelay(this);
       this.shootPose = 8;
@@ -356,6 +382,10 @@ export class Player {
   // Tubes and vines (original JJ2 levels). Returns true when it moved Kip.
   jj2Move(game, input) {
     const level = game.level;
+    // Frog areas and the areas that turn you back (JJ2 events 222 and 19).
+    const morph = level.areaAt(this.cx, this.cy);
+    if (morph === EV.MORPH_FROG && !this.frog) this.setFrog(game, true);
+    else if (morph === EV.REVERT_MORPH && this.frog) this.setFrog(game, false);
     // In water, unless leaping out of it.
     const wasIn = this.swimming;
     this.swimming = ((level.water !== Infinity && this.cy > level.water) || level.areaAt(this.cx, this.cy) === EV.WATER_BLOCK)
@@ -616,12 +646,25 @@ export class Player {
     game.flash('#ff2a4a', 6);
     if (this.health <= 0) game.killPlayer();
     this.loseBoard(game);
+    if (game.bird) game.bird.flyAway();
   }
 
   // Ouch, in the hero's own voice (Jazz warns on his last heart).
   cry(game) {
     if (this.character === 'jazz') game.audio.play(this.health === 1 ? 'jazzLookOut' : 'jazzHurt');
     else game.audio.play(this.character === 'spaz' ? 'spazHurt' : 'loriHurt');
+  }
+
+  // Into a frog (on) or back: the hero's own transformation, then the
+  // frog's controls (src/render.js draws it from assets/jj2_morphs).
+  setFrog(game, on) {
+    if (this.frog === on || this.morph > 0) return;
+    this.frog = on;
+    this.morph = on ? 72 : 80;
+    this.morphDir = on ? 'into' : 'back';
+    this.loseBoard(game);
+    Object.assign(this, { hovering: false, stomping: false, special: 0, tongue: 0 });
+    game.audio.play('frogMorph');
   }
 
   // The airboard: picked up, and lost again to a hit or water.

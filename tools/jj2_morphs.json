@@ -1,0 +1,27 @@
+{
+  "anims": {
+    "idle": {"j2a": "Frog/idle"},
+    "run": {"j2a": "Frog/run"},
+    "walk": {"j2a": "Frog/run"},
+    "jump": {"j2a": "Frog/jump_start", "loop": false},
+    "fall": {"j2a": "Frog/fall"},
+    "land": {"j2a": "Frog/fall_land", "loop": false},
+    "crouch": {"j2a": "Frog/crouch"},
+    "hurt": {"j2a": "Frog/hurt"},
+    "tongue": {"j2a": "Frog/tongue_hor", "speed": 3, "loop": false},
+    "intoJazz": {"j2a": "Jazz/transform_frog", "speed": 4, "loop": false},
+    "intoSpaz": {"j2a": "Spaz/transform_frog", "speed": 4, "loop": false},
+    "intoLori": {"j2a": "Lori/transform_frog", "speed": 4, "loop": false},
+    "backJazz": {"j2a": "Jazz/transform_frog_end", "speed": 4, "loop": false},
+    "backSpaz": {"j2a": "Spaz/transform_frog_end", "speed": 4, "loop": false},
+    "backLori": {"j2a": "Lori/transform_frog_end", "speed": 4, "loop": false},
+    "chuckCaged": {"j2a": "Birdy/caged"},
+    "chuckCageBroken": {"j2a": "Birdy/cage_destroyed"},
+    "chuckFly": {"j2a": "Birdy/fly"},
+    "birdyCaged": {"j2a": "BirdyYellow/caged"},
+    "birdyCageBroken": {"j2a": "BirdyYellow/cage_destroyed"},
+    "birdyFly": {"j2a": "BirdyYellow/fly"},
+    "birdyCharge": {"j2a": "BirdyYellow/charge_diag_downright_placeholder"},
+    "birdMonitor": {"j2a": "Object/powerup_transform_birdy"}
+  }
+}

@@ -1,6 +1,7 @@
 // Game world: level setup, entity updates, interactions, objectives, camera.
 
 import { Backdrop, BACKDROP_SKY, BACKDROPS } from './backdrop.js';
+import { Bird, BrokenCage } from './birds.js';
 import { BOSS_CHARS } from './bosses.js';
 import { entitiesFor } from './difficulty.js';
 import { tr } from './lang.js';
@@ -115,7 +116,7 @@ export class Game {
         // (A box or rock an original level keeps inside a wall stays out.)
         ...this.level.objects.filter((o) => o.type === 'push' && !this.level.solidAt(o.tx * TILE + TILE / 2, o.ty * TILE + TILE / 2)).map((o) => new Pushable(o))],
       levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null, hintHold: null,
-      combo: 0, comboTimer: 0, comboMult: 1, activeBoss: null, bossCall: false, bossEnd: 0,
+      combo: 0, comboTimer: 0, comboMult: 1, activeBoss: null, bossCall: false, bossEnd: 0, bird: null,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,
     });
     let start = { x: 64, y: 64 };
@@ -157,7 +158,13 @@ export class Game {
       // JJ2 bombs: TNT lying in wait.
       if (o.type === 'bomb') { const t = new Bullet(TNT, false, o.tx * TILE + 9, o.ty * TILE + 18, 0, 0); t.placed = true; t.armed = 0; this.shots.push(t); }
       const k = Pickup.fromObject(o);
-      if (k) { if (o.weapon === 1) k.spaz = this.character === 'spaz'; this.pickups.push(k); }
+      if (k) {
+        if (o.weapon === 1) k.spaz = this.character === 'spaz';
+        // Bird cages and monitors settle on the floor at their column (their
+        // JJ2 event can sit a tile into the ground).
+        if (k.kind === 'birdcage' || k.kind === 'birdmonitor') this.settle(k, o.ty * TILE + TILE / 2);
+        this.pickups.push(k);
+      }
     }
     // JJ2 trigger crates: shoot one to switch its trigger.
     for (const c of this.level.triggerCrates || []) {
@@ -192,6 +199,27 @@ export class Game {
     // A JJ2+ level's script (src/jj2/script.js): its set-up runs now.
     this.script = this.level.meta.script ? new LevelScript(this.level.meta.script, this.scriptHost()) : null;
     if (this.script) { this.script.call('onLevelLoad'); this.script.call('onLevelBegin'); }
+  }
+
+  // Stand `k` on the floor surface nearest `y` in its middle column.
+  settle(k, y) {
+    const L = this.level; const cx = k.x + k.w / 2;
+    let floor = null;
+    if (L.solidAt(cx, y)) { for (let d = 0; d < 96; d++) if (!L.solidAt(cx, y - d - 1)) { floor = y - d; break; } } else { for (let d = 0; d < 96; d++) if (L.solidAt(cx, y + d)) { floor = y + d; break; } }
+    if (floor !== null) k.y = floor - k.h;
+  }
+
+  // A cage broken or a bird monitor opened: the bird joins the player
+  // (src/birds.js). False when one is already along.
+  freeBird(k) {
+    if (this.bird && !this.bird.leaving) return false;
+    const yellow = k.kind === 'birdcage' && k.yellow;
+    this.bird = new Bird(yellow ? 1 : 0, k.x + k.w / 2, k.y + 12);
+    if (k.kind === 'birdcage') this.props.push(new BrokenCage(k));
+    this.effect('explosion', k.x + k.w / 2, k.y + k.h / 2);
+    this.audio.play('crate');
+    this.banner(yellow ? 'BIRDY JOINS YOU!' : 'CHUCK JOINS YOU!', 80);
+    return true;
   }
 
   // What a JJ2+ script can reach (src/jj2/script.js).
@@ -500,6 +528,8 @@ export class Game {
     const p = this.player;
     if (p.dead) return;
     p.board = false;
+    p.frog = false; p.morph = 0;
+    if (this.bird) this.bird.flyAway();
     // Party: knocked out (falling off the world), back in 10 s.
     if (this.party) { this.party.knockOut(this); return; }
     p.dead = true;
@@ -570,6 +600,7 @@ export class Game {
     const p = this.player;
     for (const pl of this.platforms) pl.update(this);
     p.update(this, input);
+    if (this.bird) { this.bird.update(this); if (this.bird.dead) this.bird = null; }
     for (const pl of this.platforms) pl.catchRider(this);
     if (this.party) this.party.tick(this);
 

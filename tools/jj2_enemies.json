@@ -118,6 +118,27 @@
     },
     "caterpillarInhale": {
       "j2a": "Caterpillar/inhale"
+    },
+    "tweedleIdle": {
+      "j2a": "Tweedle/idle"
+    },
+    "tweedleMagnetStart": {
+      "j2a": "Tweedle/magnet_start"
+    },
+    "tweedleMagnet": {
+      "j2a": "Tweedle/magnet"
+    },
+    "tweedleMagnetEnd": {
+      "j2a": "Tweedle/magnet_end"
+    },
+    "tweedleShootJazz": {
+      "j2a": "Tweedle/shoot_jazz"
+    },
+    "tweedleShootSpaz": {
+      "j2a": "Tweedle/shoot_spaz"
+    },
+    "tweedleHurt": {
+      "j2a": "Tweedle/hurt"
     }
   }
 }

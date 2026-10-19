@@ -20,6 +20,7 @@ export const EV = {
   SECRET_WARP: 26, JAZZ_START: 29, SPAZ_START: 30, MP_START: 31, LORI_START: 32,
   EOL_SIGN: 81, SAVE_POINT: 83, BRIDGE: 153, LIGHT_STEADY: 148, LIGHT_PULSE: 149, LIGHT_FLICKER: 150,
   DESTRUCT: 185, DESTRUCT_BOMB: 186, COLLAPSE: 187, BUTTSTOMP: 188, GEMSTOMP: 189,
+  MORPH_FROG: 222, REVERT_MORPH: 19, BIRDY: 68, BIRD_MONITOR: 94,
   TUBE: 206, TEXT: 207, SET_WATER: 208, GENERATOR: 216, WARP_ORIGIN: 230, WARP_TARGET: 240, GEM_RING: 192,
   LAVA: 122, TRIGGER_CRATE: 95, ACTIVATE_BOSS: 28, WATER_BLOCK: 233, TRIGGER_AREA: 234, TRIGGER_ZONE: 246,
   CTF_BASE: 244,
@@ -229,6 +230,12 @@ export class JJ2Level extends Level {
             else if (this.texts[text]) this.objects.push({ type: 'hint', tx, ty, text: this.texts[text], hidden: true });
             break;
           }
+          case EV.BIRDY: {
+            const [yellow] = eventFields(ev.params, [1]);
+            this.objects.push({ type: 'birdcage', tx, ty, yellow: !!yellow });
+            break;
+          }
+          case EV.BIRD_MONITOR: this.objects.push({ type: 'birdmonitor', tx, ty }); break;
           case EV.WARP_ORIGIN: {
             // SetLap: a race counts a lap here.
             const [wid, coins, setLap] = eventFields(ev.params, [8, 8, 1]);
@@ -337,7 +344,7 @@ export class JJ2Level extends Level {
             break;
           case EV.BELT_RIGHT: case EV.BELT_LEFT: case EV.ACC_BELT_RIGHT: case EV.ACC_BELT_LEFT:
           case EV.WIND_LEFT: case EV.WIND_RIGHT: case EV.FLOAT_UP: case EV.TUBE: case EV.SET_WATER:
-          case EV.LIGHT_SET: case EV.LIGHT_RESET: case EV.STOP_ENEMY: case EV.SLIDE:
+          case EV.LIGHT_SET: case EV.LIGHT_RESET: case EV.STOP_ENEMY: case EV.SLIDE: case EV.MORPH_FROG: case EV.REVERT_MORPH:
             this.areas[i] = id; this.areaParams[i] = ev.params;
             break;
           default:

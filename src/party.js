@@ -418,7 +418,7 @@ export class Party {
       this.net.send({
         t: 's', x: Math.round(p.x), y: Math.round(p.y), vx: +p.vx.toFixed(2), vy: +p.vy.toFixed(2), f: p.facing, a: p.anim,
         g: game.gems, d: p.dead ? 1 : 0, h: p.health, r: this.roasts, l: this.laps, c: this.carry,
-        e: (this.items.bubble ? 1 : 0) | (this.items.shrink ? 2 : 0),
+        e: (this.items.bubble ? 1 : 0) | (this.items.shrink ? 2 : 0) | (p.frog ? 4 : 0),
       });
     }
     for (const r of this.rivals.values()) r.update();
@@ -484,6 +484,7 @@ export class Party {
     if (by && this.truce) return;
     p.health--;
     p.loseBoard(game);
+    if (game.bird) game.bird.flyAway();
     if (this.mode === 'treasure' && game.gems > 0) {
       const lost = Math.min(PARTY_DROP, game.gems);
       game.gems -= lost;
@@ -658,7 +659,7 @@ export class Party {
         const r = this.rivals.get(from);
         if (!r) break;
         if (!r.seen) { r.x = m.x; r.y = m.y; r.prevX = m.x; r.prevY = m.y; }
-        Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, hearts: m.h, roasts: m.r, laps: m.l, carry: m.c, bubble: !!(m.e & 1), shrink: !!(m.e & 2), seen: true });
+        Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, hearts: m.h, roasts: m.r, laps: m.l, carry: m.c, bubble: !!(m.e & 1), shrink: !!(m.e & 2), frog: !!(m.e & 4), seen: true });
         break;
       }
       case 'shot': {

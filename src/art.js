@@ -105,6 +105,8 @@ export async function buildArt() {
   // Enemies drawn as themselves (src/jj2/level.js SKIN): cut from the uploaded
   // sheets (enemies2) and from Anims.j2a (jj2_enemies, tools/j2a.py sheet).
   art.skins = { ...art.enemy2.anims, ...art.jj2e.anims };
+  // The frog, the birds and the bird monitor (Anims.j2a, tools/jj2_morphs.json).
+  art.morphs = await loadSheet('assets/jj2_morphs.json');
   // Special blocks (see tools/build_blocks.py for the order).
   const blocks = await loadTileset('assets/blocks.png');
   art.blocks = Array.from({ length: blocks.w / 32 }, (_, i) => cutTiles(blocks.image, [i, 0, 1, 1]));
