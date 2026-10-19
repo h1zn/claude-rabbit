@@ -289,11 +289,13 @@ the menus (adding the missing `.j2t` brings them back). Included now:
 
 **Tile sets borrowed between packs**: a level whose pack lacks a tile set
 takes it from a tile set library (a folder or zip in `Levels/` holding only
-`.j2t` files, like **jj1-conversions.zip** with its 91 Jazz 1 conversions),
+`.j2t` files, like **jj1-conversions.zip** with its 91 Jazz 1 conversions, or
+`Levels/Tilesets/` for loose ones),
 or else from another pack that has it. That is how Team Race gets its Medivo
 set and xlmlots its Carrotus Night (from ChristmasJarVos.ZIP).
 - **BL18** (`BL18.zip`): a JJ2+ pack built on scripts and extra tile sets;
-  all but No Smoke Without Fire (it needs `Damn1.j2t`) play.
+  all nine levels play (No Smoke Without Fire borrows `Levels/Tilesets/Damn1.j2t`;
+  its scripted finale boss isn't there, as JJ2+ scripts don't run).
 - **Threed Realms**: three worlds in one level, on the retail Jungle, Town
   and Diamondus sets (borrowed from the packs that include them).
 
