@@ -123,6 +123,7 @@ export class Game {
       const py = e.ty * TILE;
       const enemy = makeEnemy(e.ch, px, py) || (BOSS_CHARS[e.ch] && new BOSS_CHARS[e.ch](px, py));
       if (enemy) {
+        if (e.skin) enemy.skin = e.skin;
         // In an original level, only a final boss (no other exit) locks the way out.
         if (enemy.boss && this.level.jj2 && !this.level.bossEnds) enemy.guard = false;
         this.enemies.push(enemy); totals.enemies++; continue;

@@ -437,7 +437,8 @@ export class Renderer {
       if (e.flash > 0 && e.flash % 2) continue;
       if (e.draw) { e.draw(this, alpha); continue; }
       if (e.onGround) this.footShadow(lerp(e.prevX, e.x, alpha) + e.w / 2, e.y + e.h, e.w * 0.9);
-      let f = e.sprite(this.art);
+      const skin = e.skin && this.art.enemy2.anims[e.skin];
+      let f = skin ? frameAt(skin, e.t, skin.speed) : e.sprite(this.art);
       // Frozen: ice blue, blinking as it is about to thaw.
       if (e.frozen > 0 && (e.frozen > 50 || e.frozen % 8 < 5)) f = iced(f);
       const x = lerp(e.prevX, e.x, alpha) + e.w / 2;

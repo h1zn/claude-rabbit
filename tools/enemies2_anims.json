@@ -1,0 +1,134 @@
+{
+  "sheet": "../Levels/Enemies & Bosses - Enemies.png",
+  "minBand": 10,
+  "anims": {
+    "fencer": {
+      "cols": [
+        15,
+        160,
+        1000,
+        218
+      ],
+      "speed": 5,
+      "loop": true,
+      "minW": 16
+    },
+    "fatChick": {
+      "cols": [
+        415,
+        218,
+        1090,
+        282
+      ],
+      "speed": 6,
+      "loop": true,
+      "minW": 16
+    },
+    "fish": {
+      "cols": [
+        15,
+        648,
+        715,
+        702
+      ],
+      "speed": 5,
+      "loop": true,
+      "pick": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    "labRat": {
+      "cols": [
+        720,
+        660,
+        1025,
+        697
+      ],
+      "speed": 4,
+      "loop": true
+    },
+    "dog": {
+      "cols": [
+        520,
+        845,
+        1085,
+        890
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "skeleton": {
+      "cols": [
+        30,
+        965,
+        815,
+        1030
+      ],
+      "speed": 5,
+      "loop": true,
+      "minW": 16
+    },
+    "raven": {
+      "cols": [
+        30,
+        1040,
+        445,
+        1080
+      ],
+      "speed": 4,
+      "loop": true
+    },
+    "bee": {
+      "cols": [
+        895,
+        115,
+        1080,
+        158
+      ],
+      "speed": 3,
+      "loop": true,
+      "minW": 10
+    },
+    "crab": {
+      "cols": [
+        730,
+        305,
+        1085,
+        342
+      ],
+      "speed": 5,
+      "loop": true
+    },
+    "hatter": {
+      "cols": [
+        15,
+        530,
+        1090,
+        592
+      ],
+      "speed": 5,
+      "loop": true,
+      "minW": 24,
+      "pick": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    }
+  }
+}

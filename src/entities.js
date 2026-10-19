@@ -98,7 +98,8 @@ export class Turtle extends Enemy {
     game.addScore(this.score * game.bump(), this.cx, this.y);
     game.audio.play('stomp');
     game.effect('poof', this.cx, this.y + this.h / 2);
-    game.enemies.push(new Shell(this.x, this.y + this.h));
+    // A skinned turtle-walker (fat chick, crab, hatter) has no shell.
+    if (!this.skin) game.enemies.push(new Shell(this.x, this.y + this.h));
   }
 }
 

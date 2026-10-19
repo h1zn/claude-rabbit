@@ -96,8 +96,8 @@ export async function buildArt() {
   Object.assign(jazz.anims, jazzX.anims);
   Object.assign(spaz.anims, spazX.anims);
   art.beta = beta;
-  [art.items, art.enemy, art.turtle, art.fx, art.queen, art.bilsy, art.robot, art.uterus] = await Promise.all(
-    ['items', 'enemies', 'turtles', 'fx', 'queen', 'bilsy', 'robot', 'uterus'].map((n) => loadSheet(`assets/${n}.json`)),
+  [art.items, art.enemy, art.turtle, art.fx, art.queen, art.bilsy, art.robot, art.uterus, art.devan, art.enemy2] = await Promise.all(
+    ['items', 'enemies', 'turtles', 'fx', 'queen', 'bilsy', 'robot', 'uterus', 'devan', 'enemies2'].map((n) => loadSheet(`assets/${n}.json`)),
   );
   // Special blocks (see tools/build_blocks.py for the order).
   const blocks = await loadTileset('assets/blocks.png');

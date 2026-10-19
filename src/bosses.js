@@ -1,11 +1,11 @@
 // Bosses (manual, "The Bosses"): the Queen and Schwartzenguard, plus Bilsy,
-// the Robot and Uterus from the original's levels. Each guards the exit: the
+// the Robot, Uterus and Devan Shell from the original's levels. Each guards the exit: the
 // exit sign stays locked until it is beaten. Behaviour follows Jazz2
 // Resurrection's reimplementation (Actors/Enemies/Bosses), converted from its
 // 60 fps frames to our 70 Hz ticks.
 
 import { TILE } from './config.js';
-import { Enemy, overlap, Shell } from './entities.js';
+import { Enemy, EnemyShot, overlap, Shell } from './entities.js';
 import { frameAt } from './sheets.js';
 
 const T = 70 / 60;            // frames -> ticks
@@ -741,7 +741,123 @@ class Crab extends Enemy {
   sprite(art) { return frameAt(art.uterus.anims.crab, this.t, 5); }
 }
 
+// ---------------------------------------------------------------- Devan Shell
+
+// Devan himself (JJ2 event 200): runs at you, leaps, and fires his blaster
+// along the floor. Beaten down to half, he sparkles into a rage: quicker,
+// shots in threes, and cartoon bombs lobbed at you. Sprites: Levels/Devan
+// Shell.png (assets/devan).
+export class Devan extends Boss {
+  constructor(x, y) {
+    super('devan', x, y - 56 + TILE, 26, 56, 120, 10000, 'DEVAN SHELL!');
+    this.facing = -1;
+    this.rage = false;
+  }
+
+  reset() { super.reset(); this.rage = false; this.shielded = false; this.facing = -1; }
+
+  activate(game) { this.think(game); }
+
+  // Pick the next move.
+  think(game) {
+    this.facePlayer(game);
+    const far = Math.abs(game.player.cx - this.cx) > 160;
+    const r = Math.random();
+    if (this.onGround && r < (this.rage ? 0.3 : 0.2)) {
+      // Leap at the player.
+      this.state = 'jump'; this.play('jump');
+      this.vy = -5.2; this.vx = this.facing * (this.rage ? 2.6 : 2) * V; this.onGround = false;
+      game.audio.play('spring');
+    } else if (this.rage && r < 0.5) {
+      this.state = 'bomb'; this.play('bomb'); this.vx = 0;
+    } else if (far && r < 0.7) {
+      this.state = 'run'; this.anim = 'run'; this.st = Math.round(rand(30, 60) * T);
+      this.vx = this.facing * (this.rage ? 3 : 2.2) * V;
+    } else {
+      this.state = 'aim'; this.play('aim'); this.vx = 0;
+      this.shots = this.rage ? 3 : 1 + Math.floor(Math.random() * 2);
+      game.audio.play('uppercutCharge');
+    }
+  }
+
+  update(game) {
+    this.begin();
+    if (!this.wake(game)) { this.fall(game); return; }
+    const hit = this.fall(game);
+    switch (this.state) {
+      case 'run':
+        if (hit.left || hit.right || this.ledgeAhead(game)) { this.vx = 0; this.st = 0; }
+        if (this.st === 0) this.idle(game, 12);
+        break;
+      case 'jump':
+        if (this.onGround && this.at > 4) { this.vx = 0; game.shake(4); game.audio.play('land'); this.idle(game, 16); }
+        break;
+      case 'aim': if (this.at >= 16) { this.state = 'shoot'; this.play('shoot'); this.fire(game); } break;
+      case 'shoot':
+        if (this.at >= 14) {
+          if (--this.shots > 0) { this.play('shoot'); this.fire(game); } else this.idle(game, this.rage ? 16 : 30);
+        }
+        break;
+      case 'bomb':
+        if (this.at === 40) {
+          // Lobbed to land near the player.
+          const dx = game.player.cx - this.cx;
+          game.enemyShots.push(new EnemyShot('bomb', this.cx + this.facing * 14, this.y + 16, Math.max(-5, Math.min(5, dx / 40)), -5));
+          game.audio.play('throw');
+        }
+        if (this.at >= 55) this.idle(game, 14);
+        break;
+      case 'morph':
+        if (this.at >= 50) { this.shielded = false; this.rage = true; game.banner('DEVAN IS FURIOUS!', 90); this.idle(game, 10); }
+        break;
+      case 'idle': if (this.st === 0) this.think(game); break;
+      default: break;
+    }
+  }
+
+  idle(game, time) { this.state = 'idle'; this.anim = 'idle'; this.vx = 0; this.st = Math.round(time * T); this.facePlayer(game); }
+
+  fire(game) {
+    this.facePlayer(game);
+    game.audio.play('shoot');
+    const x = this.cx + this.facing * 30; const y = this.y + 24;
+    const spread = this.rage ? [-1, 0, 1] : [0];
+    for (const k of spread) game.enemyShots.push(new DevanBlast(x, y, this.facing, k * 0.9));
+  }
+
+  damage(game, amount) {
+    if (!this.active || this.dead) return;
+    super.damage(game, amount);
+    if (!this.rage && !this.dead && this.hp <= this.maxHp / 2 && this.state !== 'morph') {
+      // The rage: sparkling, untouchable for a moment.
+      this.state = 'morph'; this.play('morph'); this.vx = 0; this.shielded = true;
+      game.audio.play('secret'); game.flash('#ffe85a', 6);
+    }
+  }
+
+  frame(art) {
+    const a = art.devan.anims;
+    if (this.state === 'jump') return frameAt(a.jump, Math.min(this.at, 200), 3 + (this.vy > 0 ? 1 : 0));
+    return super.frame(art);
+  }
+
+  draw(r, alpha) {
+    if (this.rage && this.t % 20 < 10) r.glow(this.cx, this.cy, 40, 'rgba(255,90,40,0.35)');
+    super.draw(r, alpha);
+  }
+}
+
+class DevanBlast extends BossShot {
+  constructor(x, y, dir, vy) { super('blast', x - 14, y - 8, dir * 6 * V, vy * V, { w: 28, h: 16, life: Math.round(140 * T), solid: false, glowColor: 'rgba(120,200,255,0.5)' }); }
+  move(game) {
+    this.x += this.vx; this.y += this.vy;
+    if (game.level.solidAt(this.x + this.w / 2, this.y + this.h / 2)) { this.dead = true; game.effect('hitSpark', this.x + this.w / 2, this.y + this.h / 2); }
+  }
+
+  sprite(art) { return frameAt(art.devan.anims.blast, this.t, 3); }
+}
+
 // JJ2 boss events -> boss classes (others stay ordinary enemies).
-export const JJ2_BOSSES = { 101: Schwartzenguard, 151: Queen, 114: Bilsy, 202: Robot, 195: Uterus };
+export const JJ2_BOSSES = { 101: Schwartzenguard, 151: Queen, 114: Bilsy, 202: Robot, 195: Uterus, 200: Devan, 201: Robot };
 // Level characters for our own levels.
-export const BOSS_CHARS = { Z: Queen, V: Schwartzenguard, B: Bilsy, R: Robot, O: Uterus };
+export const BOSS_CHARS = { Z: Queen, V: Schwartzenguard, B: Bilsy, R: Robot, O: Uterus, D: Devan };

@@ -24,13 +24,13 @@ import { TILE } from './config.js';
 //   monitor  M Quick Change monitor (monitors: shoot or stomp them open)
 //   w turtle  k lizard  n demon  h frog  f bat  d dragonfly  J monkey (throws)  G bomb lizard
 //   Bosses (they lock the exit until beaten): Z the Queen  V Schwartzenguard
-//   B Bilsy  R Robot  O Uterus
+//   B Bilsy  R Robot  O Uterus  D Devan Shell
 // Warps, hint signs and weapon pickups carry data, so they are objects
 // (Builder.warp/hint/ammo/ammoCrate/powerup/bomb/pushable).
 const SOLID = new Set(['#', '=', 'x', 'm', 'c', 'p', 'Y', 'u', 'W']);
 // Blocks drawn from the shared block sheet instead of the terrain.
 export const BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u', 'i', 'W']);
-const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQLNMwknhfdJGZVBRO'.split(''));
+const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQLNMwknhfdJGZVBROD'.split(''));
 
 // Area cells (JJ2 event numbers, as EV in src/jj2/level.js): the player's
 // swimming, vine and hook code reads these in our levels as in JJ2 levels.

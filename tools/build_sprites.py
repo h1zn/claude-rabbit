@@ -5,8 +5,8 @@ MAP: {"sheet": path, "anims": {name: {"frames": [first, last], "speed", "loop"}}
 Frame numbers are the slicer's reading-order indices (see slice.py contact sheet).
 An animation can also list exact rectangles ("boxes": [[x0, y0, x1, y1], ...]) for
 sprites too small or too close to the sheet border for the slicer to find, or
-give a strip ("cols": [x0, y0, x1, y1], optional "gap") cut into frames at
-empty columns (tools/boxes.py), for sprites made of loose pieces (dust, rings).
+give a strip ("cols": [x0, y0, x1, y1], or a list of strips; optional "gap")
+cut into frames at empty columns (tools/boxes.py), for sprites made of loose pieces (dust, rings).
 """
 import json
 import os
@@ -38,7 +38,9 @@ def main():
     for a in spec['anims'].values():
         if 'cols' in a:
             # Slivers narrower than 4 px are stray pixels, not frames.
-            a['boxes'] = [b for b in column_boxes(sheet, *a['cols'], a.get('gap', 2)) if b[2] - b[0] >= a.get('minW', 4)]
+            # Several strips (a list of rectangles) join into one animation.
+            strips = a['cols'] if isinstance(a['cols'][0], list) else [a['cols']]
+            a['boxes'] = [b for st in strips for b in column_boxes(sheet, *st, a.get('gap', 2)) if b[2] - b[0] >= a.get('minW', 4)]
             if 'pick' in a:
                 a['boxes'] = [a['boxes'][k] for k in a['pick'] if k < len(a['boxes'])]
     for a in spec['anims'].values():

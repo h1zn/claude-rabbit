@@ -10,7 +10,7 @@ import { cleanText, decodeEvent, eventFields, tileMask } from './files.js';
 
 // JJ2 boss events -> our boss characters (src/bosses.js); other bosses stay
 // ordinary enemies.
-const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O' };
+const BOSS_CHAR = { 101: 'V', 151: 'Z', 114: 'B', 202: 'R', 195: 'O', 200: 'D', 201: 'R' };
 
 // Event ids (JJ2 numbering).
 export const EV = {
@@ -36,12 +36,15 @@ const CHAR = {
   85: 'S', 86: 'T', 87: 'U', 60: 'T',
   // Enemies, by how they move: walkers, hoppers, flyers, shooters.
   117: 'w', 100: 'w', 248: 'w', 191: 'w', 125: 'w', 196: 'w', 118: 'w', 41: 'w',
-  104: 'k', 249: 'k', 102: 'k', 116: 'k', 110: 'k',
+  104: 'k', 249: 'k', 102: 'k', 116: 'k', 110: 'k', 113: 'w',
   120: 'n', 115: 'n', 126: 'n', 103: 'n',
-  108: 'f', 190: 'f', 109: 'f', 152: 'f', 127: 'f', 106: 'f', 197: 'f',
-  123: 'd', 105: 'd', 107: 'd', 225: 'd', 237: 'd',
+  108: 'f', 109: 'f', 152: 'f', 106: 'f', 197: 'f',
+  123: 'd', 105: 'd', 107: 'd', 225: 'd', 237: 'd', 127: 'd', 190: 'd',
   124: 'J', 184: 'J', 183: 'd', 250: 'd',   // copter lizards hover and dive
 };
+// Enemies that move like one of ours but look like themselves
+// (assets/enemies2, from the enemies sheet in Levels/).
+const SKIN = { 126: 'fencer', 125: 'fatChick', 127: 'fish', 102: 'labRat', 116: 'dog', 115: 'skeleton', 190: 'raven', 105: 'bee', 225: 'bee', 196: 'crab', 113: 'hatter' };
 for (let id = 141; id <= 147; id++) CHAR[id] = 'o';
 for (let id = 154; id <= 182; id++) CHAR[id] = 'o';
 const BOSSES = new Set([101, 114, 151, 195, 198, 199, 200, 201, 202, 235, 241]);
@@ -141,7 +144,7 @@ export class JJ2Level extends Level {
     let exits = 0;
     const bosses = [];
     const armed = new Set([1]);        // weapons the level gives ammo for ('blast': explosives)
-    const put = (tx, ty, ch) => { if (tx >= 0 && ty >= 0 && tx < w && ty < h) this.entities.push({ ch, tx, ty }); };
+    const put = (tx, ty, ch, skin) => { if (tx >= 0 && ty >= 0 && tx < w && ty < h) this.entities.push(skin ? { ch, tx, ty, skin } : { ch, tx, ty }); };
 
     for (let ty = 0; ty < h; ty++) {
       for (let tx = 0; tx < w; tx++) {
@@ -331,11 +334,16 @@ export class JJ2Level extends Level {
             break;
           default:
             if (BOSSES.has(id)) { bosses.push([tx, ty]); put(tx, ty, BOSS_CHAR[id] || 'n'); break; }
-            if (CHAR[id]) put(tx, ty, CHAR[id]);
+            if (CHAR[id]) put(tx, ty, CHAR[id], SKIN[id]);
         }
         this.tiles[ty][tx] = ch;
       }
     }
+
+    // A level strewn with Devans (BL18's level 4 has 17) uses the event for
+    // ordinary foes, not one boss fight.
+    const devans = this.entities.filter((e) => e.ch === 'D');
+    if (devans.length > 3) for (const e of devans) e.ch = 'n';
 
     // Events 220/221 (pepper and electro power-ups) by the dozen are some
     // JJ2+ script's markers, not monitors.
