@@ -319,7 +319,7 @@ export function fire(game, p) {
     if (++p.toast >= TOAST_PER_AMMO) { p.toast = 0; p.ammo[6]--; }
   } else if (n !== 1) p.ammo[n]--;
   game.shots.push(...made);
-  game.audio.play(['', 'shoot', 'bounce', 'freeze', 'missile', 'missile', 'flame', 'tnt', 'pepper', 'electro'][n]);
+  game.audio.play(n === 1 && (powered || p.shield > 0) ? 'shootPower' : ['', 'shoot', 'bounce', 'freeze', 'missile', 'missile', 'flame', 'tnt', 'pepper', 'electro'][n]);
   if (game.party) for (const s of made) game.party.fire(s);
   if (n <= 3 || n === 8 || n === 9) game.particles.push(game.muzzle(ox + 7 + F[0] * 4, oy + 4 + F[1] * 4, WEAPONS[n].glow));
   if (n !== 1 && p.ammo[n] <= 0) p.nextWeapon(-1);

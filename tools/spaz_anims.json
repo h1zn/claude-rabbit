@@ -226,6 +226,16 @@
    ],
    "speed": 5,
    "loop": true
+  },
+  "wobble": {
+   "cols": [
+    0,
+    1493,
+    885,
+    1542
+   ],
+   "speed": 5,
+   "loop": true
   }
  }
 }

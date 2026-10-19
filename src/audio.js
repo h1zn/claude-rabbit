@@ -104,11 +104,13 @@ const SONGS = {
 
 // ---------------------------------------------------------------- engine
 
-import { SFX_COUNT, SFX_MAP } from './sfxmap.js';
+import { SFX_COUNT, SFX_FILES, SFX_MAP } from './sfxmap.js';
 
 // Recorded soundtracks (Soundtracks/). Anything not listed here plays one of
 // the synthesized songs above instead.
 export const TRACKS = {
+  // The sugar rush (new/Sounds/Rush-Sound.wav: 21.5 s for the 20 s rush).
+  rush: { url: 'assets/sfx/rush.wav' },
   intro: { file: '0. Intro.mp3', loop: false },
   title: { file: '1. Menu.mp3' },
   castle: { file: '2. Castle.mp3' },
@@ -233,6 +235,11 @@ export class Audio {
   // Sound files from assets/sfx, decoded once audio is unlocked.
   async loadSamples() {
     this.samples = [];
+    this.named = {};
+    for (const [name, file] of Object.entries(SFX_FILES)) {
+      fetch(`assets/sfx/${file}.wav`).then((r) => r.arrayBuffer()).then((d) => this.ctx.decodeAudioData(d))
+        .then((buf) => { this.named[name] = buf; }).catch((e) => console.warn('sound', file, e));
+    }
     await Promise.all(Array.from({ length: SFX_COUNT }, async (_, i) => {
       try {
         const data = await (await fetch(`assets/sfx/sound${i}.wav`)).arrayBuffer();
@@ -244,7 +251,10 @@ export class Audio {
   }
 
   sample(i, vol = 0.9 * this.volScale) {
-    const buf = this.samples && this.samples[i];
+    return this.buffer(this.samples && this.samples[i], vol);
+  }
+
+  buffer(buf, vol = 0.9 * this.volScale) {
     if (!buf) return false;
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
@@ -306,6 +316,7 @@ export class Audio {
   }
 
   playNow(name) {
+    if (this.named && this.named[name] && this.buffer(this.named[name])) return;
     if (SFX_MAP[name] !== undefined && this.sample(SFX_MAP[name])) return;
     switch (name) {
       case 'jump': this.tone({ from: 300, to: 820, dur: 0.12, vol: 0.11 }); break;
@@ -315,6 +326,8 @@ export class Audio {
         this.noise({ dur: 0.03, vol: 0.07, filter: 5000, type: 'highpass' });
         break;
       case 'spread': this.tone({ wave: 'sawtooth', from: 1000, to: 220, dur: 0.12, vol: 0.07 }); break;
+      // Something thrown (the monkey's banana): a quick whoosh.
+      case 'throw': this.noise({ dur: 0.12, vol: 0.12, filter: 700, sweep: 2600, type: 'bandpass' }); break;
       case 'scream':
         this.tone({ wave: 'sawtooth', from: 900, to: 1400, dur: 0.5, vol: 0.12 });
         this.tone({ wave: 'square', from: 1300, to: 700, dur: 0.6, vol: 0.06, delay: 0.1 });

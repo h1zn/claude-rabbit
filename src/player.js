@@ -329,6 +329,14 @@ export class Player {
     else if (lookUp) this.anim = 'look';
     else this.anim = this.shootPose > 0 ? 'shoot' : 'idle';
     this.idleTime = this.anim === 'idle' ? this.idleTime + 1 : 0;
+    // Standing at a ledge with nothing under the middle of the body: teeter
+    // (the wobble animation; Jazz says so once in a while).
+    const feet = this.y + this.h;
+    const tx = Math.floor(this.cx / TILE); const ty = Math.floor((feet + 3) / TILE);
+    const edge = this.anim === 'idle' && !this.platform && !this.onSlope && !level.solidAt(this.cx, feet + 3)
+      && !(level.platform && level.platform(tx, ty)) && !(level.slopeSurface && level.slopeSurface(this.cx, ty) !== null);
+    if (edge && !this.teeter && game.levelTime - (this.teeterSaid || -9999) > 420) { this.teeterSaid = game.levelTime; game.voice('jazzBalance'); }
+    this.teeter = edge;
   }
 
   // Tubes and vines (original JJ2 levels). Returns true when it moved Kip.
@@ -587,7 +595,9 @@ export class Player {
     this.vy = Math.min(this.vy, 0) + PHYS.hurtKnockY + (spikes ? -5 : 0);
     this.hovering = false;
     this.onGround = false;
-    game.audio.play('hurt');
+    // Jazz cries out (and warns on his last heart); the others get the hit sound.
+    if (this.character === 'jazz') game.audio.play(this.health === 1 ? 'jazzLookOut' : 'jazzHurt');
+    else game.audio.play('hurt');
     game.shake(6);
     game.flash('#ff2a4a', 6);
     if (this.health <= 0) game.killPlayer();

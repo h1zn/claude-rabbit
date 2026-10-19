@@ -37,6 +37,7 @@ class Boss extends Enemy {
     game.bossCall = false;
     game.banner(this.name, 120);
     game.audio.play('rush');
+    game.voice('jazzWatchOut');
     this.activate(game);
     return true;
   }
@@ -295,6 +296,7 @@ export class Queen extends Boss {
     game.activeBoss = this;
     game.banner(this.name, 120);
     game.audio.play('rush');
+    game.voice('jazzWatchOut');
     this.state = 'idle'; this.st = Math.round(260 * T * 0.5);
     return true;
   }
@@ -596,7 +598,7 @@ export class Robot extends Boss {
 
   fire(game) {
     this.facePlayer(game);
-    game.audio.play('shoot');
+    game.audio.play('robotGun');
     game.enemyShots.push(new SpikeBall(this.cx - 6, this.y - 6, this.facing));
   }
 

@@ -365,7 +365,7 @@ export class Monkey extends Enemy {
       const dx = player.cx - sx; const dy = player.cy - sy;
       const d = Math.hypot(dx, dy) || 1;
       game.enemyShots.push(new EnemyShot('banana', sx, sy, (dx / d) * ENEMY.shotSpeed, (dy / d) * ENEMY.shotSpeed));
-      game.sound('shoot', sx, sy);
+      game.sound('throw', sx, sy);
     }
     if (this.throwT >= 24) this.throwT = 0;
     if (this.cool === 0 && this.throwT === 0 && this.near(game, ENEMY.shooterRange) && !player.dead

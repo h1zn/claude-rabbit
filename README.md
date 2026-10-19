@@ -145,7 +145,13 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
   bomb lizard (lobs bombs). Shoot thrown things out of the air.
 - **Music**: your recorded tracks for the intro, menu, beach, castle, town and
   jungle levels (`Soundtracks/`, at background volume with fades); the other
-  levels use the synthesized chiptunes. Volume is in OPTIONS.
+  levels use the synthesized chiptunes. Volume is in OPTIONS. A sugar rush
+  plays its own rush tune.
+- **Sounds** (`assets/sfx/`): the Blaster (louder when powered up or
+  shielded), the Robot boss's gun and the gem pickup, plus Jazz's voice:
+  "hey" at level start, "watch out" when a boss wakes, a cry when hurt,
+  "look out" on the last heart, and "balanced" when teetering on a ledge
+  (with the wobble pose). The voice is Jazz's only.
 - **Physics**: the original's values (see SPEC.md): floaty 0.125 fall, 0.375
   rise, 8 px/tick movement cap, dash with grace, copter glide 4:1.
 

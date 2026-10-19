@@ -149,6 +149,7 @@ export class Game {
     this.state = 'play';
     if (this.party) this.party.begin(this);
     this.banner(this.party ? `FIRST TO ${PARTY_GOAL} GEMS + EXIT WINS!` : this.level.meta.name.toUpperCase(), 160);
+    this.voice('jazzHey');
     this.audio.startMusic(this.level.meta.music, { restart: true });
   }
 
@@ -327,11 +328,13 @@ export class Game {
     }
   }
 
+  // Jazz's voice lines (new/Sounds) play only when Jazz is the hero.
+  voice(name) { if (this.player && this.player.character === 'jazz') this.audio.play(name); }
+
   startRush() {
     this.player.rush = PHYS.rushTicks;
     this.banner('SUGAR RUSH!', 120);
     this.flash('#ffffff', 10);
-    this.audio.play('rush');
     this.audio.startMusic('rush');
     this.rushMusic = true;
   }
