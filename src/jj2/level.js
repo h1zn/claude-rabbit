@@ -32,7 +32,7 @@ const CHAR = {
   46: 'A', 69: 'A', 219: 'A',
   // Shields: 74 fire, 75 water (bubble), 76 lightning (plasma), 227 laser
   // (TSF; plays as plasma). 71: the morph (Quick Change) monitor.
-  61: 'F', 74: 'Q', 75: 'L', 76: 'N', 227: 'N', 71: 'M', 83: 'C',
+  61: 'F', 74: 'Q', 75: 'L', 76: 'N', 227: 'N', 71: 'M', 83: 'C', 59: '&',
   85: 'S', 86: 'T', 87: 'U', 60: 'T',
   // Enemies, by how they move: walkers, hoppers, flyers, shooters.
   117: 'w', 100: 'w', 248: 'w', 191: 'w', 125: 'w', 196: 'w', 118: 'w', 41: 'w',

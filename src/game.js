@@ -450,6 +450,7 @@ export class Game {
   killPlayer() {
     const p = this.player;
     if (p.dead) return;
+    p.board = false;
     // Party: knocked out (falling off the world), back in 10 s.
     if (this.party) { this.party.knockOut(this); return; }
     p.dead = true;
@@ -638,6 +639,7 @@ export class Game {
     }
     for (const k of this.pickups) {
       if (k.taken || k.pending || !overlap(p, k)) continue;
+      if (k.kind === 'airboard' && p.board) continue;      // one board at a time
       const take = () => (this.party ? this.party.touch(this, k) : k.collect(this));
       if (!k.needsHit) { take(); continue; }
       if (!p.attacking) continue;

@@ -1,0 +1,7 @@
+{
+  "sheet": "../new/New Tilesets/Playable Characters - Jazz Jackrabbit.png",
+  "minBand": 10,
+  "anims": {
+    "airboard": {"cols": [0, 2871, 610, 2928], "minW": 8, "speed": 6, "loop": true}
+  }
+}

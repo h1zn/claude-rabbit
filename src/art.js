@@ -95,6 +95,9 @@ export async function buildArt() {
   const [jazzX, spazX, beta] = await Promise.all(['jazz_extra', 'spaz_extra', 'beta_items'].map((n) => loadSheet(`assets/${n}.json`)));
   Object.assign(jazz.anims, jazzX.anims);
   Object.assign(spaz.anims, spazX.anims);
+  // Riding the airboard (the hero sheets' "Hoverboard Idle" rows).
+  const boards = await Promise.all(['jazz_board', 'spaz_board', 'lori_board'].map((n) => loadSheet(`assets/${n}.json`)));
+  [jazz, spaz, lori].forEach((h, i) => Object.assign(h.anims, boards[i].anims));
   art.beta = beta;
   [art.items, art.enemy, art.turtle, art.fx, art.queen, art.bilsy, art.robot, art.uterus, art.devan, art.enemy2] = await Promise.all(
     ['items', 'enemies', 'turtles', 'fx', 'queen', 'bilsy', 'robot', 'uterus', 'devan', 'enemies2'].map((n) => loadSheet(`assets/${n}.json`)),

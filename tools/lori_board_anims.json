@@ -1,0 +1,7 @@
+{
+  "sheet": "../new/New Tilesets/Playable Characters - Lori Jackrabbit.png",
+  "minBand": 10,
+  "anims": {
+    "airboard": {"cols": [0, 2508, 610, 2570], "minW": 8, "speed": 6, "loop": true}
+  }
+}

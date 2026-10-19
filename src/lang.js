@@ -261,6 +261,7 @@ const ROWS = [
   ["percent", "Prozent", "pour cent", "por ciento", "per cento", "procent"],
   ["and", "und", "et", "y", "e", "en"],
   // Party mode, items and Devan.
+  ["AIRBOARD!", "LUFTBRETT!", "AÉROPLANCHE !", "¡AEROTABLA!", "AEROTAVOLA!", "LUCHTPLANK!"],
   ["DEVAN SHELL!", "DEVAN SHELL!", "DEVAN SHELL !", "¡DEVAN SHELL!", "DEVAN SHELL!", "DEVAN SHELL!"],
   ["DEVAN IS FURIOUS!", "DEVAN IST WÜTEND!", "DEVAN EST FURIEUX !", "¡DEVAN ESTÁ FURIOSO!", "DEVAN È FURIOSO!", "DEVAN IS WOEDEND!"],
   ["NEED {0} GEMS!", "{0} STEINE NÖTIG!", "IL FAUT {0} GEMMES !", "¡NECESITAS {0} GEMAS!", "SERVONO {0} GEMME!", "{0} STENEN NODIG!"],

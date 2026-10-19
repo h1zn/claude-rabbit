@@ -500,6 +500,27 @@ const SHIELD_OF = { Q: 'fire', L: 'bubble', N: 'plasma' };
 const HEROES = ['jazz', 'spaz', 'lori'];
 const RING = { red: '#ff6a8a', green: '#5ae08a', blue: '#6aa8ff', purple: '#c48aff', gold: '#ffd54a' };
 
+// The airboard lying around (drawn: the sheets only show it ridden): a
+// purple board with flickering jets.
+const boardArt = [];
+function boardSprite(n) {
+  if (boardArt[n]) return boardArt[n];
+  const c = document.createElement('canvas');
+  c.width = 32; c.height = 14;
+  const x = c.getContext('2d');
+  x.fillStyle = '#3a0a5a';
+  x.beginPath(); x.ellipse(16, 6, 15, 5, 0, 0, Math.PI * 2); x.fill();
+  const g = x.createLinearGradient(0, 2, 0, 10);
+  g.addColorStop(0, '#f08aff'); g.addColorStop(1, '#8a2ad8');
+  x.fillStyle = g;
+  x.beginPath(); x.ellipse(16, 5.5, 13.5, 3.8, 0, 0, Math.PI * 2); x.fill();
+  // Jets underneath, flickering.
+  x.fillStyle = ['#ffd54a', '#ff8a2a', '#ffe88a', '#ffb02e'][n];
+  for (const jx of [9, 16, 23]) x.fillRect(jx - 1.5, 9, 3, 2 + ((n + jx) % 3));
+  boardArt[n] = { right: c, left: c, w: 32, h: 14, ax: 16, ay: 14 };
+  return boardArt[n];
+}
+
 export class Pickup {
   constructor(kind, x, y, extra = {}) {
     Object.assign(this, { kind, x, y, w: 16, h: 16, taken: false, t: Math.floor(Math.random() * 100) }, extra);
@@ -523,6 +544,8 @@ export class Pickup {
     // Quick Change monitor: switches the hero.
     if (ch === 'M') return new Pickup('morph', x - 4, ty * TILE + TILE - 30, { w: 28, h: 30, needsHit: true });
     if (ch === 'F') return new Pickup('fastfire', x - 4, y - 4, { w: 24, h: 22 });
+    // The airboard (JJ2 event 59): ride it through the air until hit.
+    if (ch === '&') return new Pickup('airboard', x - 8, y, { w: 32, h: 14 });
     return null;
   }
 
@@ -560,6 +583,7 @@ export class Pickup {
     if (this.kind === 'carrot') return this.full ? frameAt(a.carrotFull, this.t, 5) : a.carrot.frames[0];
     if (this.kind === 'life') return frameAt(a.oneUp, this.t, 5);
     if (this.kind === 'fastfire') return frameAt(a.fastfire, this.t, 4);
+    if (this.kind === 'airboard') return boardSprite(Math.floor(this.t / 4) % 4);
     if (this.kind === 'shield') return frameAt(a[SHIELDS[this.shield || 'fire'].monitor], this.t, 6);
     if (this.kind === 'morph') return frameAt(a.monChange, this.t, 5);
     if (this.kind === 'ammo') return frameAt(a[WEAPONS[this.weapon].icon], this.t, 5);
@@ -615,6 +639,9 @@ export class Pickup {
       game.audio.play('secret');
       game.banner('1UP!', 60);
       game.ring(cx, cy, '#5ae08a');
+    } else if (this.kind === 'airboard') {
+      p.mountBoard(game);
+      game.addScore(100, cx, this.y);
     } else if (this.kind === 'fastfire') {
       // Measured: each Fastfire cuts the fire delay by 3 ticks, down to 6.
       p.shotDelay = Math.max(PLAYER.minShotDelay, p.shotDelay - PLAYER.fastfireStep);

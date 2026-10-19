@@ -123,10 +123,12 @@ slow for a while) and gem magnet (pulls loose gems to you).
 **Party levels**: for Treasure Hunt and Battle the game's own Shipwreck
 Shores, Carrotus Town, Candy Clouds and Tubelectric; then Overgrown and the
 multiplayer packs in `Levels/`: Return of Blackraptor (treasure, battle, CTF
-and race levels), Astolfo (SEast, battle) and ScreenShut Race. Packs can
-stay zipped: the game reads the `.zip` files itself, and each level is
-offered only in the modes it was made for. Team Race needs
-`jazz1Medivo.j2t` and xlmlots `Carrot1N.j2t` added to their zips.
+and race levels), Astolfo (SEast, battle), ScreenShut Race, the Jazz 1 Medivo
+race (Team Race), Land of The Sn00zE (xlmlots, CTF and battle) and The Night
+Before Christmas (an airboard battle). Packs can stay zipped: the game reads
+the `.zip` files itself, and each level is offered only in the modes it was
+made for. (Team Race's two team versions rely on host-operated trigger
+crates and are left out.)
 
 ### Playing on a network or online
 
@@ -281,6 +283,12 @@ the menus (adding the missing `.j2t` brings them back). Included now:
 - **Overgrown** (Laro B.): a battle arena, also in PARTY mode.
 - **Vault of Ceramicus** and the multiplayer packs (see Party mode), read
   straight from their `.zip` files.
+
+**Tile sets borrowed between packs**: a level whose pack lacks a tile set
+takes it from a tile set library (a folder or zip in `Levels/` holding only
+`.j2t` files, like **jj1-conversions.zip** with its 91 Jazz 1 conversions),
+or else from another pack that has it. That is how Team Race gets its Medivo
+set and xlmlots its Carrotus Night (from ChristmasJarVos.ZIP).
 - **BL18**: a JJ2+ pack built on scripts and extra tile sets. Valen Village
   and Thermal R.7 play (with small gaps where missing extra sets go); the
   other seven need tile sets that aren't in the folder.
@@ -302,7 +310,9 @@ the original. Tracker music (.xm/.mod/.it/.s3m) plays through libopenmpt
 
 Drop another pack folder into `Levels/` and it appears in the episode select
 when you run `serve.py`. Weapons, ammo, ammo crates, power-up monitors,
-bomb crates, TNT and weapon blocks work as in the original; a weapon block
+bomb crates, TNT and weapon blocks work as in the original, and so does the
+**airboard**: grab one and fly (UP or JUMP rises, DOWN sinks, Run goes
+faster) until a hit or water knocks you off; a weapon block
 whose gun the level never hands out (the original let you bring ammo from
 earlier levels) breaks with any shot, so no level is left impassable. The
 Queen, Schwartzenguard (Tuf Boss), Bilsy, the Robot and Uterus fight as in the

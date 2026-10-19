@@ -17,7 +17,7 @@ function lerp(a, b, t) { return a + (b - a) * t; }
 
 // Poses only Jazz and Spaz have (new/sprites other movements.png): what
 // Lori shows instead.
-const HERO_FALLBACK = { shootUp: 'look', shootDiag: 'run', shootDiagAir: 'shootAir', shootRun: 'run', fidget: 'idle', knockdown: 'dead', dizzy: 'hurt', push: 'walk', wobble: 'idle' };
+const HERO_FALLBACK = { shootUp: 'look', shootDiag: 'run', shootDiagAir: 'shootAir', shootRun: 'run', fidget: 'idle', knockdown: 'dead', dizzy: 'hurt', push: 'walk', wobble: 'idle', airboard: 'hover' };
 
 // A sheet frame washed in ice blue, for frozen enemies (made once per frame).
 const icedFrames = new WeakMap();
@@ -542,6 +542,7 @@ export class Renderer {
     if (p.celebrate) return 'victory';
     if (p.pole || p.hang) return 'spring';
     if (p.knock > 0) return 'hurt';
+    if (p.board) return 'airboard';
     if (p.dizzy > 0) return 'dizzy';
     // Aiming up: straight up standing (or in the air), diagonally while moving.
     if (p.shootPose > 0 && p.aim && !p.hovering && !p.stomping && p.special === 0 && !p.swimming) {

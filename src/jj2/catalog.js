@@ -85,12 +85,16 @@ export const PACKS = [
   {
     id: 'teamrace',
     title: 'Team Race',
-    blurb: "Violet CLM's Jazz 1 Medivo races. Needs the tile set jazz1Medivo.j2t added to the zip.",
+    blurb: "Violet CLM's Jazz 1 Medivo race, on the Medivo tile set from jj1-conversions.zip.",
     zip: 'Levels/TeamRace.zip',
+    // The two team versions run on host-operated trigger crates and team
+    // trigger rooms (JJ2 CTF servers), and emptyroom is their waiting room:
+    // only the plain race plays here.
     levels: [
       { file: 'amedivorace.j2l', mp: true, modes: ['race'] },
-      { file: 'teamrace.j2l', mp: true, modes: ['race'] },
-      { file: 'twolapteamrace.j2l', mp: true, modes: ['race'] },
+      { file: 'teamrace.j2l', mp: true },
+      { file: 'twolapteamrace.j2l', mp: true },
+      { file: 'emptyroom.j2l', mp: true },
     ],
   },
   {
@@ -100,9 +104,16 @@ export const PACKS = [
   {
     id: 'snooze',
     title: 'Land of The Sn00zE',
-    blurb: 'A capture-the-flag map for up to 13. Needs the retail tile set Carrot1N.j2t added to the zip.',
+    blurb: 'A capture-the-flag map for up to 13, on Carrotus Night (borrowed from ChristmasJarVos.ZIP).',
     zip: 'Levels/xlmlots.zip',
     levels: [{ file: 'xlmlots.j2l', mp: true, modes: ['ctf', 'battle'] }],
+  },
+  {
+    id: 'christmas',
+    title: 'The Night Before Christmas',
+    blurb: "Jarno Vos's airboard battle on Carrotus Night: grab an airboard and fly.",
+    zip: 'Levels/ChristmasJarVos.ZIP',
+    levels: [{ file: 'ChristMasBe.j2l', mp: true, modes: ['battle'] }],
   },
   {
     id: 'threed',
@@ -150,6 +161,28 @@ async function musicUrl(pack, name) {
 const j2t = (name) => (/\.j2t$/i.test(name) ? name : `${name}.j2t`);
 // Is `name` in the pack's folder? (Unknown without the folder listing.)
 const inPack = (pack, name) => !pack.files || pack.files.some((f) => f.toLowerCase() === name.toLowerCase());
+
+// Tile set libraries: folders or zips in Levels/ holding tile sets but no
+// levels (like jj1-conversions.zip). A level whose own pack lacks a tile set
+// borrows it from one of them, or else from another pack that has it.
+export const LIBRARIES = [];
+
+// Where a tile set comes from: the level's own pack, else a library.
+// { pack, file } or null.
+function tilesetSource(pack, name) {
+  const lower = name.toLowerCase();
+  if (inPack(pack, name)) return { pack, file: packFile(pack, name) };
+  for (const lib of [...LIBRARIES, ...PACKS.filter((p) => p !== pack && p.files)]) {
+    const file = lib.files.find((f) => f.toLowerCase() === lower);
+    if (file) return { pack: lib, file };
+  }
+  return null;
+}
+
+function loadTileset(pack, name) {
+  const src = tilesetSource(pack, name);
+  return src ? packParsed(src.pack, src.file, parseTileset) : Promise.reject(new Error(`Missing ${name}`));
+}
 
 // Find a file in a pack ignoring case (JJ2 names are case-insensitive).
 function packFile(pack, name) {
@@ -205,21 +238,21 @@ export function jj2Def(key) {
     await discovered();
     const level = await packParsed(pack, entry.file, parseLevel);
     readHeader(level);
-    if (!inPack(pack, j2t(level.tileset))) throw new Error(`Needs the tile set ${j2t(level.tileset)}`);
-    if (!pack.files || (level.mlle && level.mlle.tilesets.some((x) => !inPack(pack, j2t(x.name))))) await def.prepare();
+    if (!tilesetSource(pack, j2t(level.tileset))) throw new Error(`Needs the tile set ${j2t(level.tileset)}`);
+    if (!pack.files || (level.mlle && level.mlle.tilesets.some((x) => !tilesetSource(pack, j2t(x.name))))) await def.prepare();
   };
   def.prepare = async () => {
     if (state.level) return def;
     await discovered();       // the folder listing gives the files' real names
     const level = await packParsed(pack, entry.file, parseLevel);
     readHeader(level);
-    let ts = await packParsed(pack, packFile(pack, j2t(level.tileset)), parseTileset)
+    let ts = await loadTileset(pack, j2t(level.tileset))
       .catch(() => { throw new Error(`Needs the tile set ${j2t(level.tileset)}, which isn't in ${pack.zip || `Levels/${pack.title}/`}`); });
     if (level.mlle) {
       // JJ2+ levels: extra tile sets (missing ones leave their tiles empty)
       // and extra layers from the level's MLLE data files.
       const extras = await Promise.all(level.mlle.tilesets.map(async (x) => ({
-        ...x, ts: inPack(pack, j2t(x.name)) ? await packParsed(pack, packFile(pack, j2t(x.name)), parseTileset).catch(() => null) : null,
+        ...x, ts: tilesetSource(pack, j2t(x.name)) ? await loadTileset(pack, j2t(x.name)).catch(() => null) : null,
       })));
       def.missing = extras.filter((x) => !x.ts).map((x) => x.name);
       if (extras.length || level.mlle.palette || level.mlle.edited) ts = composeTileset(ts, extras, level.mlle.palette, level.mlle.edited);
@@ -285,6 +318,10 @@ async function scanPacks() {
   for (const f of found) {
     const dir = f.zip ? null : `Levels/${f.dir}/`;
     const zip = f.zip ? `Levels/${f.zip}` : null;
+    if (f.library) {
+      if (!LIBRARIES.some((l) => l.zip === zip && l.dir === dir)) LIBRARIES.push({ id: `lib:${f.zip || f.dir}`, dir, zip, files: f.files, levels: [] });
+      continue;
+    }
     let pack = PACKS.find((p) => (zip ? p.zip === zip : p.dir === dir));
     if (!pack) {
       // Ids key levels ("jj2:<id>:<n>"), so two folders that slug alike get a suffix.

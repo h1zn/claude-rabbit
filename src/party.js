@@ -458,6 +458,7 @@ export class Party {
     if (p.dead || p.invuln > 0 || this.result) return;
     if (by && this.truce) return;
     p.health--;
+    p.loseBoard(game);
     if (this.mode === 'treasure' && game.gems > 0) {
       const lost = Math.min(PARTY_DROP, game.gems);
       game.gems -= lost;

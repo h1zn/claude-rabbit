@@ -1,0 +1,7 @@
+{
+  "sheet": "../new/New Tilesets/Playable Characters - Spaz Jackrabbit.png",
+  "minBand": 10,
+  "anims": {
+    "airboard": {"cols": [0, 2772, 610, 2830], "minW": 8, "speed": 6, "loop": true}
+  }
+}

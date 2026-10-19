@@ -10,6 +10,8 @@ import { AMMO_MAX, fire, fireDelay, WEAPONS } from './weapons.js';
 const HANG = 14;         // px from a vine down to the top of a hanging body
 const KICK_WINDUP = 8;   // tuned: Spaz's and Lori's kicks
 const KICK_END = 30;
+// Airboard speeds (tuned): across, across holding Run, and up or down.
+const BOARD = { walk: 5, run: 7, climb: 3 };
 
 export class Player {
   constructor(x, y) {
@@ -55,7 +57,7 @@ export class Player {
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, shieldType: 'fire', pushing: 0, dash: 0, jumpCut: false,
-      hang: null, hangCool: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
+      hang: null, hangCool: 0, board: false, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0, dizzy: 0, aim: null, fastFeet: 0,
     });
   }
@@ -103,6 +105,7 @@ export class Player {
     }
     // Original JJ2 levels: tubes, vines and hooks take over movement.
     if (level.areas && this.jj2Move(game, input)) return;
+    if (this.board && (this.swimming || this.hang || this.inTube)) this.loseBoard(game);
 
     const controlled = this.knock === 0 && this.special === 0 && this.springLock === 0;
     const dir = controlled ? (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0) : 0;
@@ -113,7 +116,7 @@ export class Player {
     const dashing = this.dash > 0;
     const boost = this.rush > 0 ? PHYS.rushSpeedScale : this.fastFeet > 0 ? PHYS.fastFeetScale : 1;
     const accel = (dashing ? PHYS.runAccel : PHYS.walkAccel) * boost;
-    const max = this.swimming ? (dashing ? 4 : 2.5) : (dashing && !this.hovering ? PHYS.runMax : PHYS.walkMax) * boost;
+    const max = this.board ? (dashing ? BOARD.run : BOARD.walk) : this.swimming ? (dashing ? 4 : 2.5) : (dashing && !this.hovering ? PHYS.runMax : PHYS.walkMax) * boost;
     const crouching = controlled && this.onGround && input.held('down') && !dir;
     this.crouchT = crouching ? this.crouchT + 1 : 0;
     if (dir) {
@@ -141,7 +144,7 @@ export class Player {
     // input: crouch first, standing still, then Jump (Down and Jump together,
     // or a crouch still sliding, give a jump instead). Measured timing:
     // 16-tick wind-up, then rise with vy = (t - 256) * 2048 / 65536 until tick 45.
-    if (this.special === 0 && this.knock === 0 && controlled && this.onGround && !this.swimming && input.pressed('jump')
+    if (this.special === 0 && this.knock === 0 && controlled && this.onGround && !this.swimming && !this.board && input.pressed('jump')
       && this.crouchT >= PHYS.superJumpCoil && Math.abs(this.vx) < PHYS.specialStillSpeed
       && !level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE))) {   // one-way: drop through instead
       this.special = 1;
@@ -193,7 +196,7 @@ export class Player {
     else if (this.jumpBuffer > 0) this.jumpBuffer--;
     if (this.surfaceGrace > 0 && !this.swimming) this.surfaceGrace--;
     const onPlatform = this.onGround && level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE));
-    if (this.special === 0 && !this.swimming) {
+    if (this.special === 0 && !this.swimming && !this.board) {
       if (this.jumpBuffer > 0 && input.held('down') && onPlatform) {
         this.dropThrough = 10;
         this.jumpBuffer = 0;
@@ -247,6 +250,14 @@ export class Player {
     // ---- vertical
     if (this.special > 0) {
       // velocity set above
+    } else if (this.board) {
+      // Airboard: UP (or JUMP) rises, DOWN sinks, nothing held hovers with
+      // a gentle bob.
+      const vdir = controlled ? (input.held('down') ? 1 : 0) - (input.held('up') || input.held('jump') ? 1 : 0) : 0;
+      const target = vdir ? vdir * BOARD.climb : Math.sin(this.animTime / 14) * 0.35;
+      this.vy = approach(this.vy, target, vdir ? 0.25 : 0.12);
+      this.hovering = false; this.stomping = false; this.jumping = false;
+      if (this.animTime % 3 === 0) game.trail(this.cx + (Math.random() * 10 - 5), this.y + this.h + 3, '#ffb02e');
     } else if (this.swimming) {
       // Original swimming: weak gravity, Up/Down (or Jump) push 1/8 px/tick²
       // up to 2 px/tick (doubled while running); Jump at the surface leaps out.
@@ -320,6 +331,7 @@ export class Player {
     // ---- animation
     const lookUp = controlled && this.onGround && input.held('up') && !dir;
     if (this.knock > 0) this.anim = 'hurt';
+    else if (this.board) this.anim = 'airboard';
     else if (this.special > 0) this.anim = 'uppercut';
     else if (this.stomping) this.anim = 'stomp';
     else if (this.hovering) this.anim = 'hover';
@@ -602,6 +614,22 @@ export class Player {
     game.shake(6);
     game.flash('#ff2a4a', 6);
     if (this.health <= 0) game.killPlayer();
+    this.loseBoard(game);
+  }
+
+  // The airboard: picked up, and lost again to a hit or water.
+  mountBoard(game) {
+    Object.assign(this, { board: true, hovering: false, stomping: false, special: 0, jumping: false });
+    this.vy = Math.min(this.vy, -1);
+    game.audio.play('spring');
+    game.banner('AIRBOARD!', 50);
+  }
+
+  loseBoard(game) {
+    if (!this.board) return;
+    this.board = false;
+    game.effect('poof', this.cx, this.y + this.h);
+    game.audio.play('bounce');
   }
 
   // Measured: a buttstomp leaves an enemy at a flat 13 px/tick, its rise
