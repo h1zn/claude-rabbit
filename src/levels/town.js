@@ -106,6 +106,8 @@ export function carrotusTown() {
   // roof there doesn't strand you.
   L.carve(211, STREET, 3, 6);                  // 3 wide: a walk crosses 2-wide gaps
   L.item(15, 35, 'fastFeet');                  // speed shoes for the long street
+  // Boxes to push (walk into them) and stand on.
+  L.pushable(23, STREET - 1, 'box').pushable(114, STREET - 1, 'box');
   return L.build({ name: 'Carrotus Town', theme: 'town', music: 'carrotus', horizon: STREET });
 }
 carrotusTown.title = 'Carrotus Town';

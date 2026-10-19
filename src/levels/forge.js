@@ -13,6 +13,7 @@ export function lavaForge() {
 
   // ---- Crater rim (open sky, floor row 12).
   L.put(3, 11, 'P');
+  L.pushable(62, 11, 'rock');                  // a boulder on the rim: push it into the crater
   L.hint(6, 11, 'Into the volcano! Lava burns, so keep moving.\nEach chamber’s way down is at the far end.');
   over(L, 12, 0, 'arc', 'o', 2);
   over(L, 30, 0, 'hump', 'o', 2);

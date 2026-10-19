@@ -20,16 +20,17 @@ import { TILE } from './config.js';
 //   H horizontal pole  I vertical pole
 //   * red gem  g green gem  b blue gem  v purple gem  $ silver coin  @ gold coin
 //   o food  + carrot  % full carrot  1 extra life  A ammo crate (weapon picked by position)
-//   F fastfire  Q fire-shield monitor (shoot or stomp it open)
+//   F fastfire  Q fire-shield monitor  L bubble-shield monitor  N plasma-shield
+//   monitor  M Quick Change monitor (monitors: shoot or stomp them open)
 //   w turtle  k lizard  n demon  h frog  f bat  d dragonfly  J monkey (throws)  G bomb lizard
 //   Bosses (they lock the exit until beaten): Z the Queen  V Schwartzenguard
 //   B Bilsy  R Robot  O Uterus
 // Warps, hint signs and weapon pickups carry data, so they are objects
-// (Builder.warp/hint/ammo/ammoCrate/powerup/bomb).
+// (Builder.warp/hint/ammo/ammoCrate/powerup/bomb/pushable).
 const SOLID = new Set(['#', '=', 'x', 'm', 'c', 'p', 'Y', 'u', 'W']);
 // Blocks drawn from the shared block sheet instead of the terrain.
 export const BLOCKS = new Set(['x', 'm', 'c', 'p', 'Y', 'u', 'i', 'W']);
-const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQwknhfdJGZVBRO'.split(''));
+const ENTITY = new Set('PCEXSTU><HI*gbv$@o+%1AFQLNMwknhfdJGZVBRO'.split(''));
 
 // Area cells (JJ2 event numbers, as EV in src/jj2/level.js): the player's
 // swimming, vine and hook code reads these in our levels as in JJ2 levels.
@@ -148,6 +149,13 @@ export class Builder {
   // `cost` coins makes it a coin warp. Arrival-only warps have no `to`.
   warp(x, y, id, to = null, { cost = 0, label = null } = {}) {
     this.objects.push({ type: 'warp', tx: x, ty: y, id, to, cost, label, exitOnly: to === null });
+    return this;
+  }
+
+  // A box (or rock) Kip can push along the floor and stand on; (x, y) is
+  // the cell it rests in.
+  pushable(x, y, kind = 'box') {
+    this.objects.push({ type: 'push', tx: x, ty: y, kind });
     return this;
   }
 

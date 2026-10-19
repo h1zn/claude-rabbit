@@ -29,7 +29,9 @@ const CHAR = {
   44: '$', 45: '@', 63: '*', 64: 'g', 65: 'b', 66: 'v', 67: 'b', 97: '*', 98: 'g', 99: 'b',
   72: '+', 73: '%', 88: '%', 80: '1', 47: '+', 50: '+', 48: '1', 51: '1',
   46: 'A', 69: 'A', 219: 'A',
-  61: 'F', 74: 'Q', 75: 'Q', 76: 'Q', 227: 'Q', 83: 'C',
+  // Shields: 74 fire, 75 water (bubble), 76 lightning (plasma), 227 laser
+  // (TSF; plays as plasma). 71: the morph (Quick Change) monitor.
+  61: 'F', 74: 'Q', 75: 'L', 76: 'N', 227: 'N', 71: 'M', 83: 'C',
   85: 'S', 86: 'T', 87: 'U', 60: 'T',
   // Enemies, by how they move: walkers, hoppers, flyers, shooters.
   117: 'w', 100: 'w', 248: 'w', 191: 'w', 125: 'w', 196: 'w', 118: 'w', 41: 'w',
@@ -128,10 +130,12 @@ export class JJ2Level extends Level {
 
   // ---------------------------------------------------------------- conversion
 
-  convert({ party = false }) {
+  convert({ party = false, difficulty = 'medium' }) {
     const { file } = this;
     const w = this.w; const h = this.h;
-    const ok = (d) => (party ? d === 0 || d === 3 : d === 0);
+    // An event's difficulty: 0 every game, 1 Easy only, 2 Hard only,
+    // 3 party games only (party games play at Medium).
+    const ok = (d) => d === 0 || (party ? d === 3 : (d === 1 && difficulty === 'easy') || (d === 2 && difficulty === 'hard'));
     const starts = {};
     let exits = 0;
     const bosses = [];
@@ -301,6 +305,9 @@ export class JJ2Level extends Level {
           case 89: this.objects.push({ type: 'item', tx, ty, kind: 'stopwatch' }); break;
           case 90: this.objects.push({ type: 'item', tx, ty, kind: 'freeze' }); break;
           case BOMB: this.objects.push({ type: 'bomb', tx, ty }); armed.add('blast'); break;
+          // Pushable rock and box (push them along; stand on them).
+          case 231: this.objects.push({ type: 'push', tx, ty, kind: 'rock' }); break;
+          case 232: this.objects.push({ type: 'push', tx, ty, kind: 'box' }); break;
           case EV.TRIGGER_ZONE: case EV.WATER_BLOCK: case EV.ACTIVATE_BOSS:
             this.areas[i] = id; this.areaParams[i] = ev.params;
             break;

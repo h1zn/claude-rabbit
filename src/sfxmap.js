@@ -15,3 +15,12 @@ export const SFX_MAP = {
 };
 
 export const SFX_COUNT = 25;
+
+// Named sound files (assets/sfx/<name>.wav, from new/Sounds/): these play
+// in place of the numbered samples and synthesized sounds above.
+export const SFX_FILES = {
+  shoot: 'blaster', shootPower: 'blaster_power', robotGun: 'robot_gun', gem: 'gem',
+  // Jazz's voice (played only when Jazz is the hero).
+  jazzHey: 'jazz_hey', jazzBalance: 'jazz_balance', jazzWatchOut: 'jazz_watch_out',
+  jazzLookOut: 'jazz_look_out', jazzHurt: 'jazz_hurt',
+};

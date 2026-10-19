@@ -36,16 +36,59 @@ not work, because browsers block JavaScript modules on `file://`.)
 | Super jump | The same while still sliding (60% higher, smashes blocks above) |
 | Butt-stomp | Down in the air |
 | Let go of a swinging pole | Jump |
-| Pause / Mute | P / M |
+| Pause / Mute | P or Esc / M |
+| Help | F1 |
+| Screen smaller / bigger | F3 / F4 |
+| Load / save a game | F5 / F6 (the manual's keys) |
+| Fullscreen | Alt+Enter (or F11) |
 
-All play keys can be changed in **OPTIONS > KEYBOARD** (up to three keys per
-action; a key already in use swaps over). **OPTIONS > VIDEO** has fullscreen,
-fit-window or pixel-perfect scaling, sharp or smooth filtering, and switches
-for screen shake and flashes.
+**Gamepads** work too (the standard layout): d-pad or left stick to move,
+A jump, X or RT fire, B, LB or LT run, Y or RB next weapon, START pause; in
+the menus A chooses and B goes back.
+
+All play keys can be changed in **OPTIONS > CONTROLS** (up to three keys per
+action; a key already in use swaps over): **Keyboard 1** for playing alone,
+**Keyboard 2** for the second player in split screen (the manual's: WASD,
+G jump, H fire, J run, F next weapon), and a page showing the gamepad
+buttons and which pads are connected. **OPTIONS > VIDEO** has fullscreen,
+fit-window or pixel-perfect scaling, sharp or smooth filtering, the screen
+size (F3 / F4) and switches for screen shake and flashes. **OPTIONS >
+LANGUAGE** switches the on-screen text between the manual's six languages:
+English, German, French, Spanish, Italian and Dutch. (Level names, hint
+signs and story text stay as their levels have them; the JJ2 fonts have no
+accents, so the menus drop them, while in-game messages keep them.)
+
+## Saving, high scores and difficulty
+
+- **Save / load** (manual): in the pause menu choose **SAVE GAME** (or press
+  F6) and name the game in one of eight slots; **LOAD GAME** in the main menu
+  or the pause menu (or F5) lists them. A saved game starts again at the
+  beginning of the level it was saved in, with the score, lives, weapons and
+  continues it had when that level began (so it can't collect a level's
+  gems twice). CLEAR (Backspace) twice erases a slot.
+- **High scores**: the main menu's **High Scores** shows the top ten (name,
+  score, the level reached and the difficulty); RIGHT shows the best score,
+  time and stars of each of this game's levels. A game that ends with a
+  good enough score (game over, the last level, or quitting) asks for a
+  name.
+- **Difficulty** (manual: "the higher the difficulty, the more baddies"):
+  after the character select choose **Easy, Medium or Hard**. Original JJ2
+  levels use the Easy-only and Hard-only marks their makers put on enemies
+  and items (7 of the 33 levels have them); this game's levels leave out
+  every third enemy on Easy and add one beside every other enemy on Hard.
+- **Continues** (manual): three per game. YES on the **Continue?** screen
+  starts the level again with fresh lives but without your score and
+  weapons; with none left the game is over.
 
 ## Party mode (2 players)
 
-Double-click **`party.bat`** (or `python serve.py 8870 --lan`) on one computer.
+**Same computer** (split screen): in **PARTY** choose **SAME COMPUTER**, pick
+the level and press Enter. Player 1 plays on the left half with Keyboard 1
+(less any keys Keyboard 2 uses), player 2 on the right with Keyboard 2. With
+two gamepads each player gets one; a single gamepad goes to player 2. The
+rules are the same as below; Esc leaves.
+
+**Two computers**: double-click **`party.bat`** (or `python serve.py 8870 --lan`) on one computer.
 It prints the address the second player opens in their browser on the same
 network. In the menu choose **PARTY**: one player hosts and gets a 4-letter
 room code, the other joins with it, and the host picks the level.
@@ -119,8 +162,18 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 - **Pickups**: speed shoes (15 s faster), the freeze hourglass (freezes the
   enemies around) and the stopwatch (+10 s of shield), as JJ2's Fast Feet,
   Freeze and Shield Time events; silver/gold coins, 4 gem colours, 38 foods, carrot, super carrot,
-  1-up, Fastfire (fire delay -3, down to 6), fire-shield monitor (30 s, each hit
-  costs 5 s), ammo, ammo crates, power-up monitors.
+  1-up, Fastfire (fire delay -3, down to 6; also dropped at random by beaten
+  enemies), ammo, ammo crates, power-up monitors.
+- **Shields** (manual): fire, bubble and plasma monitors. Each shield lasts
+  30 s, soaks hits (5 s off per hit) and gives the Blaster its Whammo Ammo:
+  wobbling bubbles that bounce off walls, flaming missiles, or a three-way
+  plasma spray that goes through enemies. The fire shield also scorches
+  enemies that touch you.
+- **Quick Change monitor**: shoot it to switch hero on the spot (Jazz, Spaz,
+  Lori, and round again).
+- **Pushable boxes and rocks**: walk into one to push it (the heroes have
+  their pushing animation), stand on it to reach higher, drop it on enemies.
+  JJ2 levels' pushable boxes and rocks (events 231/232) work too.
 - **Bosses** guard the exits of five levels; the exit stays locked until the
   boss is beaten, and dying starts the fight over. The Queen (Dungeon Escape:
   she can't be hurt; shoot her while she screams to push her back, then off
@@ -135,7 +188,13 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
   bomb lizard (lobs bombs). Shoot thrown things out of the air.
 - **Music**: your recorded tracks for the intro, menu, beach, castle, town and
   jungle levels (`Soundtracks/`, at background volume with fades); the other
-  levels use the synthesized chiptunes. Volume is in OPTIONS.
+  levels use the synthesized chiptunes. Volume is in OPTIONS. A sugar rush
+  plays its own rush tune.
+- **Sounds** (`assets/sfx/`): the Blaster (louder when powered up or
+  shielded), the Robot boss's gun and the gem pickup, plus Jazz's voice:
+  "hey" at level start, "watch out" when a boss wakes, a cry when hurt,
+  "look out" on the last heart, and "balanced" when teetering on a ledge
+  (with the wobble pose). The voice is Jazz's only.
 - **Physics**: the original's values (see SPEC.md): floaty 0.125 fall, 0.375
   rise, 8 px/tick movement cap, dash with grace, copter glide 4:1.
 
@@ -148,7 +207,9 @@ second ability, UP + FIRE aims up. The pick
 is saved, and in party mode your rival sees your character in red. Then the
 **episode select** shows JJ2's episode pictures for this game's nine levels
 and every level pack. The menus use JJ2's own fonts and title screen, the
-level card is JJ2's loading screen and game over asks **Continue?**.
+level card is JJ2's loading screen and game over asks **Continue?**. The main
+menu has the manual's items: New Game, Load Game, Party, High Scores, Help
+and Options.
 (Art from `new/New Tilesets/`, cut by `tools/build_sprites.py` with
 `tools/spaz_anims.json`, `lori_anims.json`, `charsel_anims.json`, and by
 `tools/build_font.py`.)
@@ -205,7 +266,7 @@ index.html, style.css   page and crisp pixel scaling
 src/config.js           physics and camera constants (measured vs tuned)
 src/main.js             fixed-step loop and screen flow
 src/game.js             world state, interactions, camera
-src/input.js            keyboard sampled once per tick (held / pressed)
+src/input.js            keyboard and gamepads sampled once per tick (held / pressed)
 src/player.js           the hero's movement and abilities
 src/entities.js         enemies, pickups, springs, poles, warps, hints, shots, effects
 src/weapons.js          the nine weapons: shots, aiming, explosions, TNT
@@ -213,7 +274,9 @@ src/bosses.js           Queen, Schwartzenguard, Bilsy, Robot, Uterus
 src/level.js            tile map, collision and the level builder
 src/levels.js           the level list; designs in src/levels/ (kit.js: helpers, room maze)
 src/party.js            party mode: relay connection, rival, sync and rules
-src/save.js             saved progress, stars and options
+src/save.js             saved progress, stars, high scores, save slots and options
+src/lang.js             on-screen text in six languages
+src/difficulty.js       Easy / Hard enemies in this game's own levels
 src/jj2/                original JJ2 levels: files.js (.j2l/.j2t reader), level.js
                         (masks -> collision, events -> entities), view.js (layers),
                         play.js (light/water/collapse), catalog.js (packs), preview.js,
@@ -240,4 +303,4 @@ SPEC.md                 the measured mechanics and where they came from
 ## Ideas for the next pass
 
 - More of JJ2 in the classic levels: the remaining bosses and the frog/bird morphs.
-- Gamepad support and touch controls.
+- Touch controls.

@@ -15,7 +15,7 @@ export function crystalCaverns() {
   const cps = [mid[14], mid[32]];
   for (const R of cps) at(R, 'C', 2);
   L.warp(M.spot(cps[0], 5), cps[0].floor - 1, 'back6');
-  at(mid[10], 'Q', 3);
+  at(mid[10], 'L', 3);                         // bubble shield
   at(mid[22], 'F', 3);
   at(mid[28], '%', 3);
   L.warp(M.spot(mid[6], 2), mid[6].floor - 1, 'coin6', 'bonus6', { cost: 25, label: 'COIN WARP!' });

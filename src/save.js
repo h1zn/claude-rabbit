@@ -1,5 +1,6 @@
 // Progress saved in the browser: unlocked levels, each level's best stars,
-// score and time, and the options (volumes, keys, video). Storage can be unavailable (private
+// score and time, the high score table, the named save slots, and the
+// options (volumes, keys, video, language, difficulty). Storage can be unavailable (private
 // windows, blocked site data), so every access is guarded and the game works
 // without it.
 
@@ -10,10 +11,26 @@ export const MISSIONS = ['Reach the exit', 'Collect 75% of the gems', 'Find ever
 
 // Video: `scale` fit (fill the window) or pixel (whole multiples only);
 // `filter` sharp or smooth; shake and flashes can be turned off.
-export const VIDEO_DEFAULTS = { scale: 'fit', filter: 'sharp', shake: true, flash: true };
+// `size` is the share of the window the game fills (F3 / F4).
+export const VIDEO_DEFAULTS = { scale: 'fit', filter: 'sharp', shake: true, flash: true, size: 1 };
+
+// The manual's difficulty levels: the higher, the more baddies.
+export const DIFFICULTIES = ['easy', 'medium', 'hard'];
+// Continues per game (the manual: "You can only continue three times").
+export const CONTINUES = 3;
+export const SAVE_SLOTS = 8;
+export const SCORE_ROWS = 10;
+const NAME_MAX = 12;
+
+// The table a new player sees, from Carrotus' own.
+const SEED_SCORES = ['JAZZ', 'SPAZ', 'LORI', 'EVA', 'DEVAN', 'BILSY', 'BUBBA', 'QUEEN', 'ROBOT', 'TUF TURT']
+  .map((name, i) => ({ name, score: (10 - i) * 5000, seed: true }));
 
 function defaults() {
-  return { unlocked: 1, levels: {}, options: { music: 0.7, sfx: 0.9, keys: null, video: { ...VIDEO_DEFAULTS } } };
+  return {
+    unlocked: 1, levels: {}, scores: SEED_SCORES.map((r) => ({ ...r })), slots: [], difficulty: 'medium',
+    options: { music: 0.7, sfx: 0.9, keys: null, keys2: null, lang: 'en', video: { ...VIDEO_DEFAULTS } },
+  };
 }
 
 export function loadSave() {
@@ -22,7 +39,11 @@ export function loadSave() {
     if (data && typeof data === 'object') {
       const options = { ...defaults().options, ...data.options };
       options.video = { ...VIDEO_DEFAULTS, ...(data.options && data.options.video) };
-      return { ...defaults(), ...data, options };
+      const out = { ...defaults(), ...data, options };
+      if (!Array.isArray(out.scores)) out.scores = defaults().scores;
+      if (!Array.isArray(out.slots)) out.slots = [];
+      if (!DIFFICULTIES.includes(out.difficulty)) out.difficulty = 'medium';
+      return out;
     }
   } catch (e) { /* no storage: play without saving */ }
   return defaults();
@@ -59,4 +80,40 @@ export function recordLevel(save, index, stats, score) {
 export function totalStars(save) {
   // Built-in levels only (classic JJ2 levels keep their stars separately).
   return Object.entries(save.levels).filter(([k]) => /^\d+$/.test(k)).reduce((n, [, l]) => n + l.stars.filter(Boolean).length, 0);
+}
+
+// A name as typed: capitals, digits and spaces (what the fonts can draw).
+export function cleanName(name) {
+  return String(name || '').toUpperCase().replace(/[^A-Z0-9 .!?-]/g, '').replace(/\s+/g, ' ').trimStart().slice(0, NAME_MAX);
+}
+export { NAME_MAX };
+
+// ---------------------------------------------------------------- high scores
+
+// The rank (0-based) a score would take in the table, or -1.
+export function scoreRank(save, score) {
+  if (!(score > 0)) return -1;
+  const i = save.scores.findIndex((r) => score > r.score);
+  if (i >= 0) return i;
+  return save.scores.length < SCORE_ROWS ? save.scores.length : -1;
+}
+
+// Put a finished game in the table. Returns its rank, or -1.
+export function addScore(save, entry) {
+  const rank = scoreRank(save, entry.score);
+  if (rank < 0) return -1;
+  save.scores.splice(rank, 0, { ...entry, name: cleanName(entry.name) || 'JAZZ', date: new Date().toISOString().slice(0, 10) });
+  save.scores.length = Math.min(save.scores.length, SCORE_ROWS);
+  writeSave(save);
+  return rank;
+}
+
+// ---------------------------------------------------------------- save slots
+
+// Save a game in a slot. The game is kept as it was when its level began
+// (score, lives, weapons), so loading starts that level over: like RESTART
+// LEVEL, it can't be used to collect a level's gems twice.
+export function saveSlot(save, i, slot) {
+  save.slots[i] = { ...slot, name: cleanName(slot.name) || `GAME ${i + 1}`, date: new Date().toISOString().slice(0, 16).replace('T', ' ') };
+  writeSave(save);
 }

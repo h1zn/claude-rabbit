@@ -157,6 +157,8 @@ export function sunnySpires() {
   dress(L, BEACH, 2, 186, 37, 13, 8);
   for (let x = 116; x <= 124; x += 2) L.put(x, 49, 'b');
   L.put(120, 48, '%');
+  L.put(108, 45, 'L');                         // a bubble shield by the pool
+  L.on(52, 'M');                               // Quick Change monitor: shoot it to switch hero
   L.hint(112, 45, 'A rock pool! Dive in and swim (UP / DOWN).\nJUMP at the surface to leap out.');
   L.item(163, 31, 'stopwatch');                // extra time for the fire shield next to it
   return L.build({ name: 'Shipwreck Shores', theme: 'meadow', music: 'beach', horizon: 22 });

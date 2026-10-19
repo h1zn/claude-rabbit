@@ -30,6 +30,14 @@ export const WEAPONS = [
 export const CRATE_WEAPONS = [2, 3, 4, 5, 6];
 
 const TOAST_PER_AMMO = 10;   // toaster flames per unit of ammo
+// Whammo Ammo (manual, "Shields"): the Blaster's shots while a shield is up.
+// Bubble: unpredictable bubbles; fire: flaming missiles; plasma: a powerful
+// spray that goes through enemies.
+const WHAMMO = {
+  bubble: { w: 12, h: 12, life: 90, damage: 2, glow: '120,200,255' },
+  fire: { w: 16, h: 8, life: 60, damage: 3, glow: '255,150,60' },
+  plasma: { w: 16, h: 12, life: 40, damage: 3, glow: '255,240,140' },
+};
 const FREEZE = 210;          // ticks an enemy stays frozen (powered: 350)
 
 // Hit box, life, damage and how each projectile moves.
@@ -64,8 +72,19 @@ export class Bullet {
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
 
+  // Turn a Blaster shot into a shield's Whammo Ammo.
+  setWhammo(kind) {
+    const s = WHAMMO[kind];
+    if (!s) return this;
+    Object.assign(this, { whammo: kind, w: s.w, h: s.h, life: s.life, bounces: 0 });
+    return this;
+  }
+
+  get glow() { return this.whammo ? WHAMMO[this.whammo].glow : WEAPONS[this.weapon].glow; }
+
   // Damage to an enemy (the frostbiter freezes instead).
   get damage() {
+    if (this.whammo) return WHAMMO[this.whammo].damage;
     if (this.weapon === 3) return 0;
     if (this.weapon === 4 || this.weapon === 5) return this.powered ? 3 : 2;
     return this.powered ? 2 : 1;
@@ -78,6 +97,7 @@ export class Bullet {
     this.t++;
     if (this.weapon === TNT) { this.tnt(game); return; }
     if (--this.life <= 0) { this.dead = true; if (this.explosive) this.burst(game); return; }
+    if (this.whammo) { this.whammoMove(game); return; }
     switch (this.weapon) {
       case 2: this.bounce(game); break;
       case 4: this.seek(game); this.fly(game); break;
@@ -105,6 +125,24 @@ export class Bullet {
     if (game.levelTime % 2 === 0 && this.weapon !== 6 && this.weapon !== 9) game.trail(this.cx - Math.sign(this.vx) * 6, this.cy, `rgb(${WEAPONS[this.weapon].glow})`);
   }
 
+  // Whammo Ammo flight: bubbles drift and bounce off walls a few times;
+  // flaming missiles and plasma fly straight (fire leaves a trail of flame).
+  whammoMove(game) {
+    if (this.whammo === 'bubble') {
+      this.vx *= 0.99;
+      this.vy = Math.max(-2, Math.min(2, this.vy + (Math.random() - 0.5) * 0.4 - 0.01));
+      this.x += this.vx;
+      if (this.wall(game)) { this.x = this.prevX; this.vx = -this.vx; this.bounces++; }
+      this.y += this.vy;
+      if (this.wall(game)) { this.y = this.prevY; this.vy = -this.vy; this.bounces++; }
+      if (this.bounces > 3) { this.dead = true; game.effect('ping', this.cx, this.cy); }
+      return;
+    }
+    this.fly(game);
+    if (this.whammo === 'fire') game.trail(this.cx - Math.sign(this.vx) * 8, this.cy + (Math.random() - 0.5) * 4, Math.random() < 0.5 ? '#ffb02e' : '#ff5a2a');
+    else if (game.levelTime % 2 === 0) game.trail(this.cx - Math.sign(this.vx) * 6, this.cy, '#fff4a0');
+  }
+
   // Straight flight; walls stop the shot (after it tries to break the tile).
   fly(game, stick = false) {
     this.x += this.vx; this.y += this.vy;
@@ -121,6 +159,8 @@ export class Bullet {
   wall(game) {
     const tx = Math.floor(this.cx / TILE); const ty = Math.floor(this.cy / TILE);
     if (!this.remote && game.hitTile(tx, ty, { weapon: this.weapon, blast: this.explosive })) return true;
+    // Pushable boxes and rocks stop shots too.
+    if (game.platforms && game.platforms.some((o) => o.pushable && this.cx > o.x && this.cx < o.x + o.w && this.cy > o.y && this.cy < o.y + o.h)) return true;
     return game.level.shotHits(this.cx, this.cy);
   }
 
@@ -208,7 +248,7 @@ export class Bullet {
       e.damage(game, e.frozen > 0 && !e.boss ? 99 : this.damage);
       game.spark(this.cx, this.cy, '#ffffff');
     }
-    if (this.weapon === 9) { this.hit.add(e); return; }
+    if (this.weapon === 9 || this.whammo === 'plasma') { this.hit.add(e); return; }
     this.dead = true;
   }
 }
@@ -235,10 +275,16 @@ export function fire(game, p) {
   const bullet = (along, side, offset = 0) => new Bullet(n, powered, ox + N[0] * offset, oy + N[1] * offset, F[0] * along + N[0] * side, F[1] * along + N[1] * side);
   const shot = (along, side, offset) => made.push(bullet(along, side, offset));
   switch (n) {
-    case 1:
+    case 1: {
+      // A shield's Whammo Ammo replaces the Blaster's shot while it lasts.
+      const wham = (along, side, kind) => made.push(bullet(along, side).setWhammo(kind));
+      if (p.shield > 0 && p.shieldType === 'bubble') wham(3.5 + boost / 2 + Math.random(), (Math.random() - 0.5) * 1.6, 'bubble');
+      else if (p.shield > 0 && p.shieldType === 'plasma') for (const side of [-0.9, 0, 0.9]) wham(7 + boost, side, 'plasma');
+      else if (p.shield > 0 && p.shieldType === 'fire') wham(7 + boost, 0, 'fire');
       // Measured: 6 px/tick (powered 7) plus the player's own speed.
-      shot(PLAYER.shotSpeed + boost + (powered ? 1 : 0), 0);
+      else shot(PLAYER.shotSpeed + boost + (powered ? 1 : 0), 0);
       break;
+    }
     case 2: shot(5 + boost / 2 + (powered ? 1 : 0), -1); break;   // measured 5 px/tick
     case 3: shot(7 + boost, 0); break;
     case 4: shot(2, 0); break;                                      // measured 2 px/tick
@@ -273,7 +319,7 @@ export function fire(game, p) {
     if (++p.toast >= TOAST_PER_AMMO) { p.toast = 0; p.ammo[6]--; }
   } else if (n !== 1) p.ammo[n]--;
   game.shots.push(...made);
-  game.audio.play(['', 'shoot', 'bounce', 'freeze', 'missile', 'missile', 'flame', 'tnt', 'pepper', 'electro'][n]);
+  game.audio.play(n === 1 && (powered || p.shield > 0) ? 'shootPower' : ['', 'shoot', 'bounce', 'freeze', 'missile', 'missile', 'flame', 'tnt', 'pepper', 'electro'][n]);
   if (game.party) for (const s of made) game.party.fire(s);
   if (n <= 3 || n === 8 || n === 9) game.particles.push(game.muzzle(ox + 7 + F[0] * 4, oy + 4 + F[1] * 4, WEAPONS[n].glow));
   if (n !== 1 && p.ammo[n] <= 0) p.nextWeapon(-1);

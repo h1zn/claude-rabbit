@@ -95,6 +95,7 @@ export const PLAYER = {
 
 // Enemy physics, measured (see SPEC.md "World rules").
 export const ENEMY = {
+  fastfireDrop: 0.08,       // manual: Fastfire appears at random when a baddie dies (tuned)
   gravity: 0x2000 / 65536,  // 0.125
   maxFall: 4.0,
   chaseRange: 256,

@@ -250,9 +250,9 @@
     "shieldMonitor": {
       "region": [
         728,
-        70,
+        72,
         1078,
-        100
+        105
       ],
       "speed": 6,
       "loop": true
@@ -560,6 +560,36 @@
       ],
       "speed": 1,
       "loop": false
+    },
+    "monShieldWater": {
+      "region": [
+        728,
+        37,
+        1078,
+        70
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monShieldPlasma": {
+      "region": [
+        728,
+        107,
+        1078,
+        140
+      ],
+      "speed": 6,
+      "loop": true
+    },
+    "monChange": {
+      "region": [
+        728,
+        177,
+        1078,
+        210
+      ],
+      "speed": 5,
+      "loop": true
     }
   }
 }

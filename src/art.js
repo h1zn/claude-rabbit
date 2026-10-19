@@ -1,6 +1,7 @@
 // Assembles all original procedural art: shaded sprites, plus helpers for
 // styled arcade text (gradient fill, thick outline, drop shadow).
 
+import { tr } from './lang.js';
 import { loadImage, loadSheet, loadTileset } from './sheets.js';
 import { TILESETS } from './tilesets.js';
 import { buildSprites } from './sprites.js';
@@ -183,8 +184,11 @@ function tinted(font, color) {
   return font.tints.get(color);
 }
 
-// Marks the fonts lack, spelled out.
-const spell = (str) => str.replace(/%/g, ' percent').replace(/\s*\+\s*/g, ' and ');
+// Marks the fonts lack, spelled out; the JJ2 fonts have no accents, so
+// accented letters lose them (German umlauts become ae, oe, ue).
+const UMLAUT = { ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'AE', Ö: 'OE', Ü: 'UE', ß: 'ss' };
+const spell = (str) => str.replace(/%/g, ` ${tr('percent')}`).replace(/\s*\+\s*/g, ` ${tr('and')} `)
+  .replace(/[äöüÄÖÜß]/g, (c) => UMLAUT[c]).normalize('NFD').replace(/[\u0300-\u036f¿¡]/g, '');
 
 export function jjWidth(font, str, scale = 1) {
   str = spell(str);

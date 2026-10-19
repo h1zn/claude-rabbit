@@ -1,7 +1,8 @@
 // Entry point: fixed-step loop (14 ms ticks, resync after 35 behind, as
 // measured) with interpolated rendering, and the screen flow:
 // splash (press a key, intro track) -> menu -> level card -> play
-// (pause / clear tally / game over / win), and the party lobby -> party play.
+// (pause / clear tally / game over / win) -> high score name -> table,
+// the party lobby -> party play, and split screen (two players, one computer).
 
 import { buildArt } from './art.js';
 import { Audio } from './audio.js';
@@ -9,10 +10,11 @@ import { MAX_CATCHUP_TICKS, TICK_MS, VIEW_H, VIEW_W } from './config.js';
 import { Game } from './game.js';
 import { bindKey, defaultKeys, Input } from './input.js';
 import { nextPlayable } from './jj2/catalog.js';
+import { setLang, tr } from './lang.js';
 import { LEVELS, levelDef } from './levels.js';
-import { Net, Party } from './party.js';
+import { localPair, Net, Party } from './party.js';
 import { Renderer } from './render.js';
-import { loadSave, recordLevel, writeSave } from './save.js';
+import { addScore, loadSave, recordLevel, saveSlot, scoreRank, writeSave } from './save.js';
 import { Screens } from './screens.js';
 
 const canvas = document.getElementById('game');
@@ -25,7 +27,11 @@ const game = new Game(audio, art);
 const renderer = new Renderer(ctx, art);
 const screens = new Screens(ctx, art, audio);
 audio.setVolumes(save.options.music, save.options.sfx);
+setLang(save.options.lang);
 game.video = save.options.video;
+// Split screen: player 2's game, input and view (made when first needed).
+let splitKit = null;        // { game, input, renderer }, made once
+let split = null;           // splitKit while two play on one computer
 
 // ---------------------------------------------------------------- video options
 
@@ -33,7 +39,8 @@ game.video = save.options.video;
 // whole multiple of 640x360 that fits; sharp or smooth scaling.
 function layout() {
   const v = save.options.video;
-  let k = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H);
+  // F3 / F4 shrink and grow the game inside the window.
+  let k = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H) * (v.size || 1);
   if (v.scale === 'pixel' && k >= 1) k = Math.floor(k);
   canvas.style.width = `${Math.floor(VIEW_W * k)}px`;
   canvas.style.height = `${Math.floor(VIEW_H * k)}px`;
@@ -48,8 +55,25 @@ function toggleFullscreen() {
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   else if (req) document.documentElement.requestFullscreen().catch(() => audio.play('denied'));
 }
+input.onAltEnter = toggleFullscreen;
+
+// F3 / F4: the screen size, in tenths of the window (half to all of it).
+function resize(d) {
+  const v = save.options.video;
+  const size = Math.round(Math.max(0.5, Math.min(1, (v.size || 1) + d * 0.1)) * 10) / 10;
+  if (size === v.size) { audio.play('denied'); return; }
+  v.size = size;
+  layout();
+  writeSave(save);
+  screens.say(tr('SCREEN SIZE {0}%', Math.round(size * 100)));
+}
+
+window.addEventListener('gamepadconnected', () => screens.say('GAMEPAD CONNECTED'));
+window.addEventListener('gamepaddisconnected', () => screens.say('GAMEPAD DISCONNECTED'));
+
 game.unlocked = save.unlocked;
 game.character = save.character || 'jazz';
+game.difficulty = save.difficulty;
 
 let scene = 'splash';
 let sceneTime = 0;
@@ -76,11 +100,37 @@ function go(next) {
 
 function toMenu() {
   if (net) { net.close(); net = null; }
+  if (split) endSplit();
   game.party = null;
   screens.sub = null;
   screens.menu = 0;
   go('title');
   audio.startMusic('title');
+}
+
+// A game ended (game over, the last level, or quitting): a score good
+// enough for the table asks for a name, then shows the table.
+let finished = null;        // the game waiting for its high-score name
+function endGame() {
+  const score = game.score;
+  const rank = scoreRank(save, score);
+  const def = levelDef(game.levelIndex);
+  finished = { score, level: def ? def.title : '', difficulty: game.difficulty, character: game.character };
+  toMenu();
+  if (rank < 0) { finished = null; return; }
+  screens.askName(score, rank, save.lastName || game.character.toUpperCase());
+  audio.play('rank');
+}
+
+// Open a pause-menu screen from play (F1 help, F5 load, F6 save).
+function pauseWith(sub) {
+  screens.pauseIndex = 0;
+  screens.sub = null;
+  screens.levelTitle = levelDef(game.levelIndex).title;
+  if (sub) screens.pauseOpen(sub);
+  audio.hover(false);
+  audio.play('pause');
+  go('paused');
 }
 
 // Browsers only allow audio after a gesture: the first key or click starts
@@ -120,13 +170,67 @@ function showCard(index, fresh) {
 const levelKey = (k) => (/^\d+$/.test(k) ? Number(k) : k);
 
 function startPendingLevel() {
-  const { index, fresh } = pendingLevel;
+  const { index, fresh, saved, continues } = pendingLevel;
   game.party = null;
   game.result = null;
-  if (fresh) game.newGame(index);
+  if (saved) game.loadSaved(saved);
+  else if (fresh) game.newGame(index, continues);
   else game.loadLevel(index);
   irisTime = 0;
   go('play');
+}
+
+// Load a saved game (from the menu or the pause menu).
+function loadSlot(i) {
+  const slot = save.slots[i];
+  if (!slot) return;
+  game.character = slot.character || game.character;
+  showCard(slot.level, false);
+  pendingLevel.saved = slot;
+}
+
+// ---------------------------------------------------------------- split screen
+
+// Two players on one computer: two games joined like a party hunt, one in
+// each half of the screen. Player 1 plays on Keyboard 1 (less any keys of
+// Keyboard 2), player 2 on Keyboard 2; gamepads go one each.
+async function startSplit(index) {
+  const def = levelDef(index);
+  if (def.prepare) {
+    screens.lobby.status = 'loading';
+    try { await def.prepare(); } catch (e) { screens.lobby.status = 'idle'; screens.say('THAT LEVEL CAN NOT LOAD'); return; }
+    screens.lobby.status = 'idle';
+    if (scene !== 'title' || screens.sub !== 'local') return;
+  }
+  if (!splitKit) splitKit = { game: new Game(audio, art), input: new Input(window, save.options.keys2, { second: true }), renderer: new Renderer(ctx, art) };
+  split = splitKit;
+  const g2 = split.game;
+  g2.video = save.options.video;
+  g2.character = game.character === 'spaz' ? 'jazz' : 'spaz';
+  g2.quiet = true;
+  game.viewW = VIEW_W / 2; g2.viewW = VIEW_W / 2;
+  renderer.w = VIEW_W / 2; split.renderer.w = VIEW_W / 2;
+  const [a, b] = localPair();
+  const p1 = new Party(a, 'host'); const p2 = new Party(b, 'guest');
+  p1.local = true; p2.local = true;
+  game.newParty(index, p1);
+  g2.newParty(index, p2);
+  split.input.setKeys(save.options.keys2);
+  input.setKeys(save.options.keys, new Set(Object.values(split.input.bindings).flat().filter((c) => c !== 'Escape' && c !== 'Enter')));
+  input.padRole = 'p1'; split.input.padRole = 'p2';
+  irisTime = 0;
+  go('split');
+}
+
+function endSplit() {
+  game.viewW = VIEW_W; renderer.w = VIEW_W;
+  game.quiet = false;
+  input.setKeys(save.options.keys);
+  input.padRole = 'any';
+  split.input.padRole = 'none';
+  split.game.party = null;
+  split.renderer.w = VIEW_W;
+  split = null;
 }
 
 // ---------------------------------------------------------------- party lobby
@@ -217,20 +321,47 @@ function optionsAction(action) {
       const c = screens.capturing;
       screens.capturing = null;
       if (!c || code === 'Escape') return;
-      if (!save.options.keys) save.options.keys = defaultKeys();
-      if (bindKey(save.options.keys, c.action, c.col, code)) { audio.play('select'); input.setKeys(save.options.keys); writeSave(save); } else audio.play('denied');
+      const field = c.field || 'keys';
+      if (!save.options[field]) save.options[field] = defaultKeys(field === 'keys2');
+      if (bindKey(save.options[field], c.action, c.col, code)) { audio.play('select'); input.setKeys(save.options.keys); writeSave(save); } else audio.play('denied');
     });
   } else if (action === 'video') { game.video = save.options.video; layout(); writeSave(save); } else if (action === 'fullscreen') toggleFullscreen();
+  else if (action === 'bigger' || action === 'smaller') resize(action === 'bigger' ? 1 : -1);
+  else if (action === 'lang') { setLang(save.options.lang); writeSave(save); } else if (action === 'slots') writeSave(save);
   else if (action === 'reset') { save = { ...save, unlocked: 1, levels: {} }; writeSave(save); game.unlocked = 1; } else if (action === 'options-closed') { /* back to the pause menu */ } else return false;
   return true;
+}
+
+// The F keys, from any screen: F1 help, F3 / F4 screen size, F5 load and
+// F6 save. True when one was handled.
+function specialKeys() {
+  if (screens.typing || screens.capturing) return false;
+  if (input.pressed('smaller')) { resize(-1); return true; }
+  if (input.pressed('bigger')) { resize(1); return true; }
+  const key = ['help', 'load', 'save'].find((k) => input.pressed(k));
+  if (!key) return false;
+  if (scene === 'title') {
+    if (net) return false;    // not while a party is being set up
+    if (key === 'save') { audio.play('denied'); return true; }
+    audio.play('select');
+    screens.open(key);
+    return true;
+  }
+  if (scene === 'play' && !game.party && game.state === 'play') { pauseWith(key); return true; }
+  if (scene === 'paused') { screens.pauseOpen(key); audio.play('select'); return true; }
+  return false;
 }
 
 // ---------------------------------------------------------------- tick
 
 function tick() {
+  // Gamepad buttons work the menus everywhere but in play.
+  input.menu = scene !== 'split' && !(scene === 'play' && game.state === 'play');
   input.sample();
-  if (input.pressed('mute') && !(scene === 'title' && screens.sub === 'join')) audio.toggleMute();
+  if (split) { split.input.menu = false; split.input.sample(); }
+  if (input.pressed('mute') && !(scene === 'title' && screens.sub === 'join') && !screens.typing) audio.toggleMute();
   sceneTime++;
+  if (scene !== 'splash' && specialKeys()) return;
   switch (scene) {
     case 'splash':
       if (!gated && sceneTime > 40 && (input.pressed('start') || input.pressed('jump') || input.pressed('pause'))) toMenu();
@@ -242,7 +373,17 @@ function tick() {
       const action = screens.titleInput(input, save) || '';
       if (optionsAction(action)) break;
       if (action.startsWith('level:')) showCard(levelKey(action.slice(6)), true);
-      else if (action === 'save') { writeSave(save); game.character = save.character; }
+      else if (action === 'save') { writeSave(save); game.character = save.character; game.difficulty = save.difficulty; }
+      else if (action.startsWith('load-slot:')) loadSlot(Number(action.slice(10)));
+      else if (action === 'score-name') {
+        const name = screens.typedName || save.lastName || 'JAZZ';
+        save.lastName = name;
+        const rank = finished ? addScore(save, { ...finished, name }) : -1;
+        finished = null;
+        writeSave(save);
+        screens.open('scores');
+        screens.highlight = rank;
+      } else if (action.startsWith('local-start:')) startSplit(levelKey(action.slice(12)));
       else if (action === 'host') hostParty();
       else if (action.startsWith('join:')) joinParty(action.slice(5));
       else if (action === 'leave') { if (net) net.close(); net = null; }
@@ -268,11 +409,7 @@ function tick() {
         break;
       }
       if (game.state === 'play' && input.pressed('pause')) {
-        screens.pauseIndex = 0;
-        screens.sub = null;
-        audio.hover(false);
-        audio.play('pause');
-        go('paused');
+        pauseWith(null);
         break;
       }
       game.update(input);
@@ -284,27 +421,45 @@ function tick() {
       if (game.state === 'clear' && game.clearTime > 280 && input.pressed('start')) {
         game.result = null;
         const def = levelDef(game.levelIndex);
-        if (def.jj2) { const next = nextPlayable(def.next); if (next) showCard(next, false); else toMenu(); }
+        if (def.jj2) { const next = nextPlayable(def.next); if (next) showCard(next, false); else endGame(); }
         else if (game.levelIndex + 1 < LEVELS.length) showCard(game.levelIndex + 1, false);
         else game.nextLevel();
       } else if (game.state === 'gameover') {
-        // "Continue?": YES starts the level again with fresh lives.
+        // "Continue?": YES starts the level again with fresh lives, but
+        // without the score and weapons, three times a game (the manual).
         game.overTime = (game.overTime || 0) + 1;
         if (game.overTime === 1) screens.continueYes = true;
+        if (game.continues <= 0) {
+          if (game.overTime > 60 && (input.pressed('start') || input.pressed('jump') || input.pressed('pause'))) endGame();
+          break;
+        }
         const answer = game.overTime > 40 ? screens.continueInput(input) : null;
-        if (answer === 'yes') showCard(game.levelIndex, true);
-        else if (answer === 'no') toMenu();
+        if (answer === 'yes') { const left = game.continues - 1; showCard(game.levelIndex, true); pendingLevel.continues = left; }
+        else if (answer === 'no') endGame();
       } else if (game.state === 'win') {
         game.overTime = (game.overTime || 0) + 1;
-        if (game.overTime > 90 && input.pressed('start')) toMenu();
+        if (game.overTime > 90 && input.pressed('start')) endGame();
       }
       break;
+    case 'split': {
+      // Esc leaves; ENTER after the result.
+      irisTime++;
+      const done = game.party && game.party.result;
+      if (input.pressed('pause') || split.input.pressed('pause') || (done && (input.pressed('start') || split.input.pressed('start')))) { toMenu(); break; }
+      game.update(input);
+      split.game.update(split.input);
+      break;
+    }
     case 'paused': {
       const action = screens.pauseInput(input, save) || '';
       if (optionsAction(action)) break;
       if (action === 'resume') go('play');
       else if (action === 'restart') { game.restoreStart(); showCard(game.levelIndex, false); }
-      else if (action === 'quit') toMenu();
+      else if (action === 'quit') endGame();
+      else if (action.startsWith('save-slot:')) {
+        saveSlot(save, Number(action.slice(10)), { ...game.snapshot(), name: screens.typedName, title: levelDef(game.levelIndex).title });
+        screens.say('GAME SAVED');
+      } else if (action.startsWith('load-slot:')) loadSlot(Number(action.slice(10)));
       break;
     }
     default:
@@ -312,8 +467,27 @@ function tick() {
   }
 }
 
+// Split screen: each player's view in their half, with their own HUD.
+function renderSplit(alpha) {
+  const W = VIEW_W / 2;
+  [[game, renderer], [split.game, split.renderer]].forEach(([g, r], i) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(i * W, 0, W, VIEW_H);
+    ctx.clip();
+    ctx.translate(i * W, 0);
+    r.world(g, alpha);
+    r.hud(g);
+    if (irisTime < 45) screens.iris(g.player.cx - g.cam.x, g.player.cy - g.cam.y, (irisTime / 45) ** 2 * Math.hypot(W, VIEW_H));
+    ctx.restore();
+  });
+  ctx.fillStyle = '#05020c';
+  ctx.fillRect(W - 1, 0, 2, VIEW_H);
+}
+
 function render(alpha) {
   if (scene === 'splash') return screens.splash(sceneTime, gated);
+  if (scene === 'split') return renderSplit(alpha);
   if (scene === 'title') return screens.title(game.time, save);
   if (scene === 'card') return screens.card(game, sceneTime, save);
   if (game.state === 'win') return screens.win(game, game.overTime || 0);
@@ -347,6 +521,7 @@ function loop(now) {
   // Never let one bad frame freeze the game: report it and keep going.
   try {
     render(acc / TICK_MS);
+    screens.drawToast();
   } catch (e) {
     if (!loop.reported) { console.error(e); loop.reported = true; }
     ctx.fillStyle = 'rgba(0,0,0,0.75)';

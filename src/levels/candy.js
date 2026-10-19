@@ -25,6 +25,7 @@ export function candyClouds() {
   // ---- Low route.
   L.put(3, 33, 'P');
   L.hint(7, 33, 'Candy Clouds! Do not fall. Green springs lead up\nto a faster cloud route; gem rainbows show the jumps.');
+  L.on(14, 'M');                               // Quick Change monitor
   islands.forEach(([x, top, w], i) => {
     if (i === 0 || i === islands.length - 1) return;
     shape(L, x + Math.floor(w / 2) - 3, top - 4, i % 2 ? 'arc' : 'hump', 'o');

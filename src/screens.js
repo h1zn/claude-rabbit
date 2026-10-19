@@ -4,27 +4,41 @@
 
 import { arcadeText, jjText, jjWidth } from './art.js';
 import { VIEW_H, VIEW_W } from './config.js';
-import { ACTION_NAMES, clearKey, defaultKeys, KEY_SLOTS, keyName, REBINDABLE } from './input.js';
+import { ACTION_NAMES, clearKey, connectedPads, defaultKeys, KEY_SLOTS, keyName, REBINDABLE } from './input.js';
 import { discoverPacks, PACKS, playableJJ2, scanPlayable } from './jj2/catalog.js';
 import { preview } from './jj2/preview.js';
+import { LANGS, tr } from './lang.js';
 import { LEVELS, levelDef } from './levels.js';
 import { PARTY_LEVELS } from './party.js';
-import { MISSIONS, totalStars } from './save.js';
+import { cleanName, DIFFICULTIES, MISSIONS, SAVE_SLOTS, SCORE_ROWS, totalStars } from './save.js';
 import { AREA } from './level.js';
 import { frameAt, tilePixel } from './sheets.js';
 import { TERRAIN_THEMES } from './terrain.js';
 import { THEME_TILESET } from './tilesets.js';
 import { Sky, Weather } from './sky.js';
 
-const MAIN = ['New Game', 'Party', 'How to Play', 'Options'];
+const MAIN = ['New Game', 'Load Game', 'Party', 'High Scores', 'Help', 'Options'];
 const MAIN_INFO = [
   "Kip's Gem Rush or a classic JJ2 episode",
-  'Two players on two computers: race for gems',
+  'Carry on with a game you saved',
+  'Two players: one computer or two',
+  'The best scores so far',
   'Controls, moves and blocks',
-  'Volume, keyboard and video',
+  'Volume, controls, video and language',
 ];
-const SUBS = ['char', 'party', 'help', 'options'];
-const PAUSE_ITEMS = ['RESUME', 'OPTIONS', 'RESTART LEVEL', 'QUIT TO TITLE'];
+const SUBS = ['char', 'load', 'party', 'scores', 'help', 'options'];
+const mainIndex = (sub) => SUBS.indexOf(sub);
+const PAUSE_ITEMS = ['RESUME', 'SAVE GAME', 'LOAD GAME', 'OPTIONS', 'RESTART LEVEL', 'QUIT TO TITLE'];
+const PAUSE_ACTIONS = ['resume', 'save', 'load', 'options', 'restart', 'quit'];
+// The manual's difficulty levels.
+const DIFF_INFO = {
+  easy: ["Nothing a gung-ho rookie damsel-in-distress rescuer can't handle.", 'Fewer enemies.'],
+  medium: ['A challenge for most stouthearted superhares.', 'Every enemy the level has.'],
+  hard: ['The difficulty level of choice for seasoned turtle thumpers.', 'More enemies.'],
+};
+const DIFF_NAME = { easy: 'EASY', medium: 'MEDIUM', hard: 'HARD' };
+// Options screens (shared by the title and the pause menu).
+const OPTION_SUBS = ['options', 'keys', 'video', 'lang'];
 const CHARACTERS = [
   { id: 'jazz', moves: ['Copter ears: JUMP again in the air', 'Uppercut: DOWN, then JUMP'] },
   { id: 'spaz', moves: ['Double jump: JUMP again in the air', 'Side kick: DOWN, then JUMP'] },
@@ -64,7 +78,20 @@ export class Screens {
     this.resetArmed = false;
     this.keyCol = 0;           // keyboard screen: which key slot
     this.capturing = null;     // keyboard screen: waiting for a key { action, col }
+    this.keyPage = 0;          // controls screen: 0 keyboard 1, 1 keyboard 2, 2 gamepad
+    this.typing = null;        // typing a name: { kind: 'slot' | 'score', buf, slot }
+    this.slotArmed = -1;       // load screen: slot waiting for a second CLEAR
+    this.scorePage = 0;        // high scores: 0 the table, 1 level bests
+    this.highlight = -1;       // high scores: the row just added
+    this.toast = null;         // { text, t }: a short note at the top of the screen
     window.addEventListener('keydown', (e) => {
+      if (this.typing) {
+        const T = this.typing;
+        if (e.code === 'Enter' || e.code === 'NumpadEnter') { if (!e.altKey) T.done = true; } else if (e.code === 'Escape') T.cancel = true;
+        // The suggested name goes as soon as you type over it.
+        else if (e.code === 'Backspace') { T.buf = T.fresh ? '' : T.buf.slice(0, -1); T.fresh = false; e.preventDefault(); } else if (e.key && e.key.length === 1) { T.buf = cleanName((T.fresh ? '' : T.buf) + e.key); T.fresh = false; e.preventDefault(); }
+        return;
+      }
       if (this.sub !== 'join') return;
       if (/^Key[A-Z]$/.test(e.code) && this.codeBuf.length < 4) this.codeBuf += e.code.slice(3);
       if (e.code === 'Backspace') this.codeBuf = this.codeBuf.slice(0, -1);
@@ -133,7 +160,7 @@ export class Screens {
       this.big(label, x, y + i * gap, { align, scale, color: on ? null : '#9d8fc8', wave: on ? 3 : 0, t });
       if (on) {
         const gem = this.art.gems.red[Math.floor(t / 5) % 8];
-        const w = jjWidth(font, label, scale);
+        const w = jjWidth(font, tr(label), scale);
         const left = align === 'center' ? x - w / 2 : x;
         this.ctx.drawImage(gem, left - gem.width - 8, y + i * gap + 2);
         if (align === 'center') this.ctx.drawImage(gem, left + w + 8, y + i * gap + 2);
@@ -141,8 +168,17 @@ export class Screens {
     });
   }
 
-  big(str, x, y, opts = {}) { jjText(this.ctx, this.art.fonts.big, str, x, y, { scale: 0.5, ...opts }); }
-  med(str, x, y, opts = {}) { jjText(this.ctx, this.art.fonts.med, str, x, y, { scale: 0.75, ...opts }); }
+  // Menu text, in the chosen language (src/lang.js); `raw` draws it as it
+  // is (key names).
+  big(str, x, y, opts = {}) { jjText(this.ctx, this.art.fonts.big, opts.raw ? str : tr(str), x, y, { scale: 0.5, ...opts }); }
+  med(str, x, y, opts = {}) { jjText(this.ctx, this.art.fonts.med, opts.raw ? str : tr(str), x, y, { scale: 0.75, ...opts }); }
+
+  // Medium text shrunk (if need be) to fit `width` pixels.
+  fitMed(str, x, y, width, opts = {}) {
+    const scale = opts.scale || 0.75;
+    const w = jjWidth(this.art.fonts.med, tr(str), scale);
+    this.med(str, x, y, { ...opts, scale: w > width ? scale * (width / w) : scale });
+  }
 
   // The top 640x360 of a 640x480 JJ2 screen (where its logo and art are).
   top(img, alpha = 1) {
@@ -170,6 +206,7 @@ export class Screens {
 
   // Word-wrap to a pixel width in the medium JJ2 font.
   wrapTo(text, width, scale) {
+    text = tr(text);
     const out = [];
     let line = '';
     for (const word of text.split(' ')) {
@@ -236,18 +273,49 @@ export class Screens {
       this.mainMenu(t, save);
     } else {
       this.backdrop();
-      if (this.sub === 'char') this.charSelect(t, save);
-      else if (this.sub === 'episodes') this.episodeSelect(t, save);
-      else if (this.sub === 'levels') this.levelGrid(t, save);
-      else if (this.sub === 'jj2') this.jj2List(t, save);
-      else if (this.sub === 'help') this.help(t, save);
-      else if (this.sub === 'options') this.options(t, save);
-      else if (this.sub === 'keys') this.keysScreen(t, save);
-      else if (this.sub === 'video') this.videoScreen(t, save);
-      else this.lobbyScreen(t);
+      this.subScreen(t, save);
     }
-    arcadeText(ctx, 'Fan project - sprites, tiles, sounds and music (c) Epic MegaGames, not for distribution', VIEW_W / 2, VIEW_H - 12, { size: 8, align: 'center', shadow: false, top: '#c8b8e8', bottom: '#9a8ab0' });
+    arcadeText(ctx, tr('Fan project - sprites, tiles, sounds and music (c) Epic MegaGames, not for distribution'), VIEW_W / 2, VIEW_H - 12, { size: 8, align: 'center', shadow: false, top: '#c8b8e8', bottom: '#9a8ab0' });
   }
+
+  // A menu screen (from the title, or the pause menu for options, help,
+  // saving and loading).
+  subScreen(t, save) {
+    if (this.sub === 'char') this.charSelect(t, save);
+    else if (this.sub === 'diff') this.diffSelect(t, save);
+    else if (this.sub === 'episodes') this.episodeSelect(t, save);
+    else if (this.sub === 'levels') this.levelGrid(t, save);
+    else if (this.sub === 'jj2') this.jj2List(t, save);
+    else if (this.sub === 'help') this.help(t, save);
+    else if (this.sub === 'options') this.options(t, save);
+    else if (this.sub === 'keys') this.keysScreen(t, save);
+    else if (this.sub === 'video') this.videoScreen(t, save);
+    else if (this.sub === 'lang') this.langScreen(t, save);
+    else if (this.sub === 'load' || this.sub === 'save') this.slotsScreen(t, save);
+    else if (this.sub === 'scores') this.scoresScreen(t, save);
+    else if (this.sub === 'name') this.nameScreen(t, save);
+    else this.lobbyScreen(t, save);
+  }
+
+  // A short note at the top of the screen (screen size, saved, gamepad).
+  drawToast() {
+    const n = this.toast;
+    if (!n) return;
+    if (++n.t > 110) { this.toast = null; return; }
+    const ctx = this.ctx;
+    const a = Math.min(1, (110 - n.t) / 20);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.font = '14px "Arial Black", Impact, sans-serif';
+    const w = ctx.measureText(n.text).width + 28;
+    ctx.fillStyle = 'rgba(10,4,26,0.85)';
+    ctx.strokeStyle = '#ffd54a';
+    ctx.beginPath(); ctx.roundRect(VIEW_W / 2 - w / 2, 8, w, 26, 8); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    arcadeText(ctx, n.text, VIEW_W / 2, 12, { size: 14, align: 'center', alpha: a });
+  }
+
+  say(text) { this.toast = { text: tr(text), t: 0 }; }
 
   // JJ2's title picture, untouched, with the menu in a dark band along the
   // bottom: the items side by side, the chosen one gold and bobbing under a
@@ -262,14 +330,17 @@ export class Screens {
     // Fixed slots (sized for the chosen scale) so items don't shift as the
     // selection moves.
     const font = this.art.fonts.big;
-    const slots = MAIN.map((label) => jjWidth(font, label, 0.46));
-    const gap = 28;
+    // Six items: shrink them (and the gaps) to fit the width.
+    const gap = 18;
+    const full = MAIN.reduce((a, label) => a + jjWidth(font, tr(label), 1), 0);
+    const big = Math.min(0.46, (VIEW_W - 24 - gap * (MAIN.length - 1)) / full);
+    const slots = MAIN.map((label) => jjWidth(font, tr(label), big));
     let x = (VIEW_W - slots.reduce((a, b) => a + b, 0) - gap * (MAIN.length - 1)) / 2;
     const y = 294;
     MAIN.forEach((label, i) => {
       const on = i === this.menu;
       const cx = x + slots[i] / 2;
-      this.big(label, cx, on ? y - 2 : y, { align: 'center', scale: on ? 0.46 : 0.4, color: on ? null : '#a898d0', wave: on ? 2 : 0, t });
+      this.big(label, cx, on ? y - 2 : y, { align: 'center', scale: on ? big : big * 0.87, color: on ? null : '#a898d0', wave: on ? 2 : 0, t });
       if (on) {
         const gem = this.art.gems.red[Math.floor(t / 5) % 8];
         ctx.drawImage(gem, Math.round(cx - gem.width / 2), y - gem.height - 6);
@@ -326,6 +397,105 @@ export class Screens {
     this.med('LEFT / RIGHT to choose   ENTER to go on', VIEW_W / 2, VIEW_H - 34, { align: 'center', scale: 0.55, color: '#c8b8e8' });
   }
 
+  // Easy, Medium or Hard, in the manual's words.
+  diffSelect(t, save) {
+    this.big('SELECT DIFFICULTY', VIEW_W / 2, 14, { align: 'center', scale: 0.5 });
+    this.panel(90, 50, VIEW_W - 180, 250, 0.85);
+    this.menuList(DIFFICULTIES.map((d) => DIFF_NAME[d]), this.menu, 74, t, 40);
+    const [quote, rule] = DIFF_INFO[DIFFICULTIES[this.menu]];
+    this.wrapTo(quote, VIEW_W - 240, 0.55).forEach((line, i) => this.med(line, VIEW_W / 2, 206 + i * 15, { align: 'center', scale: 0.55, color: '#ece4ff' }));
+    this.med(rule, VIEW_W / 2, 250, { align: 'center', scale: 0.55, color: '#ffd54a' });
+    this.med('UP / DOWN to choose   ENTER to go on', VIEW_W / 2, VIEW_H - 34, { align: 'center', scale: 0.55, color: '#c8b8e8' });
+  }
+
+  // Save slots: LOAD lists them to pick from, SAVE (from the pause menu) to
+  // write over. Each shows its name, level, score, hero and difficulty.
+  slotsScreen(t, save) {
+    const ctx = this.ctx;
+    const saving = this.sub === 'save';
+    this.big(saving ? 'SAVE GAME' : 'LOAD GAME', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    this.panel(40, 38, VIEW_W - 80, 290, 0.88);
+    for (let i = 0; i < SAVE_SLOTS; i++) {
+      const slot = save.slots[i];
+      const y = 48 + i * 31;
+      const on = i === this.menu;
+      if (on) { ctx.fillStyle = 'rgba(255,214,90,0.10)'; ctx.fillRect(52, y - 3, VIEW_W - 104, 29); ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], 56, y + 3); }
+      if (!slot) { this.med(`${i + 1}.  ${saving ? tr('EMPTY SLOT') : '- - -'}`, 84, y + 6, { scale: 0.58, color: on ? null : '#7a6aa0' }); continue; }
+      const armed = this.slotArmed === i;
+      this.med(`${i + 1}.  ${armed ? tr('CLEAR AGAIN TO ERASE') : slot.name}`, 84, y, { scale: 0.6, color: armed ? '#ff9a9a' : on ? null : '#d8ccf4', wave: on ? 1 : 0, t });
+      const title = slot.title || '';
+      this.med(slot.date || '', VIEW_W - 64, y + 1, { align: 'right', scale: 0.45, color: '#8a7ab0' });
+      const hero = (slot.character || 'jazz').toUpperCase();
+      const info = `${title}   ${tr('{0} POINTS', slot.stats.score)}   ${tr('{0} LIVES', slot.stats.lives)}   ${hero}   ${tr(DIFF_NAME[slot.difficulty] || 'MEDIUM')}`;
+      this.med(info, 106, y + 14, { scale: 0.45, color: '#b8a8e0' });
+    }
+    const back = this.menu === SAVE_SLOTS;
+    const by = 48 + SAVE_SLOTS * 31 + 2;
+    this.med('BACK', 84, by, { scale: back ? 0.66 : 0.6, color: back ? null : '#b8a8e0', wave: back ? 2 : 0, t });
+    if (back) ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], 56, by);
+    const hint = saving ? 'ENTER to save here' : 'ENTER to load   CLEAR twice to erase';
+    this.med(`${tr(hint)}   ${tr('ESC to go back')}`, VIEW_W / 2, VIEW_H - 26, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+  }
+
+  // Typing a name: for a saved game, or a new high score.
+  nameScreen(t, save) {
+    const T = this.typing;
+    if (!T) return;
+    this.panel(VIEW_W / 2 - 220, 70, 440, 200, 0.92);
+    if (T.kind === 'score') {
+      this.big('NEW HIGH SCORE!', VIEW_W / 2, 84, { align: 'center', scale: 0.6, wave: 2, t });
+      this.med(`${tr('{0} POINTS', T.score)}   ${tr('RANK {0}', T.rank + 1)}`, VIEW_W / 2, 124, { align: 'center', scale: 0.65 });
+      this.med('Type your name', VIEW_W / 2, 150, { align: 'center', scale: 0.55, color: '#c8b8e8' });
+    } else {
+      this.big('NAME YOUR GAME', VIEW_W / 2, 84, { align: 'center', scale: 0.55 });
+      const old = save.slots[T.slot];
+      this.med(old ? tr('Replaces {0}', old.name) : tr('Slot {0}', T.slot + 1), VIEW_W / 2, 124, { align: 'center', scale: 0.55, color: old ? '#ffb0b8' : '#c8b8e8' });
+    }
+    const cursor = Math.floor(t / 20) % 2 ? '_' : ' ';
+    this.big(`${T.buf}${cursor}`, VIEW_W / 2, 178, { align: 'center', scale: 0.6, color: T.fresh ? '#b8a8e0' : null });
+    this.med('ENTER when done   ESC to cancel', VIEW_W / 2, 240, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+  }
+
+  // The high score table, and (RIGHT) the best score, time and stars of
+  // each of this game's levels.
+  scoresScreen(t, save) {
+    const ctx = this.ctx;
+    this.big('HIGH SCORES', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    this.panel(40, 40, VIEW_W - 80, 280, 0.88);
+    const head = { scale: 0.48, color: '#8a7ab0' };
+    if (this.scorePage === 0) {
+      this.med('NAME', 110, 50, head);
+      this.med('SCORE', 360, 50, { ...head, align: 'right' });
+      this.med('REACHED', 390, 50, head);
+      save.scores.slice(0, SCORE_ROWS).forEach((r, i) => {
+        const y = 70 + i * 23;
+        const on = i === this.highlight;
+        if (on) { ctx.fillStyle = 'rgba(255,214,90,0.14)'; ctx.fillRect(52, y - 4, VIEW_W - 104, 21); }
+        const color = on ? null : i < 3 ? '#ffe8a0' : '#d8ccf4';
+        this.med(`${i + 1}.`, 96, y, { align: 'right', scale: 0.6, color });
+        this.med(r.name, 110, y, { scale: 0.6, color, wave: on ? 2 : 0, t });
+        this.med(String(r.score), 360, y, { align: 'right', scale: 0.6, color });
+        const where = r.seed ? '' : `${r.level || ''}${r.difficulty ? `  ${tr(DIFF_NAME[r.difficulty])[0]}` : ''}`;
+        let label = where;
+        while (label.length > 4 && jjWidth(this.art.fonts.med, label, 0.45) > 196) label = `${label.slice(0, -4).trimEnd()}...`;
+        this.med(label, 390, y + 2, { scale: 0.45, color: '#b8a8e0' });
+      });
+    } else {
+      this.med("KIP'S GEM RUSH - BEST OF EACH LEVEL", VIEW_W / 2, 50, { ...head, align: 'center' });
+      LEVELS.forEach((make, i) => {
+        const y = 72 + i * 26;
+        const rec = save.levels[i];
+        const open = i < save.unlocked;
+        this.med(`${i + 1}. ${open ? make.title : '???'}`, 70, y, { scale: 0.56, color: open ? '#d8ccf4' : '#7a6aa0' });
+        if (!rec) { this.med('-', 420, y, { align: 'right', scale: 0.56, color: '#7a6aa0' }); return; }
+        this.med(String(rec.score), 420, y, { align: 'right', scale: 0.56 });
+        if (rec.seconds !== null) this.med(`${Math.floor(rec.seconds / 60)}:${String(rec.seconds % 60).padStart(2, '0')}`, 490, y, { align: 'right', scale: 0.56, color: '#c8b8f0' });
+        for (let k = 0; k < 3; k++) this.star(516 + k * 13, y + 7, 5.5, rec.stars[k]);
+      });
+    }
+    this.med(`${tr(this.scorePage === 0 ? 'RIGHT: best of each level' : 'LEFT: the high score table')}   ${tr('ESC to go back')}`, VIEW_W / 2, VIEW_H - 32, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+  }
+
   // The episodes: this game's own levels and every JJ2 level pack.
   episodes() {
     return [
@@ -344,7 +514,7 @@ export class Screens {
       const on = i === this.episode;
       const y = 58 + i * 34;
       this.med(ep.title, 52, y, { scale: on ? 0.72 : 0.64, color: on ? null : '#9d8fc8', wave: on ? 2 : 0, t });
-      this.med(`${ep.count} level${ep.count === 1 ? '' : 's'}`, 52, y + 17, { scale: 0.45, color: '#8a7ab0' });
+      this.med(ep.count === 1 ? tr('1 level') : tr('{0} levels', ep.count), 52, y + 17, { scale: 0.45, color: '#8a7ab0' });
       if (on) ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], 26, y + 1);
     });
     const ep = eps[this.episode];
@@ -358,7 +528,7 @@ export class Screens {
       this.star(x + w - 54, y + h - 14, 8, true);
       this.med(`${totalStars(save)}/${LEVELS.length * 3}`, x + w - 42, y + h - 22, { scale: 0.6 });
     }
-    wrap(ep.blurb, 34).slice(0, 5).forEach((line, i) => this.med(line, 470, y + h + 10 + i * 14, { align: 'center', scale: 0.55 }));
+    wrap(tr(ep.blurb), 34).slice(0, 5).forEach((line, i) => this.med(line, 470, y + h + 10 + i * 14, { align: 'center', scale: 0.55 }));
   }
 
   // Average colour of some tileset tiles (rows y0..y1 of each), as [r, g, b].
@@ -482,10 +652,10 @@ export class Screens {
       const rec = def && save.levels[def.key];
       // Long titles shrink (then get cut) so they stop short of the stars.
       const room = (rec ? 284 : 314) - 60;
-      let label = def ? def.title : 'Back';
+      let label = def ? def.title : tr('Back');
       // Two levels share a title in some packs: tell them apart.
       const twin = def && list.findIndex((o) => o !== def && o.title === def.title);
-      if (def && twin >= 0) label += def.story ? ' - story' : twin < list.indexOf(def) ? ' II' : '';
+      if (def && twin >= 0) label += def.story ? ` - ${tr('story')}` : twin < list.indexOf(def) ? ' II' : '';
       let scale = on ? 0.7 : 0.62;
       const font = this.art.fonts.med;
       const w = jjWidth(font, label, scale);
@@ -520,7 +690,7 @@ export class Screens {
           ctx.imageSmoothingEnabled = false;
           ctx.drawImage(map, bx + (bw - map.width * k) / 2, by + (bh - map.height * k) / 2, map.width * k, map.height * k);
         }
-        this.med(`${got.file.layers[3].w} x ${got.file.layers[3].h} tiles - ${got.ts.name}`, bx + bw / 2, by + bh + 4, { align: 'center', scale: 0.5, color: '#c8b8f0' });
+        this.med(tr('{0} x {1} tiles - {2}', got.file.layers[3].w, got.file.layers[3].h, got.ts.name), bx + bw / 2, by + bh + 4, { align: 'center', scale: 0.5, color: '#c8b8f0' });
       } else {
         this.med(def.error ? 'Can not load' : 'Loading...', bx + bw / 2, by + bh / 2 - 8, { align: 'center', scale: 0.7 });
       }
@@ -536,23 +706,26 @@ export class Screens {
     const n = (a) => keyName(keys[a][0]);
     const n2 = (a) => keys[a].slice(0, 2).map(keyName).join(' / ');
     const lines = [
-      [`${n('left')} / ${n('right')}`, `move - hold ${n('run')} to run`],
+      [`${n('left')} / ${n('right')}`, tr('move - hold {0} to run', n('run'))],
       [n2('jump'), 'jump - hold for higher; again in the air:'],
       ['', 'Jazz and Lori hover on their ears, Spaz jumps again'],
-      [`${n('down')}, then ${n('jump')}`, 'uppercut, Jazz / kick; sliding: super jump'],
-      [`${n('down')} in the air`, 'butt-stomp: breaks stomp blocks, kills enemies'],
-      [n2('shoot'), `fire    ${n('up')} and ${n('shoot')}: aim up, diagonal while moving`],
+      [tr('{0}, then {1}', n('down'), n('jump')), 'uppercut, Jazz / kick; sliding: super jump'],
+      [tr('{0} in the air', n('down')), 'butt-stomp: breaks stomp blocks, kills enemies'],
+      [n2('shoot'), tr('fire    {0} and {1}: aim up, diagonal while moving', n('up'), n('shoot'))],
       [`${n('weapon')}, 1-9`, 'change weapon: bouncer, frostbiter, missiles, TNT...'],
       ['Poles and vines', 'touch a pole to spin and fly; hang from vines'],
       ['Blocks', 'star: shoot  number: N shots  arrow: stomp  gun: that gun'],
+      ['Monitors', 'shields power up the Blaster; the swirl one switches hero'],
       ['Stars', 'exit  /  75% of gems  /  every secret'],
       [`${n('pause')} / M`, 'pause / mute    Keys can be changed in OPTIONS'],
+      ['F1  F3 / F4', 'help   screen size    ALT and ENTER: full screen'],
+      ['F5 / F6', 'load / save a game    A gamepad works too'],
     ];
     lines.forEach(([a, b], i) => {
-      this.med(a, 46, 54 + i * 21, { scale: 0.5 });
-      this.med(b, 190, 54 + i * 21, { scale: 0.5, color: '#ece4ff' });
+      this.fitMed(a, 46, 48 + i * 18, 138, { scale: 0.5 });
+      this.fitMed(b, 190, 48 + i * 18, VIEW_W - 230, { scale: 0.5, color: '#ece4ff' });
     });
-    this.blink(t, 'Press ENTER', 300, 0.6);
+    this.blink(t, 'Press ENTER', 306, 0.6);
   }
 
   // A list of rows in the JJ2 font, the chosen one gold with a gem; `value`
@@ -571,30 +744,44 @@ export class Screens {
     const ctx = this.ctx;
     this.big('OPTIONS', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
     this.panel(130, 46, VIEW_W - 260, 262, 0.85);
-    const list = [['MUSIC'], ['EFFECTS'], ['KEYBOARD', '>'], ['VIDEO', '>'],
+    const list = [['MUSIC'], ['EFFECTS'], ['CONTROLS', '>'], ['VIDEO', '>'], ['LANGUAGE', '>'],
       [this.resetArmed ? 'PRESS AGAIN TO ERASE' : 'RESET PROGRESS'], ['BACK']];
-    this.rows(list, this.menu, 180, VIEW_W - 170, 66, 38, t);
+    this.rows(list, this.menu, 180, VIEW_W - 170, 62, 32, t);
     [save.options.music, save.options.sfx].forEach((v, i) => {
-      const y = 66 + i * 38 + 3;
+      const y = 62 + i * 32 + 3;
       const on = this.menu === i;
       ctx.fillStyle = '#1a0b1e'; ctx.fillRect(330, y, 124, 12);
       ctx.fillStyle = on ? '#ffd54a' : '#9a7ad0'; ctx.fillRect(332, y + 2, Math.round(120 * v), 8);
     });
     const hint = this.menu < 2 ? 'LEFT / RIGHT to change' : 'ENTER to choose   ESC to go back';
-    this.med(hint, VIEW_W / 2, 290, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+    this.med(hint, VIEW_W / 2, 292, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+  }
+
+  // The on-screen language (level names and signs stay as they are).
+  langScreen(t, save) {
+    this.big('LANGUAGE', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    this.panel(150, 46, VIEW_W - 300, 262, 0.85);
+    const list = [...LANGS.map((l) => [l.name, l.id === save.options.lang ? '*' : '']), ['BACK']];
+    this.rows(list, this.menu, 200, VIEW_W - 190, 64, 32, t);
   }
 
   // Rebind the play keys: up to three per action. ENTER waits for a key,
   // BACKSPACE clears one, a key already in use swaps over.
+  // Three pages (TAB, or RB on a gamepad): Keyboard 1 (playing alone, and
+  // player 1 in split screen), Keyboard 2 (player 2) and the gamepad.
   keysScreen(t, save) {
     const ctx = this.ctx;
-    const keys = save.options.keys || defaultKeys();
-    this.big('KEYBOARD', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    const pages = ['KEYBOARD 1', 'KEYBOARD 2', 'GAMEPAD'];
+    this.big(pages[this.keyPage], VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
+    pages.forEach((_, i) => { this.ctx.fillStyle = i === this.keyPage ? '#ffd54a' : 'rgba(150,120,200,0.6)'; this.ctx.fillRect(VIEW_W / 2 - 22 + i * 18, 34, 8, 3); });
     this.panel(28, 40, VIEW_W - 56, 282, 0.88);
+    if (this.keyPage === 2) { this.padPage(t); return; }
+    const second = this.keyPage === 1;
+    const keys = (second ? save.options.keys2 : save.options.keys) || defaultKeys(second);
     const colX = [252, 368, 484];
     const head = { scale: 0.48, color: '#8a7ab0' };
     this.med('ACTION', 62, 50, head);
-    colX.forEach((x, c) => this.med(`KEY ${c + 1}`, x + 50, 50, { ...head, align: 'center' }));
+    colX.forEach((x, c) => this.med(tr('KEY {0}', c + 1), x + 50, 50, { ...head, align: 'center' }));
     REBINDABLE.forEach((a, i) => {
       const y = 70 + i * 21;
       const on = this.menu === i;
@@ -608,13 +795,34 @@ export class Screens {
           ctx.beginPath(); ctx.roundRect(colX[c], y - 3, 100, 19, 4); ctx.stroke();
         }
         const label = waiting ? (Math.floor(t / 20) % 2 ? 'PRESS A KEY' : '') : keyName(keys[a][c]);
-        this.med(label, colX[c] + 50, y, { align: 'center', scale: 0.5, color: waiting ? '#ffd54a' : keys[a][c] ? '#ffffff' : '#6a5a8a' });
+        this.med(waiting ? tr(label) : label, colX[c] + 50, y, { align: 'center', scale: 0.5, raw: true, color: waiting ? '#ffd54a' : keys[a][c] ? '#ffffff' : '#6a5a8a' });
       }
     });
     const n = REBINDABLE.length;
     this.rows([['RESET TO DEFAULTS'], ['BACK']], this.menu - n, 62, 0, 70 + n * 21 + 6, 21, t);
-    const hint = this.capturing ? 'Press the new key   ESC cancels' : 'ENTER change   BACKSPACE clear   ESC back';
+    const hint = this.capturing ? 'Press the new key   ESC cancels' : 'ENTER change   BACKSPACE clear   TAB next page   ESC back';
     this.med(hint, VIEW_W / 2, 302, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+  }
+
+  // The gamepad's buttons (fixed), and which pads are connected.
+  padPage(t) {
+    const rows = [
+      ['D-PAD / LEFT STICK', 'move, look up, crouch'],
+      ['A', 'jump        menus: choose'],
+      ['X  or  RT', 'fire'],
+      ['B, LB  or  LT', 'run         menus: back'],
+      ['Y  or  RB', 'next weapon'],
+      ['START', 'pause'],
+    ];
+    rows.forEach(([a, b], i) => {
+      this.fitMed(a, 62, 60 + i * 22, 196, { scale: 0.55 });
+      this.fitMed(b, 270, 60 + i * 22, VIEW_W - 320, { scale: 0.55, color: '#ece4ff' });
+    });
+    const pads = connectedPads();
+    const say = pads.length ? pads.slice(0, 2).map((g, i) => `${i + 1}: ${g.id.replace(/\s*\(.*$/, '').slice(0, 40)}`) : ['No gamepad found - press a button on it'];
+    say.forEach((line, i) => this.med(line, VIEW_W / 2, 210 + i * 16, { align: 'center', scale: 0.5, color: pads.length ? '#7aff9a' : '#c8b8e8' }));
+    this.med('Split screen: two pads go one each; one pad goes to player 2', VIEW_W / 2, 252, { align: 'center', scale: 0.48, color: '#c8b8e8' });
+    this.med('TAB next page   ESC back', VIEW_W / 2, 302, { align: 'center', scale: 0.5, color: '#c8b8e8' });
   }
 
   videoScreen(t, save) {
@@ -628,21 +836,23 @@ export class Screens {
       ['FILTER', v.filter === 'smooth' ? 'SMOOTH' : 'SHARP'],
       ['SCREEN SHAKE', onOff(v.shake)],
       ['FLASHES', onOff(v.flash)],
+      ['SCREEN SIZE', `${Math.round((v.size || 1) * 10)} / 10`],
       ['BACK'],
     ];
-    this.rows(list, this.menu, 150, VIEW_W - 140, 66, 36, t);
+    this.rows(list, this.menu, 150, VIEW_W - 140, 60, 31, t);
     const tips = [
-      'Fill the screen (F11 works too)',
+      'Fill the screen: ALT and ENTER, or F11',
       'Fit: fill the window   Pixel perfect: whole-number scale, no uneven pixels',
       'Sharp: crisp pixels   Smooth: softened',
       'Shake the screen on explosions and stomps',
       'Flash the screen on big hits and explosions',
+      'How much of the window the game fills: F3 / F4',
       '',
     ];
     this.wrapTo(tips[this.menu], VIEW_W - 240, 0.5).forEach((line, i) => this.med(line, VIEW_W / 2, 282 + i * 12, { align: 'center', scale: 0.5, color: '#c8b8e8' }));
   }
 
-  lobbyScreen(t) {
+  lobbyScreen(t, save) {
     const ctx = this.ctx;
     const L = this.lobby;
     this.big('PARTY MODE', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
@@ -651,8 +861,30 @@ export class Screens {
     if (this.sub === 'party') {
       say('Two players hunt gems. Shoot your rival to make', 66, { color: '#ece4ff' });
       say('them drop gems; first to the exit with 100 wins!', 80, { color: '#ece4ff' });
-      this.menuList(['HOST A GAME', 'JOIN A GAME', 'BACK'], this.menu, 120, t, 34);
-      say('Run party.bat - serve.py --lan - so your friend can connect', 278, { scale: 0.45, color: '#c8b8e8' });
+      this.menuList(['HOST A GAME', 'JOIN A GAME', 'SAME COMPUTER', 'BACK'], this.menu, 112, t, 34);
+      const tips = ['Run party.bat - serve.py --lan - so your friend can connect', 'Type the room code your friend sees',
+        'Split screen: Keyboard 1, Keyboard 2 and gamepads', ''];
+      say(tips[this.menu], 278, { scale: 0.45, color: '#c8b8e8' });
+      return;
+    }
+    if (this.sub === 'local') {
+      say('TWO PLAYERS, ONE COMPUTER', 64, { scale: 0.65, color: null });
+      const keys = (field, second) => {
+        const k = save.options[field] || defaultKeys(second);
+        return `${keyName(k.left[0])} ${keyName(k.right[0])}  ${tr('jump')} ${keyName(k.jump[0])}  ${tr('fire')} ${keyName(k.shoot[0])}`;
+      };
+      say('PLAYER 1 - LEFT: Keyboard 1', 98, { color: '#ffe8a0' });
+      say(keys('keys', false), 113, { scale: 0.48, color: '#ece4ff' });
+      say('PLAYER 2 - RIGHT: Keyboard 2', 140, { color: '#a8e0ff' });
+      say(keys('keys2', true), 155, { scale: 0.48, color: '#ece4ff' });
+      const pads = connectedPads().length;
+      say(pads >= 2 ? 'Two gamepads: one each' : pads === 1 ? 'The gamepad plays player 2' : 'A gamepad plugged in plays player 2', 178, { scale: 0.48, color: pads ? '#7aff9a' : '#c8b8e8' });
+      const lv = levelDef(PARTY_LEVELS[this.partyLevel]);
+      const name = lv.loaded && !lv.loaded() && lv.pack ? lv.pack.title : lv.title;
+      say(`< ${name} >`, 210, { scale: 0.7, color: null });
+      say('LEFT / RIGHT: level', 230, { scale: 0.45, color: '#8a7ab0' });
+      if (this.lobby.status === 'loading') say('Loading...', 260, { scale: 0.6 });
+      else this.blink(t, 'Press ENTER to start', 260, 0.6);
       return;
     }
     if (L.status === 'error') {
@@ -664,7 +896,7 @@ export class Screens {
       if (!L.code) { say('Connecting' + '.'.repeat(1 + Math.floor(t / 20) % 3), 150, { scale: 0.7 }); return; }
       say('ROOM CODE', 66, { color: '#c8b8e8' });
       this.big(L.code.split('').join(' '), VIEW_W / 2, 84, { align: 'center', scale: 0.9 });
-      (L.urls || []).slice(0, 2).forEach((u, i) => say(`Friend opens ${u}`, 148 + i * 14, { scale: 0.48, color: '#ece4ff' }));
+      (L.urls || []).slice(0, 2).forEach((u, i) => say(tr('Friend opens {0}', u), 148 + i * 14, { scale: 0.48, color: '#ece4ff' }));
       const lv = levelDef(PARTY_LEVELS[this.partyLevel]);
       const name = lv.loaded && !lv.loaded() && lv.pack ? lv.pack.title : lv.title;
       say(`< ${name} >`, 196, { scale: 0.7, color: null });
@@ -675,7 +907,7 @@ export class Screens {
     }
     // join
     if (L.joined) {
-      say(`Joined room ${L.code}`, 120, { scale: 0.75, color: null });
+      say(tr('Joined room {0}', L.code), 120, { scale: 0.75, color: null });
       say('Waiting for the host to start' + '.'.repeat(1 + Math.floor(t / 20) % 3), 160, { scale: 0.6 });
       return;
     }
@@ -687,6 +919,7 @@ export class Screens {
 
   // Returns an action string when the player chooses something.
   titleInput(input, save) {
+    if (this.typing) return this.typingInput(input);
     const choose = input.pressed('start') || (this.sub !== 'join' && input.pressed('jump'));
     const back = input.pressed('pause');
     const move = (n, count) => { this.menu = (this.menu + n + count) % count; this.audio.play('menu'); };
@@ -697,9 +930,8 @@ export class Screens {
         if (input.pressed('right') || input.pressed('down')) move(1, MAIN.length);
         if (!choose) return null;
         this.audio.play('select');
-        this.sub = SUBS[this.menu];
+        this.open(SUBS[this.menu]);
         if (this.sub === 'char') this.charPick = save.character || 'jazz';
-        this.menu = 0;
         return null;
       case 'char': {
         const i = CHARACTERS.findIndex((c) => c.id === this.charPick);
@@ -709,6 +941,17 @@ export class Screens {
         if (!choose) return null;
         this.audio.play('select');
         save.character = this.charPick;
+        this.sub = 'diff';
+        this.menu = Math.max(0, DIFFICULTIES.indexOf(save.difficulty));
+        return 'save';
+      }
+      case 'diff': {
+        if (input.pressed('up')) move(-1, DIFFICULTIES.length);
+        if (input.pressed('down')) move(1, DIFFICULTIES.length);
+        if (back) { this.sub = 'char'; return null; }
+        if (!choose) return null;
+        this.audio.play('select');
+        save.difficulty = DIFFICULTIES[this.menu];
         this.sub = 'episodes';
         return 'save';
       }
@@ -716,7 +959,7 @@ export class Screens {
         const eps = this.episodes();
         const d = (input.pressed('down') ? 1 : 0) - (input.pressed('up') ? 1 : 0);
         if (d) { this.episode = (this.episode + d + eps.length) % eps.length; this.audio.play('menu'); }
-        if (back) { this.sub = 'char'; return null; }
+        if (back) { this.sub = 'diff'; this.menu = Math.max(0, DIFFICULTIES.indexOf(save.difficulty)); return null; }
         if (!choose) return null;
         this.audio.play('select');
         const ep = eps[this.episode];
@@ -749,20 +992,59 @@ export class Screens {
         return `level:${def.key}`;
       }
       case 'help':
-        if (choose || back) { this.sub = null; this.menu = 2; this.audio.play('select'); }
+        if (choose || back) { this.sub = null; this.menu = mainIndex('help'); this.audio.play('select'); }
         return null;
+      case 'scores':
+        if (input.pressed('left') || input.pressed('right')) { this.scorePage = 1 - this.scorePage; this.audio.play('menu'); }
+        if (choose || back) { this.sub = null; this.menu = mainIndex('scores'); this.highlight = -1; this.audio.play('select'); }
+        return null;
+      case 'load':
+      case 'save': {
+        const n = SAVE_SLOTS + 1;
+        if (input.pressed('up')) { move(-1, n); this.slotArmed = -1; }
+        if (input.pressed('down')) { move(1, n); this.slotArmed = -1; }
+        if (back || (choose && this.menu === SAVE_SLOTS)) { this.sub = null; this.menu = mainIndex('load'); this.slotArmed = -1; return null; }
+        const slot = save.slots[this.menu];
+        if (this.menu < SAVE_SLOTS && slot && input.pressed('clear')) {
+          if (this.slotArmed !== this.menu) { this.slotArmed = this.menu; this.audio.play('menu'); return null; }
+          save.slots[this.menu] = null; this.slotArmed = -1; this.audio.play('denied');
+          return 'slots';
+        }
+        if (!choose) return null;
+        if (this.sub === 'save') {
+          this.audio.play('select');
+          this.typing = { kind: 'slot', slot: this.menu, buf: cleanName(slot ? slot.name : this.levelTitle || `GAME ${this.menu + 1}`), fresh: true };
+          this.sub = 'name';
+          return null;
+        }
+        if (!slot) { this.audio.play('denied'); return null; }
+        this.audio.play('select');
+        this.sub = null;
+        return `load-slot:${this.menu}`;
+      }
+      case 'lang': {
+        const n = LANGS.length + 1;
+        if (input.pressed('up')) move(-1, n);
+        if (input.pressed('down')) move(1, n);
+        if (back || (choose && this.menu === LANGS.length)) { this.sub = 'options'; this.menu = 4; return null; }
+        if (!choose) return null;
+        this.audio.play('select');
+        save.options.lang = LANGS[this.menu].id;
+        return 'lang';
+      }
       case 'options': {
-        if (input.pressed('up')) { move(-1, 6); this.resetArmed = false; }
-        if (input.pressed('down')) { move(1, 6); this.resetArmed = false; }
+        if (input.pressed('up')) { move(-1, 7); this.resetArmed = false; }
+        if (input.pressed('down')) { move(1, 7); this.resetArmed = false; }
         if (this.menu < 2) {
           const key = this.menu === 0 ? 'music' : 'sfx';
           const d = (input.pressed('right') ? 0.1 : 0) - (input.pressed('left') ? 0.1 : 0);
           if (d) { save.options[key] = Math.round(Math.max(0, Math.min(1, save.options[key] + d)) * 10) / 10; this.audio.play('menu'); return 'options'; }
         }
-        if (back || (choose && this.menu === 5)) { this.sub = null; this.menu = 3; this.resetArmed = false; return 'options'; }
-        if (choose && this.menu === 2) { this.audio.play('select'); this.sub = 'keys'; this.menu = 0; this.keyCol = 0; return null; }
+        if (back || (choose && this.menu === 6)) { this.sub = null; this.menu = mainIndex('options'); this.resetArmed = false; return 'options'; }
+        if (choose && this.menu === 2) { this.audio.play('select'); this.sub = 'keys'; this.menu = 0; this.keyCol = 0; this.keyPage = 0; return null; }
         if (choose && this.menu === 3) { this.audio.play('select'); this.sub = 'video'; this.menu = 0; return null; }
-        if (choose && this.menu === 4) {
+        if (choose && this.menu === 4) { this.audio.play('select'); this.sub = 'lang'; this.menu = Math.max(0, LANGS.findIndex((l) => l.id === save.options.lang)); return null; }
+        if (choose && this.menu === 5) {
           if (this.resetArmed) { this.resetArmed = false; this.audio.play('denied'); return 'reset'; }
           this.resetArmed = true; this.audio.play('menu');
         }
@@ -771,6 +1053,12 @@ export class Screens {
       case 'keys': {
         if (this.capturing) return null;
         const n = REBINDABLE.length;
+        if (input.pressed('page')) { this.keyPage = (this.keyPage + 1) % 3; this.menu = 0; this.keyCol = 0; this.audio.play('menu'); return null; }
+        if (this.keyPage === 2) {
+          if (back || choose) { this.sub = 'options'; this.menu = 2; }
+          return null;
+        }
+        const field = this.keyPage === 1 ? 'keys2' : 'keys';
         if (input.pressed('up')) move(-1, n + 2);
         if (input.pressed('down')) move(1, n + 2);
         if (this.menu < n) {
@@ -778,27 +1066,33 @@ export class Screens {
           if (d) { this.keyCol = (this.keyCol + d + KEY_SLOTS) % KEY_SLOTS; this.audio.play('menu'); }
         }
         if (back || (choose && this.menu === n + 1)) { this.sub = 'options'; this.menu = 2; return null; }
-        if (!save.options.keys) save.options.keys = defaultKeys();
-        const keys = save.options.keys;
+        if (!save.options[field]) save.options[field] = defaultKeys(field === 'keys2');
+        const keys = save.options[field];
         if (this.menu < n && input.pressed('clear')) {
           if (clearKey(keys, REBINDABLE[this.menu], this.keyCol)) { this.audio.play('menu'); return 'keys'; }
           this.audio.play('denied');
           return null;
         }
         if (!choose) return null;
-        if (this.menu === n) { save.options.keys = defaultKeys(); this.audio.play('select'); return 'keys'; }
-        this.capturing = { action: REBINDABLE[this.menu], col: Math.min(this.keyCol, keys[REBINDABLE[this.menu]].length) };
+        if (this.menu === n) { save.options[field] = defaultKeys(field === 'keys2'); this.audio.play('select'); return 'keys'; }
+        this.capturing = { field, action: REBINDABLE[this.menu], col: Math.min(this.keyCol, keys[REBINDABLE[this.menu]].length) };
         this.audio.play('select');
         return 'capture';
       }
       case 'video': {
-        if (input.pressed('up')) move(-1, 6);
-        if (input.pressed('down')) move(1, 6);
-        if (back || (choose && this.menu === 5)) { this.sub = 'options'; this.menu = 3; return null; }
+        if (input.pressed('up')) move(-1, 7);
+        if (input.pressed('down')) move(1, 7);
+        if (back || (choose && this.menu === 6)) { this.sub = 'options'; this.menu = 3; return null; }
+        const v = save.options.video;
+        if (this.menu === 5) {
+          const d = (input.pressed('right') ? 1 : 0) - (input.pressed('left') ? 1 : 0);
+          if (!d) return null;
+          this.audio.play('menu');
+          return d > 0 ? 'bigger' : 'smaller';
+        }
         const flip = choose || input.pressed('left') || input.pressed('right');
         if (!flip) return null;
         this.audio.play('menu');
-        const v = save.options.video;
         if (this.menu === 0) return 'fullscreen';
         if (this.menu === 1) v.scale = v.scale === 'pixel' ? 'fit' : 'pixel';
         if (this.menu === 2) v.filter = v.filter === 'smooth' ? 'sharp' : 'smooth';
@@ -807,14 +1101,21 @@ export class Screens {
         return 'video';
       }
       case 'party':
-        if (input.pressed('up')) move(-1, 3);
-        if (input.pressed('down')) move(1, 3);
-        if (back || (choose && this.menu === 2)) { this.sub = null; this.menu = 1; return null; }
+        if (input.pressed('up')) move(-1, 4);
+        if (input.pressed('down')) move(1, 4);
+        if (back || (choose && this.menu === 3)) { this.sub = null; this.menu = mainIndex('party'); return null; }
         if (!choose) return null;
         this.audio.play('select');
+        if (this.menu === 2) { this.sub = 'local'; return null; }
         this.lobby = { status: 'connecting' };
         if (this.menu === 0) { this.sub = 'host'; return 'host'; }
         this.sub = 'join'; this.codeBuf = '';
+        return null;
+      case 'local':
+        if (back) { this.sub = 'party'; this.menu = 2; return null; }
+        if (input.pressed('left')) { this.partyLevel = (this.partyLevel + PARTY_LEVELS.length - 1) % PARTY_LEVELS.length; this.audio.play('menu'); }
+        if (input.pressed('right')) { this.partyLevel = (this.partyLevel + 1) % PARTY_LEVELS.length; this.audio.play('menu'); }
+        if (choose) { this.audio.play('select'); return `local-start:${PARTY_LEVELS[this.partyLevel]}`; }
         return null;
       case 'host':
         if (back || (choose && this.lobby.status === 'error')) { this.sub = 'party'; this.menu = 0; return 'leave'; }
@@ -831,6 +1132,42 @@ export class Screens {
     }
   }
 
+  // Open a menu screen (from the main menu, the pause menu or an F key).
+  open(sub) {
+    this.sub = sub;
+    this.menu = 0;
+    this.slotArmed = -1;
+    if (sub === 'scores') { this.scorePage = 0; this.highlight = -1; }
+  }
+
+  // Typing a name: ENTER (or A) when done, ESC (or B) to cancel. Typed keys
+  // are kept out of the menus meanwhile.
+  typingInput(input) {
+    const T = this.typing;
+    const done = T.done || input.padPressed('start');
+    const cancel = T.cancel || input.padPressed('pause');
+    T.done = false; T.cancel = false;
+    if (!done && !cancel) return null;
+    this.typing = null;
+    if (T.kind === 'score') {
+      // A new high score is kept either way, under the name shown.
+      this.typedName = T.buf;
+      this.audio.play('select');
+      return 'score-name';
+    }
+    if (cancel) { this.sub = 'save'; this.menu = T.slot; this.audio.play('menu'); return null; }
+    this.typedName = T.buf;
+    this.sub = null;
+    this.audio.play('select');
+    return `save-slot:${T.slot}`;
+  }
+
+  // Ask for a high-score name (after a game ends).
+  askName(score, rank, name) {
+    this.sub = 'name';
+    this.typing = { kind: 'score', buf: cleanName(name), score, rank, fresh: true };
+  }
+
   // The levels of the episode (JJ2 pack) picked in the episode select.
   packLevels() { return this.jj2.filter((d) => d.pack === this.pack); }
 
@@ -844,7 +1181,7 @@ export class Screens {
     const meta = game.cardMeta;
     const ink = '#5a2c0c';
     const font = this.art.fonts.big;
-    const label = typeof game.cardIndex === 'number' ? `Level ${game.cardIndex + 1}` : meta.label || 'Classic JJ2';
+    const label = typeof game.cardIndex === 'number' ? tr('Level {0}', game.cardIndex + 1) : meta.label || tr('Classic JJ2');
     if (label.toLowerCase() !== meta.title.toLowerCase()) this.med(label, VIEW_W / 2, 176, { align: 'center', scale: 0.55, color: '#8a4a1a' });
     const scale = Math.min(0.5, 340 / jjWidth(font, meta.title, 1));
     this.big(meta.title, VIEW_W / 2, 189, { align: 'center', scale, color: ink });
@@ -862,7 +1199,7 @@ export class Screens {
       this.wrapTo(meta.error, 330, 0.5).slice(0, 2).forEach((line, i) => this.med(line, VIEW_W / 2, 296 + i * 11, { align: 'center', scale: 0.5, color: '#b0180c' }));
       this.med(meta.next ? 'ENTER: skip to the next level   ESC: menu' : 'Press ENTER', VIEW_W / 2, 320, { align: 'center', scale: 0.45, color: '#8a4a1a' });
     }
-    else if (rec) this.med(`Best ${rec.score}   ${Math.floor(rec.seconds / 60)}:${String(rec.seconds % 60).padStart(2, '0')}`, VIEW_W / 2, 306, { align: 'center', scale: 0.5, color: '#8a4a1a' });
+    else if (rec) this.med(`${tr('Best {0}', rec.score)}   ${Math.floor(rec.seconds / 60)}:${String(rec.seconds % 60).padStart(2, '0')}`, VIEW_W / 2, 306, { align: 'center', scale: 0.5, color: '#8a4a1a' });
   }
 
   // ---------------------------------------------------------------- pause
@@ -870,22 +1207,27 @@ export class Screens {
   // The pause menu; OPTIONS opens the same options screens as the title.
   pause(t, save) {
     this.dim(0.62);
-    if (this.sub === 'options' || this.sub === 'keys' || this.sub === 'video') {
+    if (this.sub) {
       this.backdrop();
-      if (this.sub === 'options') this.options(t, save);
-      else if (this.sub === 'keys') this.keysScreen(t, save);
-      else this.videoScreen(t, save);
+      this.subScreen(t, save);
       return;
     }
-    this.panel(VIEW_W / 2 - 150, 70, 300, 210, 0.9);
-    this.big('PAUSED', VIEW_W / 2, 84, { align: 'center', scale: 0.6 });
-    this.menuList(PAUSE_ITEMS, this.pauseIndex, 136, t, 32);
+    this.panel(VIEW_W / 2 - 150, 52, 300, 252, 0.9);
+    this.big('PAUSED', VIEW_W / 2, 64, { align: 'center', scale: 0.6 });
+    this.menuList(PAUSE_ITEMS, this.pauseIndex, 108, t, 30);
+  }
+
+  // Open a pause-menu screen; backing out of it returns to its item.
+  pauseOpen(sub) {
+    this.open(sub);
+    const i = PAUSE_ACTIONS.indexOf(sub);
+    this.pauseFrom = i >= 0 ? i : this.pauseIndex;
   }
 
   pauseInput(input, save) {
     if (this.sub) {
       const action = this.titleInput(input, save);
-      if (this.sub === null) { this.pauseIndex = 1; return 'options-closed'; }
+      if (this.sub === null) { this.pauseIndex = this.pauseFrom ?? this.pauseIndex; return action || 'options-closed'; }
       return action;
     }
     const n = PAUSE_ITEMS.length;
@@ -894,8 +1236,8 @@ export class Screens {
     if (input.pressed('pause')) return 'resume';
     if (input.pressed('start') || input.pressed('jump')) {
       this.audio.play('select');
-      const pick = ['resume', 'options', 'restart', 'quit'][this.pauseIndex];
-      if (pick === 'options') { this.sub = 'options'; this.menu = 0; return null; }
+      const pick = PAUSE_ACTIONS[this.pauseIndex];
+      if (pick === 'options' || pick === 'save' || pick === 'load') { this.pauseOpen(pick); return null; }
       return pick;
     }
     return null;
@@ -925,9 +1267,9 @@ export class Screens {
       ['GEMS', `${s.gems} / 100`],
       ['SECRETS', `${s.secrets} / 100`],
       ['ENEMIES', `${s.enemies} / 100`],
-      ['TIME', `${Math.floor(s.seconds / 60)}:${String(s.seconds % 60).padStart(2, '0')}${res.bestTime ? '  BEST!' : ''}`],
+      ['TIME', `${Math.floor(s.seconds / 60)}:${String(s.seconds % 60).padStart(2, '0')}${res.bestTime ? `  ${tr('BEST!')}` : ''}`],
       ['BONUS', `${s.bonus.time + s.bonus.gems + s.bonus.perfect}`],
-      ['SCORE', `${game.score}${res.bestScore ? '  BEST!' : ''}`],
+      ['SCORE', `${game.score}${res.bestScore ? `  ${tr('BEST!')}` : ''}`],
     ];
     rows.forEach(([label, value], i) => {
       if (k < 80 + i * 14) return;
@@ -948,14 +1290,25 @@ export class Screens {
   // Game over: JJ2's "Continue?" screen. LEFT/RIGHT pick NO or YES.
   gameOver(game, t) {
     const ctx = this.ctx;
+    if (game.continues <= 0) {
+      // No continues left: the game is over.
+      ctx.fillStyle = '#05020c';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      const a = Math.min(1, t / 40);
+      this.big('GAME OVER', VIEW_W / 2, 130, { align: 'center', scale: 0.9, alpha: a, wave: 2, t });
+      this.med(tr('Score {0}', game.score), VIEW_W / 2, 196, { align: 'center', scale: 0.7, alpha: a });
+      if (t > 60) this.blink(t, 'Press ENTER', 290, 0.6);
+      return;
+    }
     this.fit(this.art.screens.continue, Math.min(1, t / 40));
     if (t < 40) return;
+    this.med(game.continues === 1 ? tr('1 CONTINUE LEFT') : tr('{0} CONTINUES LEFT', game.continues), VIEW_W / 2, 18, { align: 'center', scale: 0.6 });
     // The NO and YES of the picture sit at (277, 302) and (358, 302).
     // The gem points at the chosen word from outside it (it used to cover YES).
     const gem = this.art.gems.red[Math.floor(t / 5) % 8];
     const x = this.continueYes ? 392 : 248 - gem.width;
     ctx.drawImage(gem, x + Math.sin(t * 0.15) * 2, 304 - gem.height / 2);
-    this.med(`Score ${game.score}`, VIEW_W / 2, 336, { align: 'center', scale: 0.55 });
+    this.med(tr('Score {0}', game.score), VIEW_W / 2, 336, { align: 'center', scale: 0.55 });
   }
 
   continueInput(input) {
@@ -974,8 +1327,8 @@ export class Screens {
     const v = this.art.kip.victory;
     const vf = v[Math.min(v.length - 1, Math.floor(t / 8))];
     ctx.drawImage(vf.right, VIEW_W / 2 - vf.ax, 170 - vf.ay);
-    this.med(`FINAL SCORE ${game.score}`, VIEW_W / 2, 184, { align: 'center', scale: 0.8 });
-    this.med(`GEMS ${game.gems}   COINS ${game.coins}`, VIEW_W / 2, 210, { align: 'center', scale: 0.6, color: '#ece4ff' });
+    this.med(tr('FINAL SCORE {0}', game.score), VIEW_W / 2, 184, { align: 'center', scale: 0.8 });
+    this.med(tr('GEMS {0}   COINS {1}', game.gems, game.coins), VIEW_W / 2, 210, { align: 'center', scale: 0.6, color: '#ece4ff' });
     const credits = ['Sprites, tiles, sound effects and music: Jazz Jackrabbit 2 (c) Epic MegaGames', 'Sprite rips via The Spriters Resource - not owned by this project', 'Thanks for playing!'];
     credits.forEach((c, i) => this.med(c, VIEW_W / 2, 248 + i * 16, { align: 'center', scale: 0.45, color: '#d8ccf4' }));
     if (t > 120) this.blink(t, 'Press ENTER', VIEW_H - 26);
