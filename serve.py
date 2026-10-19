@@ -299,14 +299,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.close_connection = True
 
 
+class Server(http.server.ThreadingHTTPServer):
+    # Five browsers loading the game at once open dozens of connections; the
+    # default backlog of 5 refuses some of them.
+    request_queue_size = 128
+    daemon_threads = True
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     lan = '--lan' in sys.argv or '--public' in sys.argv
     port = int(args[0]) if args else int(os.environ.get('PORT', 8770))
     root = os.path.dirname(os.path.abspath(__file__))
     handler = functools.partial(Handler, directory=root)
-    with http.server.ThreadingHTTPServer(('0.0.0.0' if lan else '127.0.0.1', port), handler) as server:
-        server.daemon_threads = True
+    with Server(('0.0.0.0' if lan else '127.0.0.1', port), handler) as server:
         print(f'Serving on http://localhost:{port}/')
         if lan:
             for url in lan_addresses(port):

@@ -507,7 +507,7 @@ export class Party {
     const near = Math.max(1, Math.round(this.goal * 0.1));
     this.warned = this.warned || new Set();
     for (const row of this.standings(game)) {
-      if (row.value < this.goal - near || this.warned.has(row.id) || this.mode === 'ctf') continue;
+      if (row.value <= 0 || row.value < this.goal - near || this.warned.has(row.id) || this.mode === 'ctf') continue;
       this.warned.add(row.id);
       this.say(tr('{0} IS ALMOST THERE!', row.name));
       if (row.me) game.audio.play('rank');
@@ -584,14 +584,14 @@ export class Party {
       game.audio.play('select');
       game.banner(tr('YOU HAVE THE FLAG!'), 80);
       this.net.send({ t: 'flag', take: other });
-      this.say(tr('{0} TOOK THE {1} FLAG', this.name, TEAMS[other].name));
+      this.say(tr('{0} TOOK THE {1} FLAG', this.name, tr(TEAMS[other].name)));
     } else if (this.carry === other && near(this.bases[this.team]) && home(this.team)) {
       this.carry = -1;
       this.captures[this.team]++;
       game.audio.play('fanfare');
       game.flash('#ffffff', 6);
       this.net.send({ t: 'cap', team: this.team });
-      this.say(tr('{0} SCORED FOR {1}', this.name, TEAMS[this.team].name));
+      this.say(tr('{0} SCORED FOR {1}', this.name, tr(TEAMS[this.team].name)));
       if (this.captures[this.team] >= this.goal) this.win(game);
     }
   }
@@ -600,7 +600,7 @@ export class Party {
     const team = this.carry;
     this.carry = -1;
     this.net.send({ t: 'flag', back: team });
-    this.say(tr('THE {0} FLAG WENT HOME', TEAMS[team].name));
+    this.say(tr('THE {0} FLAG WENT HOME', tr(TEAMS[team].name)));
   }
 
   // Treasure hunt: the exit counts with enough gems.
@@ -682,12 +682,12 @@ export class Party {
         break;
       }
       case 'flag':
-        if (m.take !== undefined) this.say(tr('{0} TOOK THE {1} FLAG', this.nameOf(from), TEAMS[m.take].name));
-        else this.say(tr('THE {0} FLAG WENT HOME', TEAMS[m.back].name));
+        if (m.take !== undefined) this.say(tr('{0} TOOK THE {1} FLAG', this.nameOf(from), tr(TEAMS[m.take].name)));
+        else this.say(tr('THE {0} FLAG WENT HOME', tr(TEAMS[m.back].name)));
         break;
       case 'cap':
         this.captures[m.team]++;
-        this.say(tr('{0} SCORED FOR {1}', this.nameOf(from), TEAMS[m.team].name));
+        this.say(tr('{0} SCORED FOR {1}', this.nameOf(from), tr(TEAMS[m.team].name)));
         if (m.team === this.team) game.audio.play('rank');
         break;
       case 'win':

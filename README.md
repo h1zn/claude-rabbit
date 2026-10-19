@@ -80,27 +80,79 @@ accents, so the menus drop them, while in-game messages keep them.)
   starts the level again with fresh lives but without your score and
   weapons; with none left the game is over.
 
-## Party mode (2 players)
+## Party mode (up to 5 players)
 
-**Same computer** (split screen): in **PARTY** choose **SAME COMPUTER**, pick
-the level and press Enter. Player 1 plays on the left half with Keyboard 1
-(less any keys Keyboard 2 uses), player 2 on the right with Keyboard 2. With
-two gamepads each player gets one; a single gamepad goes to player 2. The
-rules are the same as below; Esc leaves.
+In **PARTY** choose **HOST A GAME**, **JOIN A GAME** or **SAME COMPUTER**
+(split screen for two), and set **NAME** to the name the others see over
+your head.
 
-**Two computers**: double-click **`party.bat`** (or `python serve.py 8870 --lan`) on one computer.
-It prints the address the second player opens in their browser on the same
-network. In the menu choose **PARTY**: one player hosts and gets a 4-letter
-room code, the other joins with it, and the host picks the level.
+**Players and characters**: up to five per room. Slot 1 (the host) plays
+Jazz, 2 Spaz, 3 Lori, 4 purple Jazz and 5 blue Spaz. In team games odd slots
+are blue and even slots red.
 
-Both hunt the same gems. Shoot your rival to make them drop up to 5 gems'
-worth, which either of you can grab. A player hit with no gems is knocked out
-and returns after 10 seconds. The first to reach the exit holding 100 gems
-wins. Your rival is drawn in red; enemies are left out so both see the same
-world. Esc leaves the game.
+**The host picks** the mode, the level, the goal and how long nobody can
+fight at the start (2:00 by default; 0, 1:00 or 3:00), and can lock the room
+with a password. Everyone in the lobby sees the settings change.
 
-(It needs both computers on one network, or the server on a machine both can
-reach; playing over the internet means hosting `serve.py` somewhere public.)
+**Modes** (the manual's multiplayer games):
+
+- **Treasure Hunt**: collect 100 gems (or 50/150/200), then reach the exit.
+  Red gems count 1; there are 10 green gems worth 3, 8 purple worth 5 and
+  one gold worth 10. Taken gems come back after 45 seconds.
+- **Battle**: the first to roast the others 10 times (5/15/20) wins.
+- **Capture the Flag**: take the other team's flag from its base and bring
+  it home to yours while your own flag is there.
+- **Race**: the first to run the laps (3/5/10) through the level's lap
+  warp or the exit wins.
+
+**Hearts**: everybody has 5. Each hit costs a heart and drops up to 5 of
+your gems for anyone to grab. Losing the last heart knocks you out for 10
+seconds; you come back with full hearts and the gems you still had, at the
+spawn spot farthest from the other players (never near the exit). During
+the opening truce shots pass through players; the clock counts down and
+**FIGHT!** is announced when it ends. The HUD shows your gems (or roasts,
+laps, flags), the clock, the standings and a feed of who roasted whom.
+
+**Party items**: "?" boxes on the map hand out a random item; FIRE uses it
+instead of shooting. Banana peel (dropped: whoever steps on it spins out),
+spring mine (launches whoever steps on it), boomerang (flies out and back,
+a heart off whoever it hits), bubble trap (floats them away), swap ray
+(you swap places), cream pie (splats their screen), shrink ray (small and
+slow for a while) and gem magnet (pulls loose gems to you).
+
+**Party levels**: for Treasure Hunt and Battle the game's own Shipwreck
+Shores, Carrotus Town, Candy Clouds and Tubelectric; then Overgrown and the
+multiplayer packs in `Levels/`: Return of Blackraptor (treasure, battle, CTF
+and race levels), Astolfo (SEast, battle) and ScreenShut Race. Packs can
+stay zipped: the game reads the `.zip` files itself, and each level is
+offered only in the modes it was made for. Team Race needs
+`jazz1Medivo.j2t` and xlmlots `Carrot1N.j2t` added to their zips.
+
+### Playing on a network or online
+
+The game and the party relay are one program, `serve.py` (Python 3,
+standard library only):
+
+- **On your network (LAN)**: double-click **`party.bat`** or run
+  `python serve.py 8870 --lan` on one computer. It prints the addresses the
+  other players open in their browsers (for example
+  `http://192.168.1.20:8870/`); the host's lobby shows the same address.
+  Allow Python through the computer's firewall when asked.
+- **Over the internet**: run `python serve.py --public` (the port comes
+  from the first argument, or from `$PORT` as hosting services set it) on a
+  machine the players can reach: a small cloud server, or your own computer
+  with that TCP port forwarded on the router to it. Players open
+  `http://<public address>:<port>/`. Behind an HTTPS proxy (Caddy, nginx,
+  a platform's TLS front end) the page connects with `wss://` to `/ws` on
+  the same host, so forward WebSocket upgrades on `/ws` too.
+
+Then one player hosts: they get a 4-letter room code. The others pick the
+room from **JOIN A GAME**'s list of open games (it shows the mode, the
+number of players and whether it is locked or already playing) or type the
+code; a locked room asks for its password. Rooms close when the host leaves.
+The level, the gems and the items are shared; each player's game decides
+what hits them, and the host's game hands out the pickups, so two players
+can never take the same gem.
 
 ## What's in the game
 
@@ -204,7 +256,7 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 **Spaz** (double jump, side kick) or **Lori** (copter ears, flying kick);
 crouch (standing still) then JUMP is the special move, JUMP in the air the
 second ability, UP + FIRE aims up. The pick
-is saved, and in party mode your rival sees your character in red. Then the
+is saved; in party mode the slot decides the character (see above). Then the
 **episode select** shows JJ2's episode pictures for this game's nine levels
 and every level pack. The menus use JJ2's own fonts and title screen, the
 level card is JJ2's loading screen and game over asks **Continue?**. The main
@@ -227,6 +279,8 @@ the menus (adding the missing `.j2t` brings them back). Included now:
   Chaos (both parts) and Fight Night Street need the retail tile sets
   `Colon1.j2t` and `Colon2.j2t`, and the story skips them.
 - **Overgrown** (Laro B.): a battle arena, also in PARTY mode.
+- **Vault of Ceramicus** and the multiplayer packs (see Party mode), read
+  straight from their `.zip` files.
 - **BL18**: a JJ2+ pack built on scripts and extra tile sets. Valen Village
   and Thermal R.7 play (with small gaps where missing extra sets go); the
   other seven need tile sets that aren't in the folder.
@@ -239,7 +293,9 @@ tile sets, palettes and extra layers; collision from the tile masks, pixel
 for pixel; and the events turned into this game's things: gems, coins, food,
 carrots, springs, poles, checkpoints, warps and coin warps, text signs,
 exits, destructible/stomp/speed/collapsing scenery and enemies (each JJ2
-enemy becomes the closest one we have). Vines, hooks, tubes, water
+enemy moves like the closest one we have; fencers, fat chicks, fish, lab
+rats, Doggy Dogg, skeletons, ravens, bees, crabs and the Mad Hatter keep
+their own JJ2 art, cut from the enemies sheet in `Levels/`). Vines, hooks, tubes, water
 (swimming), wind, belts, float-up columns, bridges and light zones work as in
 the original. Tracker music (.xm/.mod/.it/.s3m) plays through libopenmpt
 (`vendor/chiptune3`); .ogg/.mp3 play as they are.
@@ -250,8 +306,10 @@ bomb crates, TNT and weapon blocks work as in the original; a weapon block
 whose gun the level never hands out (the original let you bring ammo from
 earlier levels) breaks with any shot, so no level is left impassable. The
 Queen, Schwartzenguard (Tuf Boss), Bilsy, the Robot and Uterus fight as in the
-original; a level that ends with its boss ends when you beat it. Not supported
-yet: the other bosses (Bubba, Devan, Bolly, Tweedle; they stay ordinary
+original, and so does Devan Shell (from `Levels/Devan Shell.png`): he runs,
+leaps and fires along the floor, and at half health flies into a rage with
+triple shots and bombs. A level that ends with its boss ends when you beat
+it. Not supported yet: Bubba, Bolly and Tweedle (they stay ordinary
 enemies), the frog/bird morphs, and JJ2+ scripts.
 
 `node tools/check_levels.mjs` checks every level: it searches the spots Kip
@@ -270,20 +328,21 @@ src/input.js            keyboard and gamepads sampled once per tick (held / pres
 src/player.js           the hero's movement and abilities
 src/entities.js         enemies, pickups, springs, poles, warps, hints, shots, effects
 src/weapons.js          the nine weapons: shots, aiming, explosions, TNT
-src/bosses.js           Queen, Schwartzenguard, Bilsy, Robot, Uterus
+src/bosses.js           Queen, Schwartzenguard, Bilsy, Robot, Uterus, Devan Shell
 src/level.js            tile map, collision and the level builder
 src/levels.js           the level list; designs in src/levels/ (kit.js: helpers, room maze)
-src/party.js            party mode: relay connection, rival, sync and rules
+src/party.js            party mode: relay connection, players, sync, modes and rules
+src/partyitems.js       party items: "?" boxes, peels, mines, boomerangs, pies...
 src/save.js             saved progress, stars, high scores, save slots and options
 src/lang.js             on-screen text in six languages
 src/difficulty.js       Easy / Hard enemies in this game's own levels
 src/jj2/                original JJ2 levels: files.js (.j2l/.j2t reader), level.js
-                        (masks -> collision, events -> entities), view.js (layers),
+                        (masks -> collision, events -> entities), view.js (layers), zip.js (packs in .zip),
                         play.js (light/water/collapse), catalog.js (packs), preview.js,
                         platforms.js (moving platforms on chains)
 vendor/chiptune3/       libopenmpt player for tracker music (MIT / BSD)
 src/screens.js          splash intro, menus, level select, lobby, tally
-serve.py                web server + party relay (WebSocket /ws)
+serve.py                web server + party relay (WebSocket /ws, rooms of 5, room list)
 tools/check_levels.mjs  reachability check for all levels
 tools/build_sprites.py  cuts sprite sheets in new/ into assets/*.png + .json
 tools/build_blocks.py   packs the special block tiles into assets/blocks.png

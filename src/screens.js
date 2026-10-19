@@ -21,7 +21,7 @@ const MAIN = ['New Game', 'Load Game', 'Party', 'High Scores', 'Help', 'Options'
 const MAIN_INFO = [
   "Kip's Gem Rush or a classic JJ2 episode",
   'Carry on with a game you saved',
-  'Two players: one computer or two',
+  'Up to five players, online or on one computer',
   'The best scores so far',
   'Controls, moves and blocks',
   'Volume, controls, video and language',
@@ -950,7 +950,7 @@ export class Screens {
       return;
     }
     if (this.sub === 'host' || (this.sub === 'join' && L.joined)) {
-      if (!L.code) { say('Connecting' + '.'.repeat(1 + Math.floor(t / 20) % 3), 150, { scale: 0.7 }); return; }
+      if (!L.code) { say(tr('Connecting') + '.'.repeat(1 + Math.floor(t / 20) % 3), 150, { scale: 0.7, raw: true }); return; }
       this.med('ROOM CODE', VIEW_W / 2 - 184, 50, { scale: 0.5, color: '#c8b8e8' });
       this.big(L.code.split('').join(' '), VIEW_W / 2 - 100, 46, { scale: 0.6 });
       const url = (L.urls || [])[0];
@@ -960,10 +960,10 @@ export class Screens {
         const extra = [['PASSWORD', L.password || tr('NONE')], ['START', '']];
         y = this.settingsRows(this.partySettings(), y + 6, t, true, extra);
         const n = (L.players || []).length;
-        say(n > 1 ? 'ENTER on START when everyone is in' : 'Waiting for players' + '.'.repeat(1 + Math.floor(t / 20) % 3), 298, { scale: 0.48, color: n > 1 ? '#7aff9a' : '#c8b8e8' });
+        say(n > 1 ? tr('ENTER on START when everyone is in') : tr('Waiting for players') + '.'.repeat(1 + Math.floor(t / 20) % 3), 298, { scale: 0.48, color: n > 1 ? '#7aff9a' : '#c8b8e8', raw: true });
       } else {
         if (L.settings) this.settingsRows(L.settings, y + 6, t, false);
-        say('Waiting for the host to start' + '.'.repeat(1 + Math.floor(t / 20) % 3), 298, { scale: 0.5 });
+        say(tr('Waiting for the host to start') + '.'.repeat(1 + Math.floor(t / 20) % 3), 298, { scale: 0.5, raw: true });
       }
       if (L.status === 'loading') say('Loading...', 280, { scale: 0.55 });
       return;
