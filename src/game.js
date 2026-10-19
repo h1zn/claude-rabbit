@@ -295,6 +295,7 @@ export class Game {
   warpTo(target) {
     const p = this.player;
     this.effect('sparkle', p.cx, p.cy);
+    this.audio.play('warp');
     p.x = target.x + (target.w - p.w) / 2;
     p.y = target.bottom - p.h;
     p.prevX = p.x; p.prevY = p.y;
@@ -376,9 +377,16 @@ export class Game {
     }
   }
 
-  // Jazz's voice lines (new/Sounds) play only when Jazz is the hero.
-  // In split screen only the first player's game speaks.
-  voice(name) { if (this.player && this.player.character === 'jazz' && !this.quiet) this.audio.play(name); }
+  // The hero's voice lines: Jazz's from new/Sounds, Spaz's and Lori's from
+  // Anims.j2a where they have one. In split screen only the first player's
+  // game speaks.
+  voice(name) {
+    const who = this.player && this.player.character;
+    if (!who || this.quiet) return;
+    if (who === 'jazz') { this.audio.play(name); return; }
+    const own = { jazzBalance: 'Balance', jazzHey: 'Hey', jazzDone: 'Done' }[name];
+    if (own && !(who === 'lori' && own === 'Balance')) this.audio.play(`${who}${own}`);
+  }
 
   startRush() {
     this.player.rush = PHYS.rushTicks;
@@ -460,8 +468,9 @@ export class Game {
     p.vy = -8;
     p.vx = 0;
     this.audio.hover(false);
+    this.audio.board(false);
     this.audio.stopMusic();
-    this.audio.play('death');
+    this.audio.play(p.character === 'lori' ? 'loriDie' : 'death');
     this.shake(10);
   }
 
@@ -471,8 +480,10 @@ export class Game {
     this.clearTime = 0;
     this.player.rush = 0;
     this.audio.hover(false);
+    this.audio.board(false);
     this.audio.stopMusic();
     this.audio.play('fanfare');
+    this.voice('jazzDone');
     const t = this.totals;
     const pct = (got, total) => (total ? Math.round((got / total) * 100) : 100);
     const stats = {
@@ -615,7 +626,7 @@ export class Game {
       const fromAbove = p.vy > 0 && p.prevY + p.h <= e.prevY + 10;
       if (e.touch) { e.touch(this, p, fromAbove, input); continue; }
       // A frozen enemy shatters at a touch.
-      if (e.frozen > 0) { e.kill(this); this.audio.play('break'); continue; }
+      if (e.frozen > 0) { e.kill(this); this.audio.play('iceBreak'); continue; }
       if (e.type === 'shell') {
         this.touchShell(e, fromAbove, input);
         continue;

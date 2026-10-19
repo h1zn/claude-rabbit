@@ -501,7 +501,7 @@ export class Party {
     p.knock = 14;
     p.vx = (p.cx < fromX ? -1 : 1) * 4;
     p.vy = -4;
-    game.audio.play('hurt');
+    p.cry(game);
     game.flash('#ff2a4a', 6);
   }
 

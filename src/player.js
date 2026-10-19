@@ -81,6 +81,7 @@ export class Player {
     if (this.shield > 0) this.shield--;
     if (this.pushing > 0) this.pushing--;
 
+    audio.board(this.board && !this.dead);
     if (this.dead) {
       this.deadTimer++;
       this.vy = Math.min(this.vy + PHYS.riseGravity, PHYS.maxFall);
@@ -162,7 +163,7 @@ export class Player {
         this.vx *= 0.5;
         this.vy = 0;
       } else if (t <= KICK_END) {
-        if (t === KICK_WINDUP) audio.play('uppercut');
+        if (t === KICK_WINDUP) audio.play(this.character === 'spaz' ? 'spazKick' : 'loriKick');
         this.vx = this.facing * 10;
         this.vy = this.character === 'lori' ? -1.4 + (t - KICK_WINDUP) * 0.06 : 0;
         if (t % 2 === 0) game.trail(this.cx - this.facing * 10, this.cy, '#ffd54a');
@@ -227,7 +228,7 @@ export class Player {
           this.vy = PHYS.doubleJump;
           this.jumping = true; this.jumpCut = false; this.launched = true;
           this.jumpBuffer = 0;
-          audio.play('jump');
+          audio.play('doubleJump');
           game.ring(this.cx, this.y + this.h, '#ffffff');
         }
       } else if (controlled && input.pressed('jump') && !this.onGround && this.coyote === 0 && !this.stomping && !this.launched && this.vy > -PHYS.hoverEngage) {
@@ -356,8 +357,10 @@ export class Player {
   jj2Move(game, input) {
     const level = game.level;
     // In water, unless leaping out of it.
+    const wasIn = this.swimming;
     this.swimming = ((level.water !== Infinity && this.cy > level.water) || level.areaAt(this.cx, this.cy) === EV.WATER_BLOCK)
       && !(this.jumping && this.vy < -3);
+    if (this.swimming && !wasIn && this.vy > 2) game.audio.play('splash');
     this.floatUp = level.areaAt(this.cx, this.cy) === EV.FLOAT_UP || level.areaAt(this.cx, this.y + this.h - 2) === EV.FLOAT_UP;
     // A tube carries Kip at its own speed, straight through its walls.
     if (level.areaAt(this.cx, this.cy) === EV.TUBE) {
@@ -591,7 +594,7 @@ export class Player {
       // Manual: a shield soaks the hit but loses 5 seconds.
       this.shield = Math.max(0, this.shield - PLAYER.shieldHitCost);
       this.invuln = 60;
-      game.audio.play('hit');
+      game.audio.play('shieldHit');
       game.ring(this.cx, this.cy, '#ff9a3a');
       return;
     }
@@ -608,20 +611,24 @@ export class Player {
     this.vy = Math.min(this.vy, 0) + PHYS.hurtKnockY + (spikes ? -5 : 0);
     this.hovering = false;
     this.onGround = false;
-    // Jazz cries out (and warns on his last heart); the others get the hit sound.
-    if (this.character === 'jazz') game.audio.play(this.health === 1 ? 'jazzLookOut' : 'jazzHurt');
-    else game.audio.play('hurt');
+    this.cry(game);
     game.shake(6);
     game.flash('#ff2a4a', 6);
     if (this.health <= 0) game.killPlayer();
     this.loseBoard(game);
   }
 
+  // Ouch, in the hero's own voice (Jazz warns on his last heart).
+  cry(game) {
+    if (this.character === 'jazz') game.audio.play(this.health === 1 ? 'jazzLookOut' : 'jazzHurt');
+    else game.audio.play(this.character === 'spaz' ? 'spazHurt' : 'loriHurt');
+  }
+
   // The airboard: picked up, and lost again to a hit or water.
   mountBoard(game) {
     Object.assign(this, { board: true, hovering: false, stomping: false, special: 0, jumping: false });
     this.vy = Math.min(this.vy, -1);
-    game.audio.play('spring');
+    game.audio.play('airboard');
     game.banner('AIRBOARD!', 50);
   }
 

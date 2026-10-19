@@ -636,7 +636,7 @@ export class Pickup {
     } else if (this.kind === 'life') {
       game.lives++;
       game.addScore(1000, cx, this.y);
-      game.audio.play('secret');
+      game.audio.play('oneUp');
       game.banner('1UP!', 60);
       game.ring(cx, cy, '#5ae08a');
     } else if (this.kind === 'airboard') {

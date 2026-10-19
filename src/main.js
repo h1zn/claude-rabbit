@@ -102,6 +102,7 @@ function toMenu() {
   if (net) { net.close(); net = null; }
   if (split) endSplit();
   game.party = null;
+  audio.board(false);
   game.character = save.character || 'jazz';
   screens.sub = null;
   screens.menu = 0;
@@ -130,6 +131,7 @@ function pauseWith(sub) {
   screens.levelTitle = levelDef(game.levelIndex).title;
   if (sub) screens.pauseOpen(sub);
   audio.hover(false);
+  audio.board(false);
   audio.play('pause');
   go('paused');
 }

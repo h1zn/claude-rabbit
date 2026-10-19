@@ -104,7 +104,7 @@ const SONGS = {
 
 // ---------------------------------------------------------------- engine
 
-import { SFX_COUNT, SFX_FILES, SFX_MAP } from './sfxmap.js';
+import { JJ2_LOOPS, JJ2_SFX, SFX_COUNT, SFX_FILES, SFX_MAP } from './sfxmap.js';
 
 // Recorded soundtracks (Soundtracks/). Anything not listed here plays one of
 // the synthesized songs above instead.
@@ -236,6 +236,19 @@ export class Audio {
   async loadSamples() {
     this.samples = [];
     this.named = {};
+    this.jj2 = {};
+    // JJ2's own samples, by name (several events share some).
+    const files = new Map();
+    const load = (n) => {
+      if (!files.has(n)) {
+        files.set(n, fetch(`assets/sfx/jj2/${n.replace('/', '_')}.wav`).then((r) => r.arrayBuffer()).then((d) => this.ctx.decodeAudioData(d))
+          .catch((e) => { console.warn('sound', n, e); return null; }));
+      }
+      return files.get(n);
+    };
+    for (const [event, list] of Object.entries({ ...JJ2_SFX, ...Object.fromEntries(Object.entries(JJ2_LOOPS).map(([k, n]) => [`loop:${k}`, [n]])) })) {
+      Promise.all(list.map(load)).then((bufs) => { const ok = bufs.filter(Boolean); if (ok.length) this.jj2[event] = ok; });
+    }
     for (const [name, file] of Object.entries(SFX_FILES)) {
       fetch(`assets/sfx/${file}.wav`).then((r) => r.arrayBuffer()).then((d) => this.ctx.decodeAudioData(d))
         .then((buf) => { this.named[name] = buf; }).catch((e) => console.warn('sound', file, e));
@@ -268,7 +281,7 @@ export class Audio {
   toggleMute() {
     this.muted = !this.muted;
     if (this.master) this.master.gain.value = this.muted ? 0 : 0.8;
-    if (this.muted) this.hover(false);
+    if (this.muted) { this.hover(false); this.board(false); }
   }
 
   tone({ wave = 'square', from, to = from, dur, vol = 0.15, delay = 0, bus = this.sfxBus, attack = 0.005 }) {
@@ -316,6 +329,8 @@ export class Audio {
   }
 
   playNow(name) {
+    const jj2 = this.jj2 && this.jj2[name];
+    if (jj2 && this.buffer(jj2[Math.floor(Math.random() * jj2.length)])) return;
     if (this.named && this.named[name] && this.buffer(this.named[name])) return;
     if (SFX_MAP[name] !== undefined && this.sample(SFX_MAP[name])) return;
     switch (name) {
@@ -454,8 +469,36 @@ export class Audio {
     osc.stop(t + 0.5); lfo.stop(t + 0.5);
   }
 
+  // A looping sample (JJ2_LOOPS), started and stopped by `on`. False when the
+  // sample isn't loaded.
+  loop(key, on, vol = 0.5) {
+    this.loops = this.loops || {};
+    const cur = this.loops[key];
+    if (on && !cur && !this.muted) {
+      const buf = this.jj2 && this.jj2[`loop:${key}`];
+      if (!buf) return false;
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf[0]; src.loop = true;
+      const gain = this.ctx.createGain();
+      gain.gain.value = vol;
+      src.connect(gain).connect(this.sfxBus);
+      src.start();
+      this.loops[key] = { src, gain };
+    } else if (!on && cur) {
+      cur.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.03);
+      cur.src.stop(this.ctx.currentTime + 0.15);
+      this.loops[key] = null;
+    }
+    return true;
+  }
+
+  // The airboard's hum while riding.
+  board(on) { if (this.ctx) this.loop('board', on, 0.35); }
+
   hover(on) {
     if (!this.ctx) return;
+    // The copter sample when it's loaded, else a synthesized drone.
+    if (this.loop('hover', on, 0.45)) on = false;
     if (on && !this.hoverNode && !this.muted) {
       const osc = this.ctx.createOscillator();
       const lfo = this.ctx.createOscillator();

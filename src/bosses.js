@@ -198,7 +198,7 @@ export class Schwartzenguard extends Boss {
           // then swings back to him.
           this.mace = new Flailerang(this, game.player);
           game.enemyShots.push(this.mace);
-          game.audio.play('missile');
+          game.audio.play('mace');
           this.state = 'wait4mace'; this.st = Math.round(480 * T);
         }
         break;
@@ -461,7 +461,7 @@ export class Bilsy extends Boss {
     this.facePlayer(game);
     this.hidden = false;
     this.state = 'appear'; this.play('dust'); this.harmless = true; this.freezable = false;
-    game.audio.play('secret');
+    game.audio.play('bilsyAppear');
   }
 
   update(game) {
@@ -478,7 +478,7 @@ export class Bilsy extends Boss {
         break;
       case 'throw':
         if (this.at === 48) {
-          game.audio.play('flame');
+          game.audio.play('bilsyFire');
           game.enemyShots.push(new Fireball(this.cx + this.facing * 26 - 9, this.y + 10, this.facing));
         }
         if (this.at >= 56) { this.state = 'wait2'; this.st = Math.round(30 * T); this.anim = 'idle'; }
@@ -756,7 +756,7 @@ export class Devan extends Boss {
 
   reset() { super.reset(); this.rage = false; this.shielded = false; this.facing = -1; }
 
-  activate(game) { this.think(game); }
+  activate(game) { game.audio.play('devanLaugh'); this.think(game); }
 
   // Pick the next move.
   think(game) {
@@ -819,7 +819,7 @@ export class Devan extends Boss {
 
   fire(game) {
     this.facePlayer(game);
-    game.audio.play('shoot');
+    game.audio.play('devanShoot');
     const x = this.cx + this.facing * 30; const y = this.y + 24;
     const spread = this.rage ? [-1, 0, 1] : [0];
     for (const k of spread) game.enemyShots.push(new DevanBlast(x, y, this.facing, k * 0.9));

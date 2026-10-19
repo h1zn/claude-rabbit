@@ -1,0 +1,6196 @@
+{
+"anims": {
+"0:0": [
+"Unknown",
+"flame_blue",
+"sprite"
+],
+"0:1": [
+"Common",
+"bomb",
+"sprite"
+],
+"0:2": [
+"Common",
+"smoke_poof",
+"sprite"
+],
+"0:3": [
+"Common",
+"explosion_rf",
+"sprite"
+],
+"0:4": [
+"Common",
+"explosion_small",
+"sprite"
+],
+"0:5": [
+"Common",
+"explosion_large",
+"sprite"
+],
+"0:6": [
+"Common",
+"smoke_circling_gray",
+"sprite"
+],
+"0:7": [
+"Common",
+"smoke_circling_brown",
+"sprite"
+],
+"0:8": [
+"Weapon",
+"shield_water",
+"sprite"
+],
+"0:10": [
+"Common",
+"explosion_pepper",
+"sprite"
+],
+"0:11": [
+"Weapon",
+"shield_lightning",
+"sprite"
+],
+"0:12": [
+"Weapon",
+"shield_lightning_trail",
+"sprite"
+],
+"0:13": [
+"Unknown",
+"flame_red",
+"sprite"
+],
+"0:14": [
+"Weapon",
+"shield_fire",
+"sprite"
+],
+"0:15": [
+"Weapon",
+"flare_diag_downleft",
+"sprite"
+],
+"0:16": [
+"Weapon",
+"flare_hor",
+"sprite"
+],
+"0:17": [
+"Weapon",
+"bullet_blaster",
+"sprite"
+],
+"0:18": [
+"UI",
+"blaster_upgraded_jazz",
+"sprite"
+],
+"0:19": [
+"UI",
+"blaster_upgraded_spaz",
+"sprite"
+],
+"0:20": [
+"Weapon",
+"bullet_blaster_upgraded",
+"sprite"
+],
+"0:23": [
+"Weapon",
+"bullet_bouncer",
+"sprite"
+],
+"0:24": [
+"Pickup",
+"ammo_bouncer_upgraded",
+"sprite"
+],
+"0:25": [
+"Pickup",
+"ammo_bouncer",
+"sprite"
+],
+"0:26": [
+"Weapon",
+"bullet_bouncer_upgraded",
+"sprite"
+],
+"0:27": [
+"Weapon",
+"bullet_freezer_hor",
+"sprite"
+],
+"0:28": [
+"Pickup",
+"ammo_freezer_upgraded",
+"sprite"
+],
+"0:29": [
+"Pickup",
+"ammo_freezer",
+"sprite"
+],
+"0:30": [
+"Weapon",
+"bullet_freezer_upgraded_hor",
+"sprite"
+],
+"0:33": [
+"Pickup",
+"ammo_seeker_upgraded",
+"sprite"
+],
+"0:34": [
+"Pickup",
+"ammo_seeker",
+"sprite"
+],
+"0:37": [
+"Weapon",
+"bullet_seeker_hor",
+"sprite"
+],
+"0:42": [
+"Weapon",
+"bullet_seeker_upgraded_hor",
+"sprite"
+],
+"0:45": [
+"Weapon",
+"bullet_rf_hor",
+"sprite"
+],
+"0:48": [
+"Pickup",
+"ammo_rf_upgraded",
+"sprite"
+],
+"0:49": [
+"Pickup",
+"ammo_rf",
+"sprite"
+],
+"0:50": [
+"Weapon",
+"bullet_rf_upgraded_hor",
+"sprite"
+],
+"0:55": [
+"Weapon",
+"bullet_toaster",
+"sprite"
+],
+"0:56": [
+"Pickup",
+"ammo_toaster_upgraded",
+"sprite"
+],
+"0:57": [
+"Pickup",
+"ammo_toaster",
+"sprite"
+],
+"0:58": [
+"Weapon",
+"bullet_toaster_upgraded",
+"sprite"
+],
+"0:59": [
+"Weapon",
+"bullet_tnt",
+"sprite"
+],
+"0:60": [
+"Weapon",
+"bullet_fireball_hor",
+"sprite"
+],
+"0:61": [
+"Pickup",
+"ammo_pepper_upgraded",
+"sprite"
+],
+"0:62": [
+"Pickup",
+"ammo_pepper",
+"sprite"
+],
+"0:63": [
+"Weapon",
+"bullet_fireball_upgraded_hor",
+"sprite"
+],
+"0:66": [
+"Weapon",
+"bullet_bladegun",
+"sprite"
+],
+"0:67": [
+"Pickup",
+"ammo_electro_upgraded",
+"sprite"
+],
+"0:68": [
+"Pickup",
+"ammo_electro",
+"sprite"
+],
+"0:69": [
+"Weapon",
+"bullet_bladegun_upgraded",
+"sprite"
+],
+"0:70": [
+"Common",
+"explosion_tiny",
+"sprite"
+],
+"0:71": [
+"Common",
+"explosion_freezer_maybe",
+"sprite"
+],
+"0:72": [
+"Common",
+"explosion_tiny_black",
+"sprite"
+],
+"0:73": [
+"Weapon",
+"bullet_fireball_upgraded_hor_2",
+"sprite"
+],
+"0:74": [
+"Weapon",
+"flare_hor_2",
+"sprite"
+],
+"0:75": [
+"Unknown",
+"green_explosion",
+"sprite"
+],
+"0:76": [
+"Weapon",
+"bullet_bladegun_alt",
+"sprite"
+],
+"0:77": [
+"Weapon",
+"bullet_tnt_explosion",
+"sprite"
+],
+"0:78": [
+"Object",
+"container_ammo_shrapnel_1",
+"sprite"
+],
+"0:79": [
+"Object",
+"container_ammo_shrapnel_2",
+"sprite"
+],
+"0:80": [
+"Common",
+"explosion_upwards",
+"sprite"
+],
+"0:81": [
+"Common",
+"explosion_bomb",
+"sprite"
+],
+"0:82": [
+"Common",
+"smoke_circling_white",
+"sprite"
+],
+"1:0": [
+"Bat",
+"idle",
+"sprite"
+],
+"1:1": [
+"Bat",
+"resting",
+"sprite"
+],
+"1:2": [
+"Bat",
+"takeoff_1",
+"sprite"
+],
+"1:3": [
+"Bat",
+"takeoff_2",
+"sprite"
+],
+"1:4": [
+"Bat",
+"roost",
+"sprite"
+],
+"2:0": [
+"Bee",
+"swarm",
+"sprite"
+],
+"3:0": [
+"Bee",
+"swarm_2",
+"sprite"
+],
+"4:0": [
+"Object",
+"pushbox_crate",
+"sprite"
+],
+"5:0": [
+"Object",
+"pushbox_rock",
+"sprite"
+],
+"7:0": [
+"Bilsy",
+"throw_fireball",
+"sprite"
+],
+"7:1": [
+"Bilsy",
+"appear",
+"sprite"
+],
+"7:2": [
+"Bilsy",
+"vanish",
+"sprite"
+],
+"7:3": [
+"Bilsy",
+"bullet_fireball",
+"sprite"
+],
+"7:4": [
+"Bilsy",
+"idle",
+"sprite"
+],
+"8:0": [
+"Birdy",
+"charge_diag_downright",
+"sprite"
+],
+"8:1": [
+"Birdy",
+"charge_ver",
+"sprite"
+],
+"8:2": [
+"Birdy",
+"charge_diag_upright",
+"sprite"
+],
+"8:3": [
+"Birdy",
+"caged",
+"sprite"
+],
+"8:4": [
+"Birdy",
+"cage_destroyed",
+"sprite"
+],
+"8:5": [
+"Birdy",
+"die",
+"sprite"
+],
+"8:6": [
+"Birdy",
+"feather_green",
+"sprite"
+],
+"8:7": [
+"Birdy",
+"feather_red",
+"sprite"
+],
+"8:8": [
+"Birdy",
+"feather_green_and_red",
+"sprite"
+],
+"8:9": [
+"Birdy",
+"fly",
+"sprite"
+],
+"8:10": [
+"Birdy",
+"hurt",
+"sprite"
+],
+"8:11": [
+"Birdy",
+"idle_worm",
+"sprite"
+],
+"8:12": [
+"Birdy",
+"idle_turn_head_left",
+"sprite"
+],
+"8:13": [
+"Birdy",
+"idle_look_left",
+"sprite"
+],
+"8:14": [
+"Birdy",
+"idle_turn_head_left_back",
+"sprite"
+],
+"8:15": [
+"Birdy",
+"idle_turn_head_right",
+"sprite"
+],
+"8:16": [
+"Birdy",
+"idle_look_right",
+"sprite"
+],
+"8:17": [
+"Birdy",
+"idle_turn_head_right_back",
+"sprite"
+],
+"8:18": [
+"Birdy",
+"idle",
+"sprite"
+],
+"8:19": [
+"Birdy",
+"corpse",
+"sprite"
+],
+"10:0": [
+"Platform",
+"ball",
+"sprite"
+],
+"10:1": [
+"Platform",
+"ball_chain",
+"sprite"
+],
+"11:0": [
+"Object",
+"bonus_active",
+"sprite"
+],
+"11:1": [
+"Object",
+"bonus_inactive",
+"sprite"
+],
+"12:0": [
+"UI",
+"boss_health_bar",
+"sprite"
+],
+"13:0": [
+"Bridge",
+"rope",
+"sprite"
+],
+"13:1": [
+"Bridge",
+"stone",
+"sprite"
+],
+"13:2": [
+"Bridge",
+"vine",
+"sprite"
+],
+"13:3": [
+"Bridge",
+"stone_red",
+"sprite"
+],
+"13:4": [
+"Bridge",
+"log",
+"sprite"
+],
+"13:5": [
+"Bridge",
+"gem",
+"sprite"
+],
+"13:6": [
+"Bridge",
+"lab",
+"sprite"
+],
+"14:0": [
+"Bubba",
+"spew_fireball",
+"sprite"
+],
+"14:1": [
+"Bubba",
+"corpse",
+"sprite"
+],
+"14:2": [
+"Bubba",
+"jump",
+"sprite"
+],
+"14:3": [
+"Bubba",
+"jump_fall",
+"sprite"
+],
+"14:4": [
+"Bubba",
+"fireball",
+"sprite"
+],
+"14:5": [
+"Bubba",
+"hop",
+"sprite"
+],
+"14:6": [
+"Bubba",
+"tornado",
+"sprite"
+],
+"14:7": [
+"Bubba",
+"tornado_start",
+"sprite"
+],
+"14:8": [
+"Bubba",
+"tornado_end",
+"sprite"
+],
+"15:0": [
+"Bee",
+"bee",
+"sprite"
+],
+"15:1": [
+"Bee",
+"bee_turn",
+"sprite"
+],
+"16:0": [
+"Unimplemented",
+"butterfly",
+"sprite"
+],
+"17:0": [
+"Pole",
+"carrotus",
+"sprite"
+],
+"18:0": [
+"Cheshire",
+"platform_appear",
+"sprite"
+],
+"18:1": [
+"Cheshire",
+"platform_vanish",
+"sprite"
+],
+"18:2": [
+"Cheshire",
+"platform_idle",
+"sprite"
+],
+"18:3": [
+"Cheshire",
+"platform_invisible",
+"sprite"
+],
+"19:0": [
+"Cheshire",
+"hook_appear",
+"sprite"
+],
+"19:1": [
+"Cheshire",
+"hook_vanish",
+"sprite"
+],
+"19:2": [
+"Cheshire",
+"hook_idle",
+"sprite"
+],
+"19:3": [
+"Cheshire",
+"hook_invisible",
+"sprite"
+],
+"20:0": [
+"Caterpillar",
+"exhale_start",
+"sprite"
+],
+"20:1": [
+"Caterpillar",
+"exhale",
+"sprite"
+],
+"20:2": [
+"Caterpillar",
+"disoriented",
+"sprite"
+],
+"20:3": [
+"Caterpillar",
+"idle",
+"sprite"
+],
+"20:4": [
+"Caterpillar",
+"inhale_start",
+"sprite"
+],
+"20:5": [
+"Caterpillar",
+"inhale",
+"sprite"
+],
+"20:6": [
+"Caterpillar",
+"smoke",
+"sprite"
+],
+"21:0": [
+"BirdyYellow",
+"charge_diag_downright_placeholder",
+"sprite"
+],
+"21:1": [
+"BirdyYellow",
+"charge_ver",
+"sprite"
+],
+"21:2": [
+"BirdyYellow",
+"charge_diag_upright",
+"sprite"
+],
+"21:3": [
+"BirdyYellow",
+"caged",
+"sprite"
+],
+"21:4": [
+"BirdyYellow",
+"cage_destroyed",
+"sprite"
+],
+"21:5": [
+"BirdyYellow",
+"die",
+"sprite"
+],
+"21:6": [
+"BirdyYellow",
+"feather_blue",
+"sprite"
+],
+"21:7": [
+"BirdyYellow",
+"feather_yellow",
+"sprite"
+],
+"21:8": [
+"BirdyYellow",
+"feather_blue_and_yellow",
+"sprite"
+],
+"21:9": [
+"BirdyYellow",
+"fly",
+"sprite"
+],
+"21:10": [
+"BirdyYellow",
+"hurt",
+"sprite"
+],
+"21:11": [
+"BirdyYellow",
+"idle_worm",
+"sprite"
+],
+"21:12": [
+"BirdyYellow",
+"idle_turn_head_left",
+"sprite"
+],
+"21:13": [
+"BirdyYellow",
+"idle_look_left",
+"sprite"
+],
+"21:14": [
+"BirdyYellow",
+"idle_turn_head_left_back",
+"sprite"
+],
+"21:15": [
+"BirdyYellow",
+"idle_turn_head_right",
+"sprite"
+],
+"21:16": [
+"BirdyYellow",
+"idle_look_right",
+"sprite"
+],
+"21:17": [
+"BirdyYellow",
+"idle_turn_head_right_back",
+"sprite"
+],
+"21:18": [
+"BirdyYellow",
+"idle",
+"sprite"
+],
+"21:19": [
+"BirdyYellow",
+"corpse",
+"sprite"
+],
+"22:0": [
+"Common",
+"water_bubble_1",
+"sprite"
+],
+"22:1": [
+"Common",
+"water_bubble_2",
+"sprite"
+],
+"22:2": [
+"Common",
+"water_bubble_3",
+"sprite"
+],
+"22:3": [
+"Common",
+"water_splash",
+"sprite"
+],
+"23:0": [
+"Jazz",
+"gameover_continue",
+"sprite"
+],
+"23:1": [
+"Jazz",
+"gameover_idle",
+"sprite"
+],
+"23:2": [
+"Jazz",
+"gameover_end",
+"sprite"
+],
+"23:3": [
+"Spaz",
+"gameover_continue",
+"sprite"
+],
+"23:4": [
+"Spaz",
+"gameover_idle",
+"sprite"
+],
+"23:5": [
+"Spaz",
+"gameover_end",
+"sprite"
+],
+"24:0": [
+"Demon",
+"idle",
+"sprite"
+],
+"24:1": [
+"Demon",
+"attack_start",
+"sprite"
+],
+"24:2": [
+"Demon",
+"attack",
+"sprite"
+],
+"24:3": [
+"Demon",
+"attack_end",
+"sprite"
+],
+"25:4": [
+"Common",
+"ice_block",
+"sprite"
+],
+"26:0": [
+"Devan",
+"bullet_small",
+"sprite"
+],
+"26:1": [
+"Devan",
+"remote_idle",
+"sprite"
+],
+"26:2": [
+"Devan",
+"remote_fall_warp_out",
+"sprite"
+],
+"26:3": [
+"Devan",
+"remote_fall",
+"sprite"
+],
+"26:4": [
+"Devan",
+"remote_fall_rotate",
+"sprite"
+],
+"26:5": [
+"Devan",
+"remote_fall_warp_in",
+"sprite"
+],
+"26:6": [
+"Devan",
+"remote_warp_out",
+"sprite"
+],
+"27:0": [
+"Devan",
+"demon_spew_fireball",
+"sprite"
+],
+"27:1": [
+"Devan",
+"disoriented",
+"sprite"
+],
+"27:2": [
+"Devan",
+"freefall",
+"sprite"
+],
+"27:3": [
+"Devan",
+"disoriented_start",
+"sprite"
+],
+"27:4": [
+"Devan",
+"demon_fireball",
+"sprite"
+],
+"27:5": [
+"Devan",
+"demon_fly",
+"sprite"
+],
+"27:6": [
+"Devan",
+"demon_transform_start",
+"sprite"
+],
+"27:7": [
+"Devan",
+"demon_transform_end",
+"sprite"
+],
+"27:8": [
+"Devan",
+"disarmed_idle",
+"sprite"
+],
+"27:9": [
+"Devan",
+"demon_turn",
+"sprite"
+],
+"27:10": [
+"Devan",
+"disarmed_warp_in",
+"sprite"
+],
+"27:11": [
+"Devan",
+"disoriented_warp_out",
+"sprite"
+],
+"27:12": [
+"Devan",
+"disarmed",
+"sprite"
+],
+"27:13": [
+"Devan",
+"crouch",
+"sprite"
+],
+"27:14": [
+"Devan",
+"shoot",
+"sprite"
+],
+"27:15": [
+"Devan",
+"disarmed_gun",
+"sprite"
+],
+"27:16": [
+"Devan",
+"jump",
+"sprite"
+],
+"27:17": [
+"Devan",
+"bullet",
+"sprite"
+],
+"27:18": [
+"Devan",
+"run",
+"sprite"
+],
+"27:19": [
+"Devan",
+"run_end",
+"sprite"
+],
+"27:20": [
+"Devan",
+"jump_end",
+"sprite"
+],
+"27:21": [
+"Devan",
+"idle",
+"sprite"
+],
+"27:22": [
+"Devan",
+"warp_in",
+"sprite"
+],
+"27:23": [
+"Devan",
+"warp_out",
+"sprite"
+],
+"28:0": [
+"Pole",
+"diamondus",
+"sprite"
+],
+"29:0": [
+"Doggy",
+"attack",
+"sprite"
+],
+"29:1": [
+"Doggy",
+"walk",
+"sprite"
+],
+"31:0": [
+"Dragonfly",
+"idle",
+"sprite"
+],
+"32:0": [
+"Dragon",
+"attack",
+"sprite"
+],
+"32:1": [
+"Dragon",
+"idle",
+"sprite"
+],
+"32:2": [
+"Dragon",
+"turn",
+"sprite"
+],
+"38:0": [
+"Eva",
+"blink",
+"sprite"
+],
+"38:1": [
+"Eva",
+"idle",
+"sprite"
+],
+"38:2": [
+"Eva",
+"kiss_start",
+"sprite"
+],
+"38:3": [
+"Eva",
+"kiss_end",
+"sprite"
+],
+"39:0": [
+"UI",
+"icon_birdy",
+"sprite"
+],
+"39:1": [
+"UI",
+"icon_birdy_yellow",
+"sprite"
+],
+"39:2": [
+"UI",
+"icon_frog",
+"sprite"
+],
+"39:3": [
+"UI",
+"icon_jazz",
+"sprite"
+],
+"39:4": [
+"UI",
+"icon_lori",
+"sprite"
+],
+"39:5": [
+"UI",
+"icon_spaz",
+"sprite"
+],
+"41:0": [
+"FatChick",
+"attack",
+"sprite"
+],
+"41:1": [
+"FatChick",
+"walk",
+"sprite"
+],
+"42:0": [
+"Fencer",
+"attack",
+"sprite"
+],
+"42:1": [
+"Fencer",
+"idle",
+"sprite"
+],
+"43:0": [
+"Fish",
+"attack",
+"sprite"
+],
+"43:1": [
+"Fish",
+"idle",
+"sprite"
+],
+"44:0": [
+"CTF",
+"arrow",
+"sprite"
+],
+"44:1": [
+"CTF",
+"base",
+"sprite"
+],
+"44:2": [
+"CTF",
+"lights",
+"sprite"
+],
+"44:3": [
+"CTF",
+"flag_blue",
+"sprite"
+],
+"44:4": [
+"UI",
+"ctf_flag_blue",
+"sprite"
+],
+"44:5": [
+"CTF",
+"base_eva",
+"sprite"
+],
+"44:6": [
+"CTF",
+"base_eva_cheer",
+"sprite"
+],
+"44:7": [
+"CTF",
+"flag_red",
+"sprite"
+],
+"44:8": [
+"UI",
+"ctf_flag_red",
+"sprite"
+],
+"47:0": [
+"Frog",
+"fall_land",
+"sprite"
+],
+"47:1": [
+"Frog",
+"hurt",
+"sprite"
+],
+"47:2": [
+"Frog",
+"idle",
+"sprite"
+],
+"47:3": [
+"Jazz",
+"transform_frog",
+"sprite"
+],
+"47:4": [
+"Frog",
+"fall",
+"sprite"
+],
+"47:5": [
+"Frog",
+"jump_start",
+"sprite"
+],
+"47:6": [
+"Frog",
+"crouch",
+"sprite"
+],
+"47:7": [
+"Lori",
+"transform_frog",
+"sprite"
+],
+"47:8": [
+"Frog",
+"tongue_diag_upright",
+"sprite"
+],
+"47:9": [
+"Frog",
+"tongue_hor",
+"sprite"
+],
+"47:10": [
+"Frog",
+"tongue_ver",
+"sprite"
+],
+"47:11": [
+"Spaz",
+"transform_frog",
+"sprite"
+],
+"47:12": [
+"Frog",
+"run",
+"sprite"
+],
+"48:0": [
+"Platform",
+"carrotus_fruit",
+"sprite"
+],
+"48:1": [
+"Platform",
+"carrotus_fruit_chain",
+"sprite"
+],
+"50:0": [
+"Unimplemented",
+"boxing_glove_stiff",
+"sprite"
+],
+"50:1": [
+"Unimplemented",
+"boxing_glove_stiff_idle",
+"sprite"
+],
+"50:2": [
+"Unimplemented",
+"boxing_glove_normal",
+"sprite"
+],
+"50:3": [
+"Unimplemented",
+"boxing_glove_normal_idle",
+"sprite"
+],
+"50:4": [
+"Unimplemented",
+"boxing_glove_relaxed",
+"sprite"
+],
+"50:5": [
+"Unimplemented",
+"boxing_glove_relaxed_idle",
+"sprite"
+],
+"51:0": [
+"Platform",
+"carrotus_grass",
+"sprite"
+],
+"51:1": [
+"Platform",
+"carrotus_grass_chain",
+"sprite"
+],
+"52:0": [
+"MadderHatter",
+"cup",
+"sprite"
+],
+"52:1": [
+"MadderHatter",
+"hat",
+"sprite"
+],
+"52:2": [
+"MadderHatter",
+"attack",
+"sprite"
+],
+"52:3": [
+"MadderHatter",
+"bullet_spit",
+"sprite"
+],
+"52:4": [
+"MadderHatter",
+"walk",
+"sprite"
+],
+"53:0": [
+"Helmut",
+"idle",
+"sprite"
+],
+"53:1": [
+"Helmut",
+"walk",
+"sprite"
+],
+"55:0": [
+"Jazz",
+"airboard",
+"sprite"
+],
+"55:1": [
+"Jazz",
+"airboard_turn",
+"sprite"
+],
+"55:2": [
+"Jazz",
+"buttstomp_end",
+"sprite"
+],
+"55:3": [
+"Jazz",
+"corpse",
+"sprite"
+],
+"55:4": [
+"Jazz",
+"die",
+"sprite"
+],
+"55:5": [
+"Jazz",
+"crouch_start",
+"sprite"
+],
+"55:6": [
+"Jazz",
+"crouch",
+"sprite"
+],
+"55:7": [
+"Jazz",
+"crouch_shoot",
+"sprite"
+],
+"55:8": [
+"Jazz",
+"crouch_end",
+"sprite"
+],
+"55:9": [
+"Jazz",
+"vine_walk",
+"sprite"
+],
+"55:10": [
+"Jazz",
+"eol",
+"sprite"
+],
+"55:11": [
+"Jazz",
+"fall",
+"sprite"
+],
+"55:12": [
+"Jazz",
+"buttstomp",
+"sprite"
+],
+"55:13": [
+"Jazz",
+"fall_end",
+"sprite"
+],
+"55:14": [
+"Jazz",
+"shoot",
+"sprite"
+],
+"55:15": [
+"Jazz",
+"shoot_ver",
+"sprite"
+],
+"55:16": [
+"Jazz",
+"shoot_end",
+"sprite"
+],
+"55:17": [
+"Jazz",
+"transform_frog_end",
+"sprite"
+],
+"55:18": [
+"Jazz",
+"vine_shoot_start",
+"sprite"
+],
+"55:19": [
+"Jazz",
+"vine_shoot_up_end",
+"sprite"
+],
+"55:20": [
+"Jazz",
+"vine_shoot_up",
+"sprite"
+],
+"55:21": [
+"Jazz",
+"vine_idle",
+"sprite"
+],
+"55:22": [
+"Jazz",
+"vine_idle_flavor",
+"sprite"
+],
+"55:23": [
+"Jazz",
+"vine_shoot_end",
+"sprite"
+],
+"55:24": [
+"Jazz",
+"vine_shoot",
+"sprite"
+],
+"55:25": [
+"Jazz",
+"copter",
+"sprite"
+],
+"55:26": [
+"Jazz",
+"copter_shoot_start",
+"sprite"
+],
+"55:27": [
+"Jazz",
+"copter_shoot",
+"sprite"
+],
+"55:28": [
+"Jazz",
+"pole_h",
+"sprite"
+],
+"55:29": [
+"Jazz",
+"hurt",
+"sprite"
+],
+"55:30": [
+"Jazz",
+"idle_flavor_1",
+"sprite"
+],
+"55:31": [
+"Jazz",
+"idle_flavor_2",
+"sprite"
+],
+"55:32": [
+"Jazz",
+"idle_flavor_3",
+"sprite"
+],
+"55:33": [
+"Jazz",
+"idle_flavor_4",
+"sprite"
+],
+"55:34": [
+"Jazz",
+"idle_flavor_5",
+"sprite"
+],
+"55:35": [
+"Jazz",
+"vine_shoot_up_start",
+"sprite"
+],
+"55:36": [
+"Jazz",
+"fall_shoot",
+"sprite"
+],
+"55:37": [
+"Jazz",
+"jump_unknown_1",
+"sprite"
+],
+"55:38": [
+"Jazz",
+"jump_unknown_2",
+"sprite"
+],
+"55:39": [
+"Jazz",
+"jump",
+"sprite"
+],
+"55:40": [
+"Jazz",
+"ledge",
+"sprite"
+],
+"55:41": [
+"Jazz",
+"lift",
+"sprite"
+],
+"55:42": [
+"Jazz",
+"lift_end",
+"sprite"
+],
+"55:43": [
+"Jazz",
+"lift_start",
+"sprite"
+],
+"55:44": [
+"Jazz",
+"lookup_start",
+"sprite"
+],
+"55:45": [
+"Jazz",
+"dizzy_walk",
+"sprite"
+],
+"55:46": [
+"Jazz",
+"push",
+"sprite"
+],
+"55:47": [
+"Jazz",
+"shoot_start",
+"sprite"
+],
+"55:48": [
+"Jazz",
+"revup_start",
+"sprite"
+],
+"55:49": [
+"Jazz",
+"revup",
+"sprite"
+],
+"55:50": [
+"Jazz",
+"revup_end",
+"sprite"
+],
+"55:51": [
+"Jazz",
+"fall_diag",
+"sprite"
+],
+"55:52": [
+"Jazz",
+"jump_diag",
+"sprite"
+],
+"55:53": [
+"Jazz",
+"ball",
+"sprite"
+],
+"55:54": [
+"Jazz",
+"run",
+"sprite"
+],
+"55:55": [
+"Jazz",
+"dash_start",
+"sprite"
+],
+"55:56": [
+"Jazz",
+"dash",
+"sprite"
+],
+"55:57": [
+"Jazz",
+"dash_stop",
+"sprite"
+],
+"55:58": [
+"Jazz",
+"walk_stop",
+"sprite"
+],
+"55:59": [
+"Jazz",
+"run_stop",
+"sprite"
+],
+"55:60": [
+"Jazz",
+"spring",
+"sprite"
+],
+"55:61": [
+"Jazz",
+"idle",
+"sprite"
+],
+"55:62": [
+"Jazz",
+"uppercut",
+"sprite"
+],
+"55:63": [
+"Jazz",
+"uppercut_end",
+"sprite"
+],
+"55:64": [
+"Jazz",
+"uppercut_start",
+"sprite"
+],
+"55:65": [
+"Jazz",
+"dizzy",
+"sprite"
+],
+"55:66": [
+"Jazz",
+"swim_diag_downright",
+"sprite"
+],
+"55:67": [
+"Jazz",
+"swim_right",
+"sprite"
+],
+"55:68": [
+"Jazz",
+"swim_diag_right_to_downright",
+"sprite"
+],
+"55:69": [
+"Jazz",
+"swim_diag_right_to_upright",
+"sprite"
+],
+"55:70": [
+"Jazz",
+"swim_diag_upright",
+"sprite"
+],
+"55:71": [
+"Jazz",
+"swing",
+"sprite"
+],
+"55:72": [
+"Jazz",
+"warp_in",
+"sprite"
+],
+"55:73": [
+"Jazz",
+"warp_out_freefall",
+"sprite"
+],
+"55:74": [
+"Jazz",
+"freefall",
+"sprite"
+],
+"55:75": [
+"Jazz",
+"warp_in_freefall",
+"sprite"
+],
+"55:76": [
+"Jazz",
+"warp_out",
+"sprite"
+],
+"55:77": [
+"Jazz",
+"pole_v",
+"sprite"
+],
+"58:0": [
+"Pole",
+"jungle",
+"sprite"
+],
+"59:0": [
+"LabRat",
+"attack",
+"sprite"
+],
+"59:1": [
+"LabRat",
+"idle",
+"sprite"
+],
+"59:2": [
+"LabRat",
+"walk",
+"sprite"
+],
+"60:0": [
+"Lizard",
+"copter_attack",
+"sprite"
+],
+"60:1": [
+"Lizard",
+"bomb",
+"sprite"
+],
+"60:2": [
+"Lizard",
+"copter_idle",
+"sprite"
+],
+"60:3": [
+"Lizard",
+"copter",
+"sprite"
+],
+"60:4": [
+"Lizard",
+"walk",
+"sprite"
+],
+"61:0": [
+"Lori",
+"airboard",
+"sprite"
+],
+"61:1": [
+"Lori",
+"airboard_turn",
+"sprite"
+],
+"61:2": [
+"Lori",
+"buttstomp_end",
+"sprite"
+],
+"61:3": [
+"Lori",
+"corpse",
+"sprite"
+],
+"61:4": [
+"Lori",
+"die",
+"sprite"
+],
+"61:5": [
+"Lori",
+"crouch_start",
+"sprite"
+],
+"61:6": [
+"Lori",
+"crouch",
+"sprite"
+],
+"61:7": [
+"Lori",
+"crouch_shoot",
+"sprite"
+],
+"61:8": [
+"Lori",
+"crouch_end",
+"sprite"
+],
+"61:9": [
+"Lori",
+"vine_walk",
+"sprite"
+],
+"61:11": [
+"Lori",
+"fall",
+"sprite"
+],
+"61:12": [
+"Lori",
+"buttstomp",
+"sprite"
+],
+"61:13": [
+"Lori",
+"fall_end",
+"sprite"
+],
+"61:14": [
+"Lori",
+"shoot",
+"sprite"
+],
+"61:15": [
+"Lori",
+"shoot_ver",
+"sprite"
+],
+"61:16": [
+"Lori",
+"shoot_end",
+"sprite"
+],
+"61:17": [
+"Lori",
+"transform_frog_end",
+"sprite"
+],
+"61:18": [
+"Lori",
+"vine_shoot_start",
+"sprite"
+],
+"61:19": [
+"Lori",
+"vine_shoot_up_end",
+"sprite"
+],
+"61:20": [
+"Lori",
+"vine_shoot_up",
+"sprite"
+],
+"61:21": [
+"Lori",
+"vine_idle",
+"sprite"
+],
+"61:22": [
+"Lori",
+"vine_idle_flavor",
+"sprite"
+],
+"61:23": [
+"Lori",
+"vine_shoot_end",
+"sprite"
+],
+"61:24": [
+"Lori",
+"vine_shoot",
+"sprite"
+],
+"61:25": [
+"Lori",
+"copter",
+"sprite"
+],
+"61:26": [
+"Lori",
+"copter_shoot_start",
+"sprite"
+],
+"61:27": [
+"Lori",
+"copter_shoot",
+"sprite"
+],
+"61:28": [
+"Lori",
+"pole_h",
+"sprite"
+],
+"61:29": [
+"Lori",
+"hurt",
+"sprite"
+],
+"61:30": [
+"Lori",
+"idle_flavor_1",
+"sprite"
+],
+"61:31": [
+"Lori",
+"idle_flavor_2",
+"sprite"
+],
+"61:32": [
+"Lori",
+"idle_flavor_3",
+"sprite"
+],
+"61:33": [
+"Lori",
+"idle_flavor_4",
+"sprite"
+],
+"61:34": [
+"Lori",
+"idle_flavor_5",
+"sprite"
+],
+"61:35": [
+"Lori",
+"jump_shoot_end",
+"sprite"
+],
+"61:36": [
+"Lori",
+"fall_shoot",
+"sprite"
+],
+"61:37": [
+"Lori",
+"jump_unknown_1",
+"sprite"
+],
+"61:38": [
+"Lori",
+"jump_unknown_2",
+"sprite"
+],
+"61:39": [
+"Lori",
+"jump",
+"sprite"
+],
+"61:40": [
+"Lori",
+"ledge",
+"sprite"
+],
+"61:41": [
+"Lori",
+"lift",
+"sprite"
+],
+"61:42": [
+"Lori",
+"lift_end",
+"sprite"
+],
+"61:43": [
+"Lori",
+"lift_start",
+"sprite"
+],
+"61:44": [
+"Lori",
+"lookup_start",
+"sprite"
+],
+"61:45": [
+"Lori",
+"dizzy_walk",
+"sprite"
+],
+"61:46": [
+"Lori",
+"push",
+"sprite"
+],
+"61:47": [
+"Lori",
+"shoot_start",
+"sprite"
+],
+"61:48": [
+"Lori",
+"revup_start",
+"sprite"
+],
+"61:49": [
+"Lori",
+"revup",
+"sprite"
+],
+"61:50": [
+"Lori",
+"revup_end",
+"sprite"
+],
+"61:51": [
+"Lori",
+"fall_diag",
+"sprite"
+],
+"61:52": [
+"Lori",
+"jump_diag",
+"sprite"
+],
+"61:53": [
+"Lori",
+"ball",
+"sprite"
+],
+"61:54": [
+"Lori",
+"run",
+"sprite"
+],
+"61:55": [
+"Lori",
+"dash_start",
+"sprite"
+],
+"61:56": [
+"Lori",
+"dash",
+"sprite"
+],
+"61:57": [
+"Lori",
+"dash_stop",
+"sprite"
+],
+"61:58": [
+"Lori",
+"walk_stop",
+"sprite"
+],
+"61:59": [
+"Lori",
+"run_stop",
+"sprite"
+],
+"61:60": [
+"Lori",
+"spring",
+"sprite"
+],
+"61:61": [
+"Lori",
+"idle",
+"sprite"
+],
+"61:62": [
+"Lori",
+"uppercut_placeholder_1",
+"sprite"
+],
+"61:63": [
+"Lori",
+"uppercut_placeholder_2",
+"sprite"
+],
+"61:64": [
+"Lori",
+"sidekick",
+"sprite"
+],
+"61:65": [
+"Lori",
+"dizzy",
+"sprite"
+],
+"61:66": [
+"Lori",
+"swim_diag_downright",
+"sprite"
+],
+"61:67": [
+"Lori",
+"swim_right",
+"sprite"
+],
+"61:68": [
+"Lori",
+"swim_diag_right_to_downright",
+"sprite"
+],
+"61:69": [
+"Lori",
+"swim_diag_right_to_upright",
+"sprite"
+],
+"61:70": [
+"Lori",
+"swim_diag_upright",
+"sprite"
+],
+"61:71": [
+"Lori",
+"swing",
+"sprite"
+],
+"61:72": [
+"Lori",
+"warp_in",
+"sprite"
+],
+"61:73": [
+"Lori",
+"warp_out_freefall",
+"sprite"
+],
+"61:74": [
+"Lori",
+"freefall",
+"sprite"
+],
+"61:75": [
+"Lori",
+"warp_in_freefall",
+"sprite"
+],
+"61:76": [
+"Lori",
+"warp_out",
+"sprite"
+],
+"61:77": [
+"Lori",
+"pole_v",
+"sprite"
+],
+"62:0": [
+"Lori",
+"idle_2",
+"sprite"
+],
+"62:1": [
+"Lori",
+"gun",
+"sprite"
+],
+"64:2": [
+"UI",
+"character_art_difficulty_jazz",
+"menu"
+],
+"64:4": [
+"UI",
+"character_art_difficulty_spaz",
+"menu"
+],
+"67:0": [
+"Monkey",
+"banana",
+"sprite"
+],
+"67:1": [
+"Monkey",
+"banana_splat",
+"sprite"
+],
+"67:2": [
+"Monkey",
+"jump",
+"sprite"
+],
+"67:3": [
+"Monkey",
+"walk_start",
+"sprite"
+],
+"67:4": [
+"Monkey",
+"walk_end",
+"sprite"
+],
+"67:5": [
+"Monkey",
+"attack",
+"sprite"
+],
+"67:6": [
+"Monkey",
+"walk",
+"sprite"
+],
+"68:0": [
+"Moth",
+"green",
+"sprite"
+],
+"68:1": [
+"Moth",
+"gray",
+"sprite"
+],
+"68:2": [
+"Moth",
+"purple",
+"sprite"
+],
+"68:3": [
+"Moth",
+"pink",
+"sprite"
+],
+"71:0": [
+"Pickup",
+"1up",
+"sprite"
+],
+"71:1": [
+"Pickup",
+"food_apple",
+"sprite"
+],
+"71:2": [
+"Pickup",
+"food_banana",
+"sprite"
+],
+"71:3": [
+"Object",
+"container_barrel",
+"sprite"
+],
+"71:4": [
+"Common",
+"poof_brown",
+"sprite"
+],
+"71:5": [
+"Object",
+"container_box_crush",
+"sprite"
+],
+"71:6": [
+"Object",
+"container_barrel_shrapnel_1",
+"sprite"
+],
+"71:7": [
+"Object",
+"container_barrel_shrapnel_2",
+"sprite"
+],
+"71:8": [
+"Object",
+"container_barrel_shrapnel_3",
+"sprite"
+],
+"71:9": [
+"Object",
+"container_barrel_shrapnel_4",
+"sprite"
+],
+"71:10": [
+"Object",
+"powerup_shield_water",
+"sprite"
+],
+"71:11": [
+"Pickup",
+"food_burger",
+"sprite"
+],
+"71:12": [
+"Pickup",
+"food_cake",
+"sprite"
+],
+"71:13": [
+"Pickup",
+"food_candy",
+"sprite"
+],
+"71:14": [
+"Object",
+"checkpoint",
+"sprite"
+],
+"71:15": [
+"Pickup",
+"food_cheese",
+"sprite"
+],
+"71:16": [
+"Pickup",
+"food_cherry",
+"sprite"
+],
+"71:17": [
+"Pickup",
+"food_chicken",
+"sprite"
+],
+"71:18": [
+"Pickup",
+"food_chips",
+"sprite"
+],
+"71:19": [
+"Pickup",
+"food_chocolate",
+"sprite"
+],
+"71:20": [
+"Pickup",
+"food_cola",
+"sprite"
+],
+"71:21": [
+"Pickup",
+"carrot",
+"sprite"
+],
+"71:22": [
+"Pickup",
+"gem",
+"sprite"
+],
+"71:23": [
+"Pickup",
+"food_cucumber",
+"sprite"
+],
+"71:24": [
+"Pickup",
+"food_cupcake",
+"sprite"
+],
+"71:25": [
+"Pickup",
+"food_donut",
+"sprite"
+],
+"71:26": [
+"Pickup",
+"food_eggplant",
+"sprite"
+],
+"71:27": [
+"Unknown",
+"green_blast_thing",
+"sprite"
+],
+"71:28": [
+"Object",
+"exit_sign",
+"sprite"
+],
+"71:29": [
+"Pickup",
+"fast_fire_jazz",
+"sprite"
+],
+"71:30": [
+"Pickup",
+"fast_fire_spaz",
+"sprite"
+],
+"71:31": [
+"Object",
+"powerup_shield_fire",
+"sprite"
+],
+"71:32": [
+"Pickup",
+"food_fries",
+"sprite"
+],
+"71:33": [
+"Pickup",
+"fast_feet",
+"sprite"
+],
+"71:34": [
+"Object",
+"gem_giant",
+"sprite"
+],
+"71:36": [
+"Pickup",
+"airboard",
+"sprite"
+],
+"71:37": [
+"Pickup",
+"coin_gold",
+"sprite"
+],
+"71:38": [
+"Pickup",
+"food_grapes",
+"sprite"
+],
+"71:39": [
+"Pickup",
+"food_ham",
+"sprite"
+],
+"71:40": [
+"Pickup",
+"carrot_fly",
+"sprite"
+],
+"71:41": [
+"UI",
+"heart",
+"sprite"
+],
+"71:42": [
+"Pickup",
+"freeze_enemies",
+"sprite"
+],
+"71:43": [
+"Pickup",
+"food_ice_cream",
+"sprite"
+],
+"71:44": [
+"Common",
+"ice_break_shrapnel_1",
+"sprite"
+],
+"71:45": [
+"Common",
+"ice_break_shrapnel_2",
+"sprite"
+],
+"71:46": [
+"Common",
+"ice_break_shrapnel_3",
+"sprite"
+],
+"71:47": [
+"Common",
+"ice_break_shrapnel_4",
+"sprite"
+],
+"71:48": [
+"Pickup",
+"food_lemon",
+"sprite"
+],
+"71:49": [
+"Pickup",
+"food_lettuce",
+"sprite"
+],
+"71:50": [
+"Pickup",
+"food_lime",
+"sprite"
+],
+"71:51": [
+"Object",
+"powerup_shield_lightning",
+"sprite"
+],
+"71:52": [
+"Object",
+"trigger_crate",
+"sprite"
+],
+"71:53": [
+"Pickup",
+"food_milk",
+"sprite"
+],
+"71:54": [
+"Object",
+"crate_ammo_bouncer",
+"sprite"
+],
+"71:55": [
+"Object",
+"crate_ammo_freezer",
+"sprite"
+],
+"71:56": [
+"Object",
+"crate_ammo_seeker",
+"sprite"
+],
+"71:57": [
+"Object",
+"crate_ammo_rf",
+"sprite"
+],
+"71:58": [
+"Object",
+"crate_ammo_toaster",
+"sprite"
+],
+"71:59": [
+"Object",
+"crate_ammo_tnt",
+"sprite"
+],
+"71:60": [
+"Object",
+"powerup_upgrade_blaster_jazz",
+"sprite"
+],
+"71:61": [
+"Object",
+"powerup_upgrade_bouncer",
+"sprite"
+],
+"71:62": [
+"Object",
+"powerup_upgrade_freezer",
+"sprite"
+],
+"71:63": [
+"Object",
+"powerup_upgrade_seeker",
+"sprite"
+],
+"71:64": [
+"Object",
+"powerup_upgrade_rf",
+"sprite"
+],
+"71:65": [
+"Object",
+"powerup_upgrade_toaster",
+"sprite"
+],
+"71:66": [
+"Object",
+"powerup_upgrade_pepper",
+"sprite"
+],
+"71:67": [
+"Object",
+"powerup_upgrade_electro",
+"sprite"
+],
+"71:68": [
+"Object",
+"powerup_transform_birdy",
+"sprite"
+],
+"71:69": [
+"Object",
+"powerup_transform_birdy_yellow",
+"sprite"
+],
+"71:70": [
+"Object",
+"powerup_swap_characters",
+"sprite"
+],
+"71:71": [
+"Pickup",
+"food_orange",
+"sprite"
+],
+"71:72": [
+"Pickup",
+"carrot_invincibility",
+"sprite"
+],
+"71:73": [
+"Pickup",
+"food_peach",
+"sprite"
+],
+"71:74": [
+"Pickup",
+"food_pear",
+"sprite"
+],
+"71:75": [
+"Pickup",
+"food_soda",
+"sprite"
+],
+"71:76": [
+"Pickup",
+"food_pie",
+"sprite"
+],
+"71:77": [
+"Pickup",
+"food_pizza",
+"sprite"
+],
+"71:78": [
+"Pickup",
+"potion",
+"sprite"
+],
+"71:79": [
+"Pickup",
+"food_pretzel",
+"sprite"
+],
+"71:80": [
+"Pickup",
+"food_sandwich",
+"sprite"
+],
+"71:81": [
+"Pickup",
+"food_strawberry",
+"sprite"
+],
+"71:82": [
+"Pickup",
+"carrot_full",
+"sprite"
+],
+"71:83": [
+"Object",
+"powerup_upgrade_blaster_spaz",
+"sprite"
+],
+"71:84": [
+"Pickup",
+"coin_silver",
+"sprite"
+],
+"71:85": [
+"Unknown",
+"green_blast_thing_2",
+"sprite"
+],
+"71:86": [
+"Common",
+"generator",
+"sprite"
+],
+"71:87": [
+"Pickup",
+"stopwatch",
+"sprite"
+],
+"71:88": [
+"Pickup",
+"food_taco",
+"sprite"
+],
+"71:89": [
+"Pickup",
+"food_thing",
+"sprite"
+],
+"71:90": [
+"Object",
+"tnt",
+"sprite"
+],
+"71:91": [
+"Pickup",
+"food_hotdog",
+"sprite"
+],
+"71:92": [
+"Pickup",
+"food_watermelon",
+"sprite"
+],
+"71:93": [
+"Object",
+"container_crate_shrapnel_1",
+"sprite"
+],
+"71:94": [
+"Object",
+"container_crate_shrapnel_2",
+"sprite"
+],
+"72:0": [
+"Pinball",
+"bumper_500",
+"sprite"
+],
+"72:1": [
+"Pinball",
+"bumper_500_hit",
+"sprite"
+],
+"72:2": [
+"Pinball",
+"bumper_carrot",
+"sprite"
+],
+"72:3": [
+"Pinball",
+"bumper_carrot_hit",
+"sprite"
+],
+"72:4": [
+"Pinball",
+"paddle_left",
+"sprite"
+],
+"73:0": [
+"Platform",
+"lab",
+"sprite"
+],
+"73:1": [
+"Platform",
+"lab_chain",
+"sprite"
+],
+"74:0": [
+"Pole",
+"psych",
+"sprite"
+],
+"75:0": [
+"Queen",
+"scream",
+"sprite"
+],
+"75:1": [
+"Queen",
+"ledge",
+"sprite"
+],
+"75:2": [
+"Queen",
+"ledge_recover",
+"sprite"
+],
+"75:3": [
+"Queen",
+"idle",
+"sprite"
+],
+"75:4": [
+"Queen",
+"brick",
+"sprite"
+],
+"75:5": [
+"Queen",
+"fall",
+"sprite"
+],
+"75:6": [
+"Queen",
+"stomp",
+"sprite"
+],
+"75:7": [
+"Queen",
+"backstep",
+"sprite"
+],
+"76:0": [
+"Rapier",
+"attack",
+"sprite"
+],
+"76:1": [
+"Rapier",
+"attack_swing",
+"sprite"
+],
+"76:2": [
+"Rapier",
+"idle",
+"sprite"
+],
+"76:3": [
+"Rapier",
+"attack_start",
+"sprite"
+],
+"76:4": [
+"Rapier",
+"attack_end",
+"sprite"
+],
+"77:0": [
+"Raven",
+"attack",
+"sprite"
+],
+"77:1": [
+"Raven",
+"idle",
+"sprite"
+],
+"77:2": [
+"Raven",
+"turn",
+"sprite"
+],
+"78:0": [
+"Robot",
+"spike_ball",
+"sprite"
+],
+"78:1": [
+"Robot",
+"attack_start",
+"sprite"
+],
+"78:2": [
+"Robot",
+"attack",
+"sprite"
+],
+"78:3": [
+"Robot",
+"copter",
+"sprite"
+],
+"78:4": [
+"Robot",
+"idle",
+"sprite"
+],
+"78:5": [
+"Robot",
+"attack_end",
+"sprite"
+],
+"78:6": [
+"Robot",
+"shrapnel_1",
+"sprite"
+],
+"78:7": [
+"Robot",
+"shrapnel_2",
+"sprite"
+],
+"78:8": [
+"Robot",
+"shrapnel_3",
+"sprite"
+],
+"78:9": [
+"Robot",
+"shrapnel_4",
+"sprite"
+],
+"78:10": [
+"Robot",
+"shrapnel_5",
+"sprite"
+],
+"78:11": [
+"Robot",
+"shrapnel_6",
+"sprite"
+],
+"78:12": [
+"Robot",
+"shrapnel_7",
+"sprite"
+],
+"78:13": [
+"Robot",
+"shrapnel_8",
+"sprite"
+],
+"78:14": [
+"Robot",
+"shrapnel_9",
+"sprite"
+],
+"78:15": [
+"Robot",
+"run",
+"sprite"
+],
+"78:16": [
+"Robot",
+"copter_start",
+"sprite"
+],
+"78:17": [
+"Robot",
+"copter_end",
+"sprite"
+],
+"79:0": [
+"Object",
+"rolling_rock",
+"sprite"
+],
+"80:0": [
+"TurtleRocket",
+"downright",
+"sprite"
+],
+"80:1": [
+"TurtleRocket",
+"upright",
+"sprite"
+],
+"80:2": [
+"TurtleRocket",
+"smoke",
+"sprite"
+],
+"80:3": [
+"TurtleRocket",
+"upright_to_downright",
+"sprite"
+],
+"83:0": [
+"Skeleton",
+"bone",
+"sprite"
+],
+"83:1": [
+"Skeleton",
+"skull",
+"sprite"
+],
+"83:2": [
+"Skeleton",
+"walk",
+"sprite"
+],
+"84:0": [
+"Pole",
+"diamondus_tree",
+"sprite"
+],
+"85:0": [
+"Common",
+"snow",
+"sprite"
+],
+"86:0": [
+"Bolly",
+"rocket",
+"sprite"
+],
+"86:1": [
+"Bolly",
+"mace_chain",
+"sprite"
+],
+"86:2": [
+"Bolly",
+"bottom",
+"sprite"
+],
+"86:3": [
+"Bolly",
+"top",
+"sprite"
+],
+"86:4": [
+"Bolly",
+"puff",
+"sprite"
+],
+"86:5": [
+"Bolly",
+"mace",
+"sprite"
+],
+"86:6": [
+"Bolly",
+"turret",
+"sprite"
+],
+"86:7": [
+"Bolly",
+"crosshairs",
+"sprite"
+],
+"87:0": [
+"Platform",
+"sonic",
+"sprite"
+],
+"87:1": [
+"Platform",
+"sonic_chain",
+"sprite"
+],
+"88:0": [
+"Sparks",
+"idle",
+"sprite"
+],
+"89:0": [
+"Spaz",
+"airboard",
+"sprite"
+],
+"89:1": [
+"Spaz",
+"airboard_turn",
+"sprite"
+],
+"89:2": [
+"Spaz",
+"buttstomp_end",
+"sprite"
+],
+"89:3": [
+"Spaz",
+"corpse",
+"sprite"
+],
+"89:4": [
+"Spaz",
+"die",
+"sprite"
+],
+"89:5": [
+"Spaz",
+"crouch_start",
+"sprite"
+],
+"89:6": [
+"Spaz",
+"crouch",
+"sprite"
+],
+"89:7": [
+"Spaz",
+"crouch_shoot",
+"sprite"
+],
+"89:8": [
+"Spaz",
+"crouch_end",
+"sprite"
+],
+"89:9": [
+"Spaz",
+"vine_walk",
+"sprite"
+],
+"89:10": [
+"Spaz",
+"eol",
+"sprite"
+],
+"89:11": [
+"Spaz",
+"fall",
+"sprite"
+],
+"89:12": [
+"Spaz",
+"buttstomp",
+"sprite"
+],
+"89:13": [
+"Spaz",
+"fall_end",
+"sprite"
+],
+"89:14": [
+"Spaz",
+"shoot",
+"sprite"
+],
+"89:15": [
+"Spaz",
+"shoot_ver",
+"sprite"
+],
+"89:16": [
+"Spaz",
+"shoot_end",
+"sprite"
+],
+"89:17": [
+"Spaz",
+"transform_frog_end",
+"sprite"
+],
+"89:18": [
+"Spaz",
+"vine_shoot_start",
+"sprite"
+],
+"89:19": [
+"Spaz",
+"vine_shoot_up_end",
+"sprite"
+],
+"89:20": [
+"Spaz",
+"vine_shoot_up",
+"sprite"
+],
+"89:21": [
+"Spaz",
+"vine_idle",
+"sprite"
+],
+"89:22": [
+"Spaz",
+"vine_idle_flavor",
+"sprite"
+],
+"89:23": [
+"Spaz",
+"vine_shoot_end",
+"sprite"
+],
+"89:24": [
+"Spaz",
+"vine_shoot",
+"sprite"
+],
+"89:25": [
+"Spaz",
+"copter",
+"sprite"
+],
+"89:26": [
+"Spaz",
+"copter_shoot_start",
+"sprite"
+],
+"89:27": [
+"Spaz",
+"copter_shoot",
+"sprite"
+],
+"89:28": [
+"Spaz",
+"pole_h",
+"sprite"
+],
+"89:29": [
+"Spaz",
+"hurt",
+"sprite"
+],
+"89:30": [
+"Spaz",
+"idle_flavor_1",
+"sprite"
+],
+"89:31": [
+"Spaz",
+"idle_flavor_2",
+"sprite"
+],
+"89:32": [
+"Spaz",
+"idle_flavor_3_placeholder",
+"sprite"
+],
+"89:33": [
+"Spaz",
+"idle_flavor_4",
+"sprite"
+],
+"89:34": [
+"Spaz",
+"idle_flavor_5",
+"sprite"
+],
+"89:35": [
+"Spaz",
+"vine_shoot_up_start",
+"sprite"
+],
+"89:36": [
+"Spaz",
+"fall_shoot",
+"sprite"
+],
+"89:37": [
+"Spaz",
+"jump_unknown_1",
+"sprite"
+],
+"89:38": [
+"Spaz",
+"jump_unknown_2",
+"sprite"
+],
+"89:39": [
+"Spaz",
+"jump",
+"sprite"
+],
+"89:40": [
+"Spaz",
+"ledge",
+"sprite"
+],
+"89:41": [
+"Spaz",
+"lift",
+"sprite"
+],
+"89:42": [
+"Spaz",
+"lift_end",
+"sprite"
+],
+"89:43": [
+"Spaz",
+"lift_start",
+"sprite"
+],
+"89:44": [
+"Spaz",
+"lookup_start",
+"sprite"
+],
+"89:45": [
+"Spaz",
+"dizzy_walk",
+"sprite"
+],
+"89:46": [
+"Spaz",
+"push",
+"sprite"
+],
+"89:47": [
+"Spaz",
+"shoot_start",
+"sprite"
+],
+"89:48": [
+"Spaz",
+"revup_start",
+"sprite"
+],
+"89:49": [
+"Spaz",
+"revup",
+"sprite"
+],
+"89:50": [
+"Spaz",
+"revup_end",
+"sprite"
+],
+"89:51": [
+"Spaz",
+"fall_diag",
+"sprite"
+],
+"89:52": [
+"Spaz",
+"jump_diag",
+"sprite"
+],
+"89:53": [
+"Spaz",
+"ball",
+"sprite"
+],
+"89:54": [
+"Spaz",
+"run",
+"sprite"
+],
+"89:55": [
+"Spaz",
+"dash_start",
+"sprite"
+],
+"89:56": [
+"Spaz",
+"dash",
+"sprite"
+],
+"89:57": [
+"Spaz",
+"dash_stop",
+"sprite"
+],
+"89:58": [
+"Spaz",
+"walk_stop",
+"sprite"
+],
+"89:59": [
+"Spaz",
+"run_stop",
+"sprite"
+],
+"89:60": [
+"Spaz",
+"spring",
+"sprite"
+],
+"89:61": [
+"Spaz",
+"idle",
+"sprite"
+],
+"89:62": [
+"Spaz",
+"sidekick",
+"sprite"
+],
+"89:63": [
+"Spaz",
+"sidekick_end",
+"sprite"
+],
+"89:64": [
+"Spaz",
+"sidekick_start",
+"sprite"
+],
+"89:65": [
+"Spaz",
+"dizzy",
+"sprite"
+],
+"89:66": [
+"Spaz",
+"swim_diag_downright",
+"sprite"
+],
+"89:67": [
+"Spaz",
+"swim_right",
+"sprite"
+],
+"89:68": [
+"Spaz",
+"swim_diag_right_to_downright",
+"sprite"
+],
+"89:69": [
+"Spaz",
+"swim_diag_right_to_upright",
+"sprite"
+],
+"89:70": [
+"Spaz",
+"swim_diag_upright",
+"sprite"
+],
+"89:71": [
+"Spaz",
+"swing",
+"sprite"
+],
+"89:72": [
+"Spaz",
+"warp_in",
+"sprite"
+],
+"89:73": [
+"Spaz",
+"warp_out_freefall",
+"sprite"
+],
+"89:74": [
+"Spaz",
+"freefall",
+"sprite"
+],
+"89:75": [
+"Spaz",
+"warp_in_freefall",
+"sprite"
+],
+"89:76": [
+"Spaz",
+"warp_out",
+"sprite"
+],
+"89:77": [
+"Spaz",
+"pole_v",
+"sprite"
+],
+"90:0": [
+"Spaz",
+"idle_flavor_3_start",
+"sprite"
+],
+"90:1": [
+"Spaz",
+"idle_flavor_3",
+"sprite"
+],
+"90:2": [
+"Spaz",
+"idle_flavor_3_bird",
+"sprite"
+],
+"90:3": [
+"Spaz",
+"idle_flavor_5_spaceship",
+"sprite"
+],
+"93:0": [
+"Object",
+"3d_spike",
+"sprite"
+],
+"93:1": [
+"Object",
+"3d_spike_chain",
+"sprite"
+],
+"95:0": [
+"Platform",
+"spike",
+"sprite"
+],
+"95:1": [
+"Platform",
+"spike_chain",
+"sprite"
+],
+"96:0": [
+"Spring",
+"spring_blue_ver",
+"sprite"
+],
+"96:1": [
+"Spring",
+"spring_blue_hor",
+"sprite"
+],
+"96:2": [
+"Spring",
+"spring_blue_ver_reverse",
+"sprite"
+],
+"96:3": [
+"Spring",
+"spring_green_ver_reverse",
+"sprite"
+],
+"96:4": [
+"Spring",
+"spring_red_ver_reverse",
+"sprite"
+],
+"96:5": [
+"Spring",
+"spring_green_ver",
+"sprite"
+],
+"96:6": [
+"Spring",
+"spring_green_hor",
+"sprite"
+],
+"96:7": [
+"Spring",
+"spring_red_ver",
+"sprite"
+],
+"96:8": [
+"Spring",
+"spring_red_hor",
+"sprite"
+],
+"97:0": [
+"Common",
+"steam_note",
+"sprite"
+],
+"99:0": [
+"Sucker",
+"walk_top",
+"sprite"
+],
+"99:1": [
+"Sucker",
+"inflated_deflate",
+"sprite"
+],
+"99:2": [
+"Sucker",
+"walk_ver_down",
+"sprite"
+],
+"99:3": [
+"Sucker",
+"fall",
+"sprite"
+],
+"99:4": [
+"Sucker",
+"inflated",
+"sprite"
+],
+"99:5": [
+"Sucker",
+"poof",
+"sprite"
+],
+"99:6": [
+"Sucker",
+"walk",
+"sprite"
+],
+"99:7": [
+"Sucker",
+"walk_ver_up",
+"sprite"
+],
+"100:0": [
+"TurtleTube",
+"idle",
+"sprite"
+],
+"101:0": [
+"TurtleBoss",
+"attack_start",
+"sprite"
+],
+"101:1": [
+"TurtleBoss",
+"attack_end",
+"sprite"
+],
+"101:2": [
+"TurtleBoss",
+"shell",
+"sprite"
+],
+"101:3": [
+"TurtleBoss",
+"mace",
+"sprite"
+],
+"101:4": [
+"TurtleBoss",
+"idle",
+"sprite"
+],
+"101:5": [
+"TurtleBoss",
+"walk",
+"sprite"
+],
+"102:0": [
+"TurtleTough",
+"walk",
+"sprite"
+],
+"103:0": [
+"Turtle",
+"attack",
+"sprite"
+],
+"103:1": [
+"Turtle",
+"idle_flavor",
+"sprite"
+],
+"103:2": [
+"Turtle",
+"turn_start",
+"sprite"
+],
+"103:3": [
+"Turtle",
+"turn_end",
+"sprite"
+],
+"103:4": [
+"Turtle",
+"shell_reverse",
+"sprite"
+],
+"103:5": [
+"Turtle",
+"shell",
+"sprite"
+],
+"103:6": [
+"Turtle",
+"idle",
+"sprite"
+],
+"103:7": [
+"Turtle",
+"walk",
+"sprite"
+],
+"104:0": [
+"Tweedle",
+"magnet_start",
+"sprite"
+],
+"104:1": [
+"Tweedle",
+"spin",
+"sprite"
+],
+"104:2": [
+"Tweedle",
+"magnet_end",
+"sprite"
+],
+"104:3": [
+"Tweedle",
+"shoot_jazz",
+"sprite"
+],
+"104:4": [
+"Tweedle",
+"shoot_spaz",
+"sprite"
+],
+"104:5": [
+"Tweedle",
+"hurt",
+"sprite"
+],
+"104:6": [
+"Tweedle",
+"idle",
+"sprite"
+],
+"104:7": [
+"Tweedle",
+"magnet",
+"sprite"
+],
+"104:8": [
+"Tweedle",
+"walk",
+"sprite"
+],
+"105:0": [
+"Uterus",
+"closed_start",
+"sprite"
+],
+"105:1": [
+"Crab",
+"fall",
+"sprite"
+],
+"105:2": [
+"Uterus",
+"closed_idle",
+"sprite"
+],
+"105:3": [
+"Uterus",
+"idle",
+"sprite"
+],
+"105:4": [
+"Crab",
+"fall_end",
+"sprite"
+],
+"105:5": [
+"Uterus",
+"closed_end",
+"sprite"
+],
+"105:6": [
+"Uterus",
+"shield",
+"sprite"
+],
+"105:7": [
+"Crab",
+"walk",
+"sprite"
+],
+"106:1": [
+"Object",
+"vine",
+"sprite"
+],
+"107:0": [
+"Object",
+"bonus10",
+"sprite"
+],
+"108:0": [
+"Object",
+"bonus100",
+"sprite"
+],
+"109:0": [
+"Object",
+"bonus20",
+"sprite"
+],
+"110:0": [
+"Object",
+"bonus50",
+"sprite"
+],
+"112:0": [
+"Witch",
+"attack",
+"sprite"
+],
+"112:1": [
+"Witch",
+"die",
+"sprite"
+],
+"112:2": [
+"Witch",
+"idle",
+"sprite"
+],
+"112:3": [
+"Witch",
+"bullet_magic",
+"sprite"
+],
+"113:0": [
+"Bilsy",
+"xmas_throw_fireball",
+"sprite"
+],
+"113:1": [
+"Bilsy",
+"xmas_appear",
+"sprite"
+],
+"113:2": [
+"Bilsy",
+"xmas_vanish",
+"sprite"
+],
+"113:3": [
+"Bilsy",
+"xmas_bullet_fireball",
+"sprite"
+],
+"113:4": [
+"Bilsy",
+"xmas_idle",
+"sprite"
+],
+"114:0": [
+"Lizard",
+"xmas_copter_attack",
+"sprite"
+],
+"114:1": [
+"Lizard",
+"xmas_bomb",
+"sprite"
+],
+"114:2": [
+"Lizard",
+"xmas_copter_idle",
+"sprite"
+],
+"114:3": [
+"Lizard",
+"xmas_copter",
+"sprite"
+],
+"114:4": [
+"Lizard",
+"xmas_walk",
+"sprite"
+],
+"115:0": [
+"Turtle",
+"xmas_attack",
+"sprite"
+],
+"115:1": [
+"Turtle",
+"xmas_idle_flavor",
+"sprite"
+],
+"115:2": [
+"Turtle",
+"xmas_turn_start",
+"sprite"
+],
+"115:3": [
+"Turtle",
+"xmas_turn_end",
+"sprite"
+],
+"115:4": [
+"Turtle",
+"xmas_shell_reverse",
+"sprite"
+],
+"115:5": [
+"Turtle",
+"xmas_shell",
+"sprite"
+],
+"115:6": [
+"Turtle",
+"xmas_idle",
+"sprite"
+],
+"115:7": [
+"Turtle",
+"xmas_walk",
+"sprite"
+],
+"116:0": [
+"Doggy",
+"xmas_attack",
+"sprite"
+],
+"116:1": [
+"Doggy",
+"xmas_walk",
+"sprite"
+],
+"117:0": [
+"Sparks",
+"ghost_idle",
+"sprite"
+]
+},
+"samples": {
+"0:0": [
+"Weapon",
+"shield_water_1",
+"sprite"
+],
+"0:1": [
+"Weapon",
+"shield_water_2",
+"sprite"
+],
+"0:2": [
+"Weapon",
+"bullet_bouncer_upgraded_1",
+"sprite"
+],
+"0:3": [
+"Weapon",
+"bullet_bouncer_upgraded_2",
+"sprite"
+],
+"0:4": [
+"Weapon",
+"bullet_bouncer_upgraded_3",
+"sprite"
+],
+"0:5": [
+"Weapon",
+"bullet_bouncer_upgraded_4",
+"sprite"
+],
+"0:6": [
+"Weapon",
+"bullet_bouncer_upgraded_5",
+"sprite"
+],
+"0:7": [
+"Weapon",
+"bullet_bouncer_upgraded_6",
+"sprite"
+],
+"0:8": [
+"Weapon",
+"tnt_explosion",
+"sprite"
+],
+"0:9": [
+"Weapon",
+"ricochet_contact",
+"sprite"
+],
+"0:10": [
+"Weapon",
+"ricochet_bullet_1",
+"sprite"
+],
+"0:11": [
+"Weapon",
+"ricochet_bullet_2",
+"sprite"
+],
+"0:12": [
+"Weapon",
+"ricochet_bullet_3",
+"sprite"
+],
+"0:13": [
+"Weapon",
+"shield_fire_noise_1",
+"sprite"
+],
+"0:14": [
+"Weapon",
+"shield_fire_noise_2",
+"sprite"
+],
+"0:15": [
+"Weapon",
+"bullet_bouncer_1",
+"sprite"
+],
+"0:16": [
+"Weapon",
+"bullet_blaster_jazz_1",
+"sprite"
+],
+"0:17": [
+"Weapon",
+"bullet_blaster_jazz_2",
+"sprite"
+],
+"0:18": [
+"Weapon",
+"bullet_blaster_jazz_3",
+"sprite"
+],
+"0:19": [
+"Weapon",
+"bullet_bouncer_2",
+"sprite"
+],
+"0:20": [
+"Weapon",
+"bullet_bouncer_3",
+"sprite"
+],
+"0:21": [
+"Weapon",
+"bullet_bouncer_4",
+"sprite"
+],
+"0:22": [
+"Weapon",
+"bullet_bouncer_5",
+"sprite"
+],
+"0:23": [
+"Weapon",
+"bullet_bouncer_6",
+"sprite"
+],
+"0:24": [
+"Weapon",
+"bullet_bouncer_7",
+"sprite"
+],
+"0:25": [
+"Weapon",
+"bullet_blaster_jazz_4",
+"sprite"
+],
+"0:26": [
+"Weapon",
+"bullet_pepper",
+"sprite"
+],
+"0:27": [
+"Weapon",
+"bullet_freezer_1",
+"sprite"
+],
+"0:28": [
+"Weapon",
+"bullet_freezer_2",
+"sprite"
+],
+"0:29": [
+"Weapon",
+"bullet_freezer_upgraded_1",
+"sprite"
+],
+"0:30": [
+"Weapon",
+"bullet_freezer_upgraded_2",
+"sprite"
+],
+"0:31": [
+"Weapon",
+"bullet_freezer_upgraded_3",
+"sprite"
+],
+"0:32": [
+"Weapon",
+"bullet_freezer_upgraded_4",
+"sprite"
+],
+"0:33": [
+"Weapon",
+"bullet_freezer_upgraded_5",
+"sprite"
+],
+"0:34": [
+"Weapon",
+"bullet_electro_1",
+"sprite"
+],
+"0:35": [
+"Weapon",
+"bullet_electro_2",
+"sprite"
+],
+"0:36": [
+"Weapon",
+"bullet_electro_3",
+"sprite"
+],
+"0:37": [
+"Weapon",
+"bullet_rf",
+"sprite"
+],
+"0:38": [
+"Weapon",
+"bullet_seeker",
+"sprite"
+],
+"0:39": [
+"Weapon",
+"bullet_blaster_spaz_1",
+"sprite"
+],
+"0:40": [
+"Weapon",
+"bullet_blaster_spaz_2",
+"sprite"
+],
+"0:41": [
+"Weapon",
+"bullet_blaster_spaz_3",
+"sprite"
+],
+"1:0": [
+"Bat",
+"noise",
+"sprite"
+],
+"7:0": [
+"Bilsy",
+"appear_2",
+"sprite"
+],
+"7:1": [
+"Bilsy",
+"snap",
+"sprite"
+],
+"7:2": [
+"Bilsy",
+"throw_fireball",
+"sprite"
+],
+"7:3": [
+"Bilsy",
+"fire_start",
+"sprite"
+],
+"7:4": [
+"Bilsy",
+"scary",
+"sprite"
+],
+"7:5": [
+"Bilsy",
+"thunder",
+"sprite"
+],
+"7:6": [
+"Bilsy",
+"appear_1",
+"sprite"
+],
+"11:0": [
+"Unknown",
+"unknown_bonus1",
+"sprite"
+],
+"11:1": [
+"Unknown",
+"unknown_bonusblub",
+"sprite"
+],
+"14:0": [
+"Bubba",
+"hop_1",
+"sprite"
+],
+"14:1": [
+"Bubba",
+"hop_2",
+"sprite"
+],
+"14:2": [
+"Bubba",
+"unknown_bubbaexplo",
+"sprite"
+],
+"14:3": [
+"Bubba",
+"unknown_frog2",
+"sprite"
+],
+"14:4": [
+"Bubba",
+"unknown_frog3",
+"sprite"
+],
+"14:5": [
+"Bubba",
+"unknown_frog4",
+"sprite"
+],
+"14:6": [
+"Bubba",
+"unknown_frog5",
+"sprite"
+],
+"14:7": [
+"Bubba",
+"sneeze",
+"sprite"
+],
+"14:8": [
+"Bubba",
+"tornado",
+"sprite"
+],
+"15:0": [
+"Bee",
+"noise",
+"sprite"
+],
+"20:0": [
+"Caterpillar",
+"dizzy",
+"sprite"
+],
+"22:0": [
+"Common",
+"char_airboard",
+"sprite"
+],
+"22:1": [
+"Common",
+"char_airboard_turn_1",
+"sprite"
+],
+"22:2": [
+"Common",
+"char_airboard_turn_2",
+"sprite"
+],
+"22:3": [
+"Common",
+"unknown_base",
+"sprite"
+],
+"22:4": [
+"Common",
+"powerup_shield_damage_1",
+"sprite"
+],
+"22:5": [
+"Common",
+"powerup_shield_damage_2",
+"sprite"
+],
+"22:6": [
+"Common",
+"bomb",
+"sprite"
+],
+"22:7": [
+"Birdy",
+"fly_1",
+"sprite"
+],
+"22:8": [
+"Birdy",
+"fly_2",
+"sprite"
+],
+"22:9": [
+"Weapon",
+"bouncer",
+"sprite"
+],
+"22:10": [
+"Common",
+"blub1",
+"sprite"
+],
+"22:11": [
+"Weapon",
+"shield_water_bullet",
+"sprite"
+],
+"22:12": [
+"Weapon",
+"shield_fire_bullet",
+"sprite"
+],
+"22:13": [
+"Common",
+"ambient_fire",
+"sprite"
+],
+"22:14": [
+"Object",
+"container_barrel_break",
+"sprite"
+],
+"22:15": [
+"Common",
+"powerup_shield_timer",
+"sprite"
+],
+"22:16": [
+"Pickup",
+"coin",
+"sprite"
+],
+"22:17": [
+"Common",
+"scenery_collapse",
+"sprite"
+],
+"22:18": [
+"Common",
+"cup",
+"sprite"
+],
+"22:19": [
+"Common",
+"scenery_destruct",
+"sprite"
+],
+"22:20": [
+"Common",
+"down",
+"sprite"
+],
+"22:21": [
+"Common",
+"downfl2",
+"sprite"
+],
+"22:22": [
+"Pickup",
+"food_drink_1",
+"sprite"
+],
+"22:23": [
+"Pickup",
+"food_drink_2",
+"sprite"
+],
+"22:24": [
+"Pickup",
+"food_drink_3",
+"sprite"
+],
+"22:25": [
+"Pickup",
+"food_drink_4",
+"sprite"
+],
+"22:26": [
+"Pickup",
+"food_edible_1",
+"sprite"
+],
+"22:27": [
+"Pickup",
+"food_edible_2",
+"sprite"
+],
+"22:28": [
+"Pickup",
+"food_edible_3",
+"sprite"
+],
+"22:29": [
+"Pickup",
+"food_edible_4",
+"sprite"
+],
+"22:30": [
+"Pickup",
+"shield_lightning_bullet_1",
+"sprite"
+],
+"22:31": [
+"Pickup",
+"shield_lightning_bullet_2",
+"sprite"
+],
+"22:32": [
+"Pickup",
+"shield_lightning_bullet_3",
+"sprite"
+],
+"22:33": [
+"Weapon",
+"tnt",
+"sprite"
+],
+"22:34": [
+"Weapon",
+"wall_poof",
+"sprite"
+],
+"22:35": [
+"Weapon",
+"toaster",
+"sprite"
+],
+"22:36": [
+"Common",
+"flap",
+"sprite"
+],
+"22:37": [
+"Common",
+"swish_9",
+"sprite"
+],
+"22:38": [
+"Common",
+"swish_10",
+"sprite"
+],
+"22:39": [
+"Common",
+"swish_11",
+"sprite"
+],
+"22:40": [
+"Common",
+"swish_12",
+"sprite"
+],
+"22:41": [
+"Common",
+"swish_13",
+"sprite"
+],
+"22:42": [
+"Object",
+"gem_giant_break",
+"sprite"
+],
+"22:43": [
+"Object",
+"powerup_break",
+"sprite"
+],
+"22:44": [
+"Common",
+"gunsm1",
+"sprite"
+],
+"22:45": [
+"Pickup",
+"1up",
+"sprite"
+],
+"22:46": [
+"Unknown",
+"common_head",
+"sprite"
+],
+"22:47": [
+"Common",
+"copter_noise",
+"sprite"
+],
+"22:48": [
+"Common",
+"hibell",
+"sprite"
+],
+"22:49": [
+"Common",
+"holyflut",
+"sprite"
+],
+"22:50": [
+"UI",
+"weapon_change",
+"sprite"
+],
+"22:51": [
+"Common",
+"ice_break",
+"sprite"
+],
+"22:52": [
+"Object",
+"shell_noise_1",
+"sprite"
+],
+"22:53": [
+"Object",
+"shell_noise_2",
+"sprite"
+],
+"22:54": [
+"Object",
+"shell_noise_3",
+"sprite"
+],
+"22:55": [
+"Object",
+"shell_noise_4",
+"sprite"
+],
+"22:56": [
+"Object",
+"shell_noise_5",
+"sprite"
+],
+"22:57": [
+"Object",
+"shell_noise_6",
+"sprite"
+],
+"22:58": [
+"Object",
+"shell_noise_7",
+"sprite"
+],
+"22:59": [
+"Object",
+"shell_noise_8",
+"sprite"
+],
+"22:60": [
+"Object",
+"shell_noise_9",
+"sprite"
+],
+"22:61": [
+"Unknown",
+"common_itemtre",
+"sprite"
+],
+"22:62": [
+"Common",
+"char_jump",
+"sprite"
+],
+"22:63": [
+"Common",
+"char_jump_alt",
+"sprite"
+],
+"22:64": [
+"Common",
+"land1",
+"sprite"
+],
+"22:65": [
+"Common",
+"land2",
+"sprite"
+],
+"22:66": [
+"Common",
+"land3",
+"sprite"
+],
+"22:67": [
+"Common",
+"land4",
+"sprite"
+],
+"22:68": [
+"Common",
+"land5",
+"sprite"
+],
+"22:69": [
+"Common",
+"char_land",
+"sprite"
+],
+"22:70": [
+"Common",
+"loadjazz",
+"sprite"
+],
+"22:71": [
+"Common",
+"loadspaz",
+"sprite"
+],
+"22:72": [
+"Common",
+"metalhit",
+"sprite"
+],
+"22:73": [
+"Unimplemented",
+"powerup_jazz1_style",
+"sprite"
+],
+"22:74": [
+"Object",
+"bonus_not_enough_coins",
+"sprite"
+],
+"22:75": [
+"Pickup",
+"gem",
+"sprite"
+],
+"22:76": [
+"Pickup",
+"ammo",
+"sprite"
+],
+"22:77": [
+"Common",
+"pistol1",
+"sprite"
+],
+"22:78": [
+"Common",
+"plop_5",
+"sprite"
+],
+"22:79": [
+"Common",
+"plop_1",
+"sprite"
+],
+"22:80": [
+"Common",
+"plop_2",
+"sprite"
+],
+"22:81": [
+"Common",
+"plop_3",
+"sprite"
+],
+"22:82": [
+"Common",
+"plop_4",
+"sprite"
+],
+"22:83": [
+"Common",
+"plop_6",
+"sprite"
+],
+"22:84": [
+"Spaz",
+"idle_flavor_4_spaceship",
+"sprite"
+],
+"22:85": [
+"Common",
+"copter_pre",
+"sprite"
+],
+"22:86": [
+"Common",
+"char_revup",
+"sprite"
+],
+"22:87": [
+"Common",
+"ringgun1",
+"sprite"
+],
+"22:88": [
+"Common",
+"ringgun2",
+"sprite"
+],
+"22:89": [
+"Weapon",
+"shield_lightning_noise_1",
+"sprite"
+],
+"22:90": [
+"Weapon",
+"shield_lightning_noise_2",
+"sprite"
+],
+"22:91": [
+"Weapon",
+"shield_lightning_noise_3",
+"sprite"
+],
+"22:92": [
+"Common",
+"shldof3",
+"sprite"
+],
+"22:93": [
+"Common",
+"slip",
+"sprite"
+],
+"22:94": [
+"Common",
+"splat_1",
+"sprite"
+],
+"22:95": [
+"Common",
+"splat_2",
+"sprite"
+],
+"22:96": [
+"Common",
+"splat_3",
+"sprite"
+],
+"22:97": [
+"Common",
+"splat_4",
+"sprite"
+],
+"22:98": [
+"Common",
+"splat_5",
+"sprite"
+],
+"22:99": [
+"Common",
+"splat_6",
+"sprite"
+],
+"22:100": [
+"Spring",
+"spring_2",
+"sprite"
+],
+"22:101": [
+"Common",
+"steam_low",
+"sprite"
+],
+"22:102": [
+"Common",
+"step",
+"sprite"
+],
+"22:103": [
+"Common",
+"stretch",
+"sprite"
+],
+"22:104": [
+"Common",
+"swish_1",
+"sprite"
+],
+"22:105": [
+"Common",
+"swish_2",
+"sprite"
+],
+"22:106": [
+"Common",
+"swish_3",
+"sprite"
+],
+"22:107": [
+"Common",
+"swish_4",
+"sprite"
+],
+"22:108": [
+"Common",
+"swish_5",
+"sprite"
+],
+"22:109": [
+"Common",
+"swish_6",
+"sprite"
+],
+"22:110": [
+"Common",
+"swish_7",
+"sprite"
+],
+"22:111": [
+"Common",
+"swish_8",
+"sprite"
+],
+"22:112": [
+"Common",
+"warp_in",
+"sprite"
+],
+"22:113": [
+"Common",
+"warp_out",
+"sprite"
+],
+"22:114": [
+"Common",
+"char_double_jump",
+"sprite"
+],
+"22:115": [
+"Common",
+"water_splash",
+"sprite"
+],
+"22:116": [
+"Object",
+"container_crate_break",
+"sprite"
+],
+"24:0": [
+"Demon",
+"attack",
+"sprite"
+],
+"27:0": [
+"Devan",
+"spit_fireball",
+"sprite"
+],
+"27:1": [
+"Devan",
+"flap",
+"sprite"
+],
+"27:2": [
+"Devan",
+"unknown_frog4",
+"sprite"
+],
+"27:3": [
+"Devan",
+"jump_up",
+"sprite"
+],
+"27:4": [
+"Devan",
+"laugh",
+"sprite"
+],
+"27:5": [
+"Devan",
+"shoot",
+"sprite"
+],
+"27:6": [
+"Devan",
+"transform_demon_stretch_2",
+"sprite"
+],
+"27:7": [
+"Devan",
+"transform_demon_stretch_4",
+"sprite"
+],
+"27:8": [
+"Devan",
+"transform_demon_stretch_1",
+"sprite"
+],
+"27:9": [
+"Devan",
+"transform_demon_stretch_3",
+"sprite"
+],
+"27:10": [
+"Devan",
+"unknown_vanish",
+"sprite"
+],
+"27:11": [
+"Devan",
+"unknown_whistledescending2",
+"sprite"
+],
+"27:12": [
+"Devan",
+"transform_demon_wings",
+"sprite"
+],
+"29:0": [
+"Doggy",
+"attack",
+"sprite"
+],
+"29:1": [
+"Doggy",
+"noise",
+"sprite"
+],
+"29:2": [
+"Doggy",
+"woof_1",
+"sprite"
+],
+"29:3": [
+"Doggy",
+"woof_2",
+"sprite"
+],
+"29:4": [
+"Doggy",
+"woof_3",
+"sprite"
+],
+"31:0": [
+"Dragonfly",
+"noise",
+"sprite"
+],
+"33:0": [
+"Cinematics",
+"ending_eva_thankyou",
+"sprite"
+],
+"34:0": [
+"Jazz",
+"level_complete",
+"sprite"
+],
+"35:0": [
+"Lori",
+"level_complete",
+"sprite"
+],
+"36:0": [
+"Spaz",
+"level_complete",
+"sprite"
+],
+"38:0": [
+"Eva",
+"Kiss1",
+"sprite"
+],
+"38:1": [
+"Eva",
+"Kiss2",
+"sprite"
+],
+"38:2": [
+"Eva",
+"Kiss3",
+"sprite"
+],
+"38:3": [
+"Eva",
+"Kiss4",
+"sprite"
+],
+"40:0": [
+"Unknown",
+"unknown_fan",
+"sprite"
+],
+"41:0": [
+"FatChick",
+"attack_1",
+"sprite"
+],
+"41:1": [
+"FatChick",
+"attack_2",
+"sprite"
+],
+"41:2": [
+"FatChick",
+"attack_3",
+"sprite"
+],
+"42:0": [
+"Fencer",
+"attack",
+"sprite"
+],
+"47:0": [
+"Frog",
+"noise_1",
+"sprite"
+],
+"47:1": [
+"Frog",
+"noise_2",
+"sprite"
+],
+"47:2": [
+"Frog",
+"noise_3",
+"sprite"
+],
+"47:3": [
+"Frog",
+"noise_4",
+"sprite"
+],
+"47:4": [
+"Frog",
+"noise_5",
+"sprite"
+],
+"47:5": [
+"Frog",
+"noise_6",
+"sprite"
+],
+"47:6": [
+"Frog",
+"transform",
+"sprite"
+],
+"47:7": [
+"Frog",
+"tongue",
+"sprite"
+],
+"50:0": [
+"Unimplemented",
+"boxing_glove_hit",
+"sprite"
+],
+"52:0": [
+"MadderHatter",
+"cup",
+"sprite"
+],
+"52:1": [
+"MadderHatter",
+"hat",
+"sprite"
+],
+"52:2": [
+"MadderHatter",
+"spit",
+"sprite"
+],
+"52:3": [
+"MadderHatter",
+"splash_1",
+"sprite"
+],
+"52:4": [
+"MadderHatter",
+"splash_2",
+"sprite"
+],
+"54:0": [
+"Cinematics",
+"opening_blow",
+"sprite"
+],
+"54:1": [
+"Cinematics",
+"opening_boom_1",
+"sprite"
+],
+"54:2": [
+"Cinematics",
+"opening_boom_2",
+"sprite"
+],
+"54:3": [
+"Cinematics",
+"opening_brake",
+"sprite"
+],
+"54:4": [
+"Cinematics",
+"opening_end_shoot",
+"sprite"
+],
+"54:5": [
+"Cinematics",
+"opening_rope_grab",
+"sprite"
+],
+"54:6": [
+"Cinematics",
+"opening_sweep_1",
+"sprite"
+],
+"54:7": [
+"Cinematics",
+"opening_sweep_2",
+"sprite"
+],
+"54:8": [
+"Cinematics",
+"opening_sweep_3",
+"sprite"
+],
+"54:9": [
+"Cinematics",
+"opening_gun_noise_1",
+"sprite"
+],
+"54:10": [
+"Cinematics",
+"opening_gun_noise_2",
+"sprite"
+],
+"54:11": [
+"Cinematics",
+"opening_gun_noise_3",
+"sprite"
+],
+"54:12": [
+"Cinematics",
+"opening_helicopter",
+"sprite"
+],
+"54:13": [
+"Cinematics",
+"opening_hit_spaz",
+"sprite"
+],
+"54:14": [
+"Cinematics",
+"opening_hit_turtle",
+"sprite"
+],
+"54:15": [
+"Cinematics",
+"opening_vo_1",
+"sprite"
+],
+"54:16": [
+"Cinematics",
+"opening_gun_blow",
+"sprite"
+],
+"54:17": [
+"Cinematics",
+"opening_insect",
+"sprite"
+],
+"54:18": [
+"Cinematics",
+"opening_trolley_push",
+"sprite"
+],
+"54:19": [
+"Cinematics",
+"opening_land",
+"sprite"
+],
+"54:20": [
+"Cinematics",
+"opening_turtle_growl",
+"sprite"
+],
+"54:21": [
+"Cinematics",
+"opening_turtle_grunt",
+"sprite"
+],
+"54:22": [
+"Cinematics",
+"opening_rock",
+"sprite"
+],
+"54:23": [
+"Cinematics",
+"opening_rope_1",
+"sprite"
+],
+"54:24": [
+"Cinematics",
+"opening_rope_2",
+"sprite"
+],
+"54:25": [
+"Cinematics",
+"opening_run",
+"sprite"
+],
+"54:26": [
+"Cinematics",
+"opening_shot",
+"sprite"
+],
+"54:27": [
+"Cinematics",
+"opening_shot_grn",
+"sprite"
+],
+"54:28": [
+"Cinematics",
+"opening_slide",
+"sprite"
+],
+"54:29": [
+"Cinematics",
+"opening_end_sfx",
+"sprite"
+],
+"54:30": [
+"Cinematics",
+"opening_swish_1",
+"sprite"
+],
+"54:31": [
+"Cinematics",
+"opening_swish_2",
+"sprite"
+],
+"54:32": [
+"Cinematics",
+"opening_swish_3",
+"sprite"
+],
+"54:33": [
+"Cinematics",
+"opening_swish_4",
+"sprite"
+],
+"54:34": [
+"Cinematics",
+"opening_turtle_ugh",
+"sprite"
+],
+"54:35": [
+"Cinematics",
+"opening_up_1",
+"sprite"
+],
+"54:36": [
+"Cinematics",
+"opening_up_2",
+"sprite"
+],
+"54:37": [
+"Cinematics",
+"opening_wind",
+"sprite"
+],
+"57:0": [
+"Jazz",
+"ledge",
+"sprite"
+],
+"57:1": [
+"Jazz",
+"hurt_1",
+"sprite"
+],
+"57:2": [
+"Jazz",
+"hurt_2",
+"sprite"
+],
+"57:3": [
+"Jazz",
+"hurt_3",
+"sprite"
+],
+"57:4": [
+"Jazz",
+"hurt_4",
+"sprite"
+],
+"57:5": [
+"Jazz",
+"idle_flavor_3",
+"sprite"
+],
+"57:6": [
+"Jazz",
+"hurt_5",
+"sprite"
+],
+"57:7": [
+"Jazz",
+"hurt_6",
+"sprite"
+],
+"57:8": [
+"Jazz",
+"hurt_7",
+"sprite"
+],
+"57:9": [
+"Jazz",
+"hurt_8",
+"sprite"
+],
+"57:10": [
+"Jazz",
+"carrot",
+"sprite"
+],
+"57:11": [
+"Jazz",
+"idle_flavor_4",
+"sprite"
+],
+"59:0": [
+"LabRat",
+"attack",
+"sprite"
+],
+"59:1": [
+"LabRat",
+"noise_1",
+"sprite"
+],
+"59:2": [
+"LabRat",
+"noise_2",
+"sprite"
+],
+"59:3": [
+"LabRat",
+"noise_3",
+"sprite"
+],
+"59:4": [
+"LabRat",
+"noise_4",
+"sprite"
+],
+"59:5": [
+"LabRat",
+"noise_5",
+"sprite"
+],
+"60:0": [
+"Lizard",
+"noise_1",
+"sprite"
+],
+"60:1": [
+"Lizard",
+"noise_2",
+"sprite"
+],
+"60:2": [
+"Lizard",
+"noise_3",
+"sprite"
+],
+"60:3": [
+"Lizard",
+"noise_4",
+"sprite"
+],
+"63:0": [
+"Lori",
+"die",
+"sprite"
+],
+"63:1": [
+"Lori",
+"hurt_1",
+"sprite"
+],
+"63:2": [
+"Lori",
+"hurt_2",
+"sprite"
+],
+"63:3": [
+"Lori",
+"hurt_3",
+"sprite"
+],
+"63:4": [
+"Lori",
+"hurt_4",
+"sprite"
+],
+"63:5": [
+"Lori",
+"hurt_5",
+"sprite"
+],
+"63:6": [
+"Lori",
+"hurt_6",
+"sprite"
+],
+"63:7": [
+"Lori",
+"hurt_7",
+"sprite"
+],
+"63:8": [
+"Lori",
+"hurt_8",
+"sprite"
+],
+"63:9": [
+"Lori",
+"unknown_mic1",
+"sprite"
+],
+"63:10": [
+"Lori",
+"unknown_mic2",
+"sprite"
+],
+"63:11": [
+"Lori",
+"sidekick",
+"sprite"
+],
+"63:12": [
+"Lori",
+"fall",
+"sprite"
+],
+"63:13": [
+"Lori",
+"jump_1",
+"sprite"
+],
+"63:14": [
+"Lori",
+"jump_2",
+"sprite"
+],
+"63:15": [
+"Lori",
+"jump_3",
+"sprite"
+],
+"63:16": [
+"Lori",
+"jump_4",
+"sprite"
+],
+"63:17": [
+"Lori",
+"unused_touch",
+"sprite"
+],
+"63:18": [
+"Lori",
+"yahoo",
+"sprite"
+],
+"66:0": [
+"UI",
+"select_1",
+"sprite"
+],
+"66:1": [
+"UI",
+"select_2",
+"sprite"
+],
+"66:2": [
+"UI",
+"select_3",
+"sprite"
+],
+"66:3": [
+"UI",
+"select_4",
+"sprite"
+],
+"66:4": [
+"UI",
+"select_5",
+"sprite"
+],
+"66:5": [
+"UI",
+"select_6",
+"sprite"
+],
+"66:6": [
+"UI",
+"select_7",
+"sprite"
+],
+"66:7": [
+"UI",
+"type_char",
+"sprite"
+],
+"66:8": [
+"UI",
+"type_enter",
+"sprite"
+],
+"67:0": [
+"Monkey",
+"banana_splat",
+"sprite"
+],
+"67:1": [
+"Monkey",
+"banana_throw",
+"sprite"
+],
+"68:0": [
+"Moth",
+"flap",
+"sprite"
+],
+"71:0": [
+"Object",
+"checkpoint_open",
+"sprite"
+],
+"71:1": [
+"Object",
+"copter",
+"sprite"
+],
+"71:2": [
+"Unknown",
+"unknown_pickup_stretch1a",
+"sprite"
+],
+"72:0": [
+"Pinball",
+"bumper_hit",
+"sprite"
+],
+"72:1": [
+"Pinball",
+"paddle_hit_1",
+"sprite"
+],
+"72:2": [
+"Pinball",
+"paddle_hit_2",
+"sprite"
+],
+"72:3": [
+"Pinball",
+"paddle_hit_3",
+"sprite"
+],
+"72:4": [
+"Pinball",
+"paddle_hit_4",
+"sprite"
+],
+"75:0": [
+"Queen",
+"spring",
+"sprite"
+],
+"75:1": [
+"Queen",
+"scream",
+"sprite"
+],
+"76:0": [
+"Rapier",
+"die",
+"sprite"
+],
+"76:1": [
+"Rapier",
+"noise_1",
+"sprite"
+],
+"76:2": [
+"Rapier",
+"noise_2",
+"sprite"
+],
+"76:3": [
+"Rapier",
+"noise_3",
+"sprite"
+],
+"76:4": [
+"Rapier",
+"clunk",
+"sprite"
+],
+"78:0": [
+"Robot",
+"unknown_big1",
+"sprite"
+],
+"78:1": [
+"Robot",
+"unknown_big2",
+"sprite"
+],
+"78:2": [
+"Robot",
+"unknown_can1",
+"sprite"
+],
+"78:3": [
+"Robot",
+"unknown_can2",
+"sprite"
+],
+"78:4": [
+"Robot",
+"attack_start",
+"sprite"
+],
+"78:5": [
+"Robot",
+"attack_end",
+"sprite"
+],
+"78:6": [
+"Robot",
+"attack",
+"sprite"
+],
+"78:7": [
+"Robot",
+"unknown_hydropuf",
+"sprite"
+],
+"78:8": [
+"Robot",
+"unknown_idle1",
+"sprite"
+],
+"78:9": [
+"Robot",
+"unknown_idle2",
+"sprite"
+],
+"78:10": [
+"Robot",
+"unknown_jmpcan1",
+"sprite"
+],
+"78:11": [
+"Robot",
+"unknown_jmpcan10",
+"sprite"
+],
+"78:12": [
+"Robot",
+"unknown_jmpcan2",
+"sprite"
+],
+"78:13": [
+"Robot",
+"unknown_jmpcan3",
+"sprite"
+],
+"78:14": [
+"Robot",
+"unknown_jmpcan4",
+"sprite"
+],
+"78:15": [
+"Robot",
+"unknown_jmpcan5",
+"sprite"
+],
+"78:16": [
+"Robot",
+"unknown_jmpcan6",
+"sprite"
+],
+"78:17": [
+"Robot",
+"unknown_jmpcan7",
+"sprite"
+],
+"78:18": [
+"Robot",
+"unknown_jmpcan8",
+"sprite"
+],
+"78:19": [
+"Robot",
+"unknown_jmpcan9",
+"sprite"
+],
+"78:20": [
+"Robot",
+"shrapnel_1",
+"sprite"
+],
+"78:21": [
+"Robot",
+"shrapnel_2",
+"sprite"
+],
+"78:22": [
+"Robot",
+"shrapnel_3",
+"sprite"
+],
+"78:23": [
+"Robot",
+"shrapnel_4",
+"sprite"
+],
+"78:24": [
+"Robot",
+"shrapnel_5",
+"sprite"
+],
+"78:25": [
+"Robot",
+"attack_start_shutter",
+"sprite"
+],
+"78:26": [
+"Robot",
+"unknown_out",
+"sprite"
+],
+"78:27": [
+"Robot",
+"unknown_poep",
+"sprite"
+],
+"78:28": [
+"Robot",
+"unknown_pole",
+"sprite"
+],
+"78:29": [
+"Robot",
+"unknown_shoot",
+"sprite"
+],
+"78:30": [
+"Robot",
+"walk_1",
+"sprite"
+],
+"78:31": [
+"Robot",
+"walk_2",
+"sprite"
+],
+"78:32": [
+"Robot",
+"walk_3",
+"sprite"
+],
+"79:0": [
+"Object",
+"rolling_rock",
+"sprite"
+],
+"81:0": [
+"Common",
+"sugar_rush",
+"sprite"
+],
+"82:0": [
+"Common",
+"science_noise",
+"sprite"
+],
+"83:0": [
+"Skeleton",
+"bone_1",
+"sprite"
+],
+"83:1": [
+"Skeleton",
+"bone_2",
+"sprite"
+],
+"83:2": [
+"Skeleton",
+"bone_3",
+"sprite"
+],
+"83:3": [
+"Skeleton",
+"bone_4",
+"sprite"
+],
+"83:4": [
+"Skeleton",
+"bone_5",
+"sprite"
+],
+"83:5": [
+"Skeleton",
+"bone_6",
+"sprite"
+],
+"84:0": [
+"Pole",
+"fall_start",
+"sprite"
+],
+"84:1": [
+"Pole",
+"fall_end",
+"sprite"
+],
+"86:0": [
+"Bolly",
+"missile_1",
+"sprite"
+],
+"86:1": [
+"Bolly",
+"missile_2",
+"sprite"
+],
+"86:2": [
+"Bolly",
+"missile_3",
+"sprite"
+],
+"86:3": [
+"Bolly",
+"noise",
+"sprite"
+],
+"86:4": [
+"Bolly",
+"lock_on",
+"sprite"
+],
+"92:0": [
+"Spaz",
+"hurt_1",
+"sprite"
+],
+"92:1": [
+"Spaz",
+"hurt_2",
+"sprite"
+],
+"92:2": [
+"Spaz",
+"idle_flavor_3_bird_land",
+"sprite"
+],
+"92:3": [
+"Spaz",
+"idle_flavor_4",
+"sprite"
+],
+"92:4": [
+"Spaz",
+"idle_flavor_3_bird",
+"sprite"
+],
+"92:5": [
+"Spaz",
+"idle_flavor_3_eat",
+"sprite"
+],
+"92:6": [
+"Spaz",
+"jump_1",
+"sprite"
+],
+"92:7": [
+"Spaz",
+"jump_2",
+"sprite"
+],
+"92:8": [
+"Spaz",
+"idle_flavor_2",
+"sprite"
+],
+"92:9": [
+"Spaz",
+"hihi",
+"sprite"
+],
+"92:10": [
+"Spaz",
+"spring_1",
+"sprite"
+],
+"92:11": [
+"Spaz",
+"double_jump",
+"sprite"
+],
+"92:12": [
+"Spaz",
+"sidekick_1",
+"sprite"
+],
+"92:13": [
+"Spaz",
+"sidekick_2",
+"sprite"
+],
+"92:14": [
+"Spaz",
+"spring_2",
+"sprite"
+],
+"92:15": [
+"Spaz",
+"oooh",
+"sprite"
+],
+"92:16": [
+"Spaz",
+"ledge",
+"sprite"
+],
+"92:17": [
+"Spaz",
+"jump_3",
+"sprite"
+],
+"92:18": [
+"Spaz",
+"jump_4",
+"sprite"
+],
+"96:0": [
+"Spring",
+"spring_ver_down",
+"sprite"
+],
+"96:1": [
+"Spring",
+"spring",
+"sprite"
+],
+"97:0": [
+"Common",
+"steam_note",
+"sprite"
+],
+"98:0": [
+"Unimplemented",
+"dizzy",
+"sprite"
+],
+"99:0": [
+"Sucker",
+"deflate",
+"sprite"
+],
+"99:1": [
+"Sucker",
+"pinch_1",
+"sprite"
+],
+"99:2": [
+"Sucker",
+"pinch_2",
+"sprite"
+],
+"99:3": [
+"Sucker",
+"pinch_3",
+"sprite"
+],
+"99:4": [
+"Sucker",
+"plop_1",
+"sprite"
+],
+"99:5": [
+"Sucker",
+"plop_2",
+"sprite"
+],
+"99:6": [
+"Sucker",
+"plop_3",
+"sprite"
+],
+"99:7": [
+"Sucker",
+"plop_4",
+"sprite"
+],
+"99:8": [
+"Sucker",
+"up",
+"sprite"
+],
+"101:0": [
+"TurtleBoss",
+"attack_start",
+"sprite"
+],
+"101:1": [
+"TurtleBoss",
+"attack_end",
+"sprite"
+],
+"101:2": [
+"TurtleBoss",
+"mace",
+"sprite"
+],
+"103:0": [
+"Turtle",
+"attack_bite",
+"sprite"
+],
+"103:1": [
+"Turtle",
+"turn_start",
+"sprite"
+],
+"103:2": [
+"Turtle",
+"shell_collide",
+"sprite"
+],
+"103:3": [
+"Turtle",
+"idle_1",
+"sprite"
+],
+"103:4": [
+"Turtle",
+"idle_2",
+"sprite"
+],
+"103:5": [
+"Turtle",
+"attack_neck",
+"sprite"
+],
+"103:6": [
+"Turtle",
+"noise_1",
+"sprite"
+],
+"103:7": [
+"Turtle",
+"noise_2",
+"sprite"
+],
+"103:8": [
+"Turtle",
+"noise_3",
+"sprite"
+],
+"103:9": [
+"Turtle",
+"noise_4",
+"sprite"
+],
+"103:10": [
+"Turtle",
+"turn_end",
+"sprite"
+],
+"105:0": [
+"Uterus",
+"closed_start",
+"sprite"
+],
+"105:1": [
+"Uterus",
+"closed_end",
+"sprite"
+],
+"105:2": [
+"Crab",
+"noise_1",
+"sprite"
+],
+"105:3": [
+"Crab",
+"noise_2",
+"sprite"
+],
+"105:4": [
+"Crab",
+"noise_3",
+"sprite"
+],
+"105:5": [
+"Crab",
+"noise_4",
+"sprite"
+],
+"105:6": [
+"Crab",
+"noise_5",
+"sprite"
+],
+"105:7": [
+"Crab",
+"noise_6",
+"sprite"
+],
+"105:8": [
+"Crab",
+"noise_7",
+"sprite"
+],
+"105:9": [
+"Crab",
+"noise_8",
+"sprite"
+],
+"105:10": [
+"Uterus",
+"scream",
+"sprite"
+],
+"105:11": [
+"Crab",
+"step_1",
+"sprite"
+],
+"105:12": [
+"Crab",
+"step_2",
+"sprite"
+],
+"111:0": [
+"Common",
+"wind",
+"sprite"
+],
+"112:0": [
+"Witch",
+"laugh",
+"sprite"
+],
+"112:1": [
+"Witch",
+"magic",
+"sprite"
+],
+"113:0": [
+"Bilsy",
+"xmas_appear_2",
+"sprite"
+],
+"113:1": [
+"Bilsy",
+"xmas_snap",
+"sprite"
+],
+"113:2": [
+"Bilsy",
+"xmas_throw_fireball",
+"sprite"
+],
+"113:3": [
+"Bilsy",
+"xmas_fire_start",
+"sprite"
+],
+"113:4": [
+"Bilsy",
+"xmas_scary",
+"sprite"
+],
+"113:5": [
+"Bilsy",
+"xmas_thunder",
+"sprite"
+],
+"113:6": [
+"Bilsy",
+"xmas_appear_1",
+"sprite"
+],
+"114:0": [
+"Lizard",
+"xmas_noise_1",
+"sprite"
+],
+"114:1": [
+"Lizard",
+"xmas_noise_2",
+"sprite"
+],
+"114:2": [
+"Lizard",
+"xmas_noise_3",
+"sprite"
+],
+"114:3": [
+"Lizard",
+"xmas_noise_4",
+"sprite"
+],
+"115:0": [
+"Turtle",
+"xmas_attack_bite",
+"sprite"
+],
+"115:1": [
+"Turtle",
+"xmas_turn_start",
+"sprite"
+],
+"115:2": [
+"Turtle",
+"xmas_shell_collide",
+"sprite"
+],
+"115:3": [
+"Turtle",
+"xmas_idle_1",
+"sprite"
+],
+"115:4": [
+"Turtle",
+"xmas_idle_2",
+"sprite"
+],
+"115:5": [
+"Turtle",
+"xmas_attack_neck",
+"sprite"
+],
+"115:6": [
+"Turtle",
+"xmas_noise_1",
+"sprite"
+],
+"115:7": [
+"Turtle",
+"xmas_noise_2",
+"sprite"
+],
+"115:8": [
+"Turtle",
+"xmas_noise_3",
+"sprite"
+],
+"115:9": [
+"Turtle",
+"xmas_noise_4",
+"sprite"
+],
+"115:10": [
+"Turtle",
+"xmas_turn_end",
+"sprite"
+],
+"116:0": [
+"Doggy",
+"xmas_attack",
+"sprite"
+],
+"116:1": [
+"Doggy",
+"xmas_noise",
+"sprite"
+],
+"116:2": [
+"Doggy",
+"xmas_woof_1",
+"sprite"
+],
+"116:3": [
+"Doggy",
+"xmas_woof_2",
+"sprite"
+],
+"116:4": [
+"Doggy",
+"xmas_woof_3",
+"sprite"
+]
+}
+}
