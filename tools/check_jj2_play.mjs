@@ -56,7 +56,7 @@ for (const d of ['left', 'right']) {
 
 const CHARS = new Set(['jazz', 'spaz', 'lori']);
 
-export function explore(game, { maxNodes = 5000 } = {}) {
+export function explore(game, { maxNodes = 5000, touch = false } = {}) {
   const g = game; const p = g.player; const L = g.level;
   const { w, h } = L;
   // Out of the way: enemies, pickups, the clock; open every breakable.
@@ -132,11 +132,21 @@ export function explore(game, { maxNodes = 5000 } = {}) {
     padPressed: () => false,
   };
   let bossMet = false;
+  // Every cell the player's body passes through (with `touch`): what they
+  // can pick up on the way, not just where they can stand.
+  const touched = touch ? new Set() : null;
   const tick = () => {
     p.invuln = 50; p.health = Math.max(p.health, 1);
     g.update(input);
     prev = held;
     if (g.bossCall) { g.bossCall = false; if (bossy) bossMet = true; }
+    if (touched && !p.dead) {
+      for (let ty = Math.floor(p.y / T); ty <= Math.floor((p.y + p.h - 1) / T); ty++) {
+        for (let tx = Math.floor(p.x / T); tx <= Math.floor((p.x + p.w - 1) / T); tx++) {
+          if (tx >= 0 && ty >= 0 && tx < w && ty < h) touched.add(ty * w + tx);
+        }
+      }
+    }
   };
   // Play a move from a state; where it settles: a node, -2 death, -3 exit.
   const play = (state, move) => {
@@ -247,5 +257,5 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   const xy = (n) => `${n % w},${Math.floor((n % WH) / w)}${n >= WH ? 't' + Math.floor(n / WH) : ''}`;
   const outOf = (x, y, t = 0) => [...(fwd.get(y * w + x + t * WH) || [])].map((n) => (n < 0 ? n : `${xy(n)}${home.has(n) ? 'h' : ''}`));
   const far = (n) => queue.filter((i) => fwd.has(i)).sort((a, b) => (b % w) - (a % w)).slice(0, n).map((i) => [i % w, Math.floor((i % WH) / w)]);
-  return { far, outOf, nodes: queue.length, explored: fwd.size, start: [start % w, Math.floor(start / w)], exitReached, traps, home: [...home].map((i) => i % WH), reached: queue.map((i) => i % WH), triggerSets: trigList.length };
+  return { far, outOf, nodes: queue.length, explored: fwd.size, start: [start % w, Math.floor(start / w)], exitReached, traps, home: [...home].map((i) => i % WH), reached: queue.map((i) => i % WH), triggerSets: trigList.length, touched: touched && [...touched], fwd };
 }
