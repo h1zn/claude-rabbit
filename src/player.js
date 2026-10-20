@@ -552,8 +552,10 @@ export class Player {
     this.superJump = false;
     this.jumpCut = false;
     if (pole.vertical) {
+      // Measured (Jazz2 Resurrection): a vertical pole throws exactly as
+      // high as a blue spring, however fast the player came in.
       this.vx = this.poleDir * 2;
-      this.vy = -this.poleSpeed;
+      this.vy = PHYS.springs.blue;
       this.y = pole.py - this.h - 4;
     } else {
       this.vx = this.poleDir * this.poleSpeed;
