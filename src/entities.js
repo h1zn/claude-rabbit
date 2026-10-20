@@ -645,6 +645,7 @@ export class Pickup {
     if (o.type === 'powerup') return new Pickup('powerup', x - 6, o.ty * TILE + TILE - 32, { w: 28, h: 32, weapon: o.weapon, needsHit: true });
     if (o.type === 'item') return new Pickup('item', x - 4, y - 4, { w: 24, h: 24, item: o.kind });
     if (o.type === 'bombCrate') return new Pickup('crate', x - 4, o.ty * TILE + TILE - 22, { w: 24, h: 22, needsHit: true, bomb: true });
+    if (o.type === 'springCrate') return new Pickup('crate', x - 4, o.ty * TILE + TILE - 22, { w: 24, h: 22, needsHit: true, spring: { tx: o.tx, ty: o.ty } });
     // A caged bird (src/birds.js): shoot the cage or break it to free it.
     if (o.type === 'birdcage') return new Pickup('birdcage', o.tx * TILE - 4, o.ty * TILE + TILE - 50, { w: 40, h: 50, needsHit: true, yellow: o.yellow });
     if (o.type === 'birdmonitor') return new Pickup('birdmonitor', x - 6, o.ty * TILE + TILE - 32, { w: 28, h: 32, needsHit: true });
@@ -690,7 +691,7 @@ export class Pickup {
       return frameAt(a[this.weapon === 1 && this.spaz ? 'monBlasterSpaz' : w.mon], this.t, 6);
     }
     // Bomb and trigger crates (and weapons without an ammo crate) are JJ2's plain wooden crate.
-    const k = this.bomb || this.trigger ? undefined : this.weapon ? WEAPONS[this.weapon].crate : 0;
+    const k = this.bomb || this.trigger || this.spring ? undefined : this.weapon ? WEAPONS[this.weapon].crate : 0;
     if (k === undefined && a.plainCrate) return a.plainCrate.frames[0];
     return a.ammoCrate.frames[k === undefined ? 0 : k];
   }
@@ -780,6 +781,14 @@ export class Pickup {
       game.addScore(300, cx, this.y);
       game.audio.play('checkpoint');
       game.banner('SWITCH!', 60);
+      game.explode(cx, cy, '#c08a4e');
+    } else if (this.kind === 'crate' && this.spring) {
+      // A spring crate leaves its green spring standing where it was.
+      const s = new Spring(this.spring.tx, this.spring.ty, 'T');
+      if (game.level.jj2) game.settleSpring(s);
+      game.props.push(s);
+      game.addScore(300, cx, this.y);
+      game.audio.play('crate');
       game.explode(cx, cy, '#c08a4e');
     } else if (this.kind === 'crate' && this.bomb) {
       // A bomb crate goes off like TNT.
