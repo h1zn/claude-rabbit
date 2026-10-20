@@ -37,6 +37,8 @@ for (const d of ['left', 'right']) {
   MOVES.push({ steps: [[22, 'jump', d], [30, 'jump', back]] });               // turn in the air
   MOVES.push({ steps: [[40, 'jump', d], [2, d], [40, 'jump', d], [2, d], [40, 'jump', d]] });   // hops
   MOVES.push({ steps: [[10, d], [20, back]] });                               // off a ledge, back under
+  MOVES.push({ steps: [[18, 'jump'], [36, 'jump', d]] });                      // up, then over onto a ledge
+  MOVES.push({ steps: [[18, 'jump'], [24, 'jump', d], [30, 'jump']] });        // ...a small one
 }
 MOVES.push({ steps: [[45, 'jump']] }, { steps: [[18, 'down'], [2, 'down', 'jump'], [43, 'jump']] });
 MOVES.push({ as: 'spaz', steps: [[16, 'jump'], [2], [45, 'jump']] });
