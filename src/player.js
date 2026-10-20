@@ -513,6 +513,7 @@ export class Player {
     this.hang = null;
     // Fling speed grows with the speed Kip arrives at (measured cap 20).
     const entry = Math.hypot(this.vx, this.vy);
+    this.poleEntry = Math.abs(this.vy); this.poleOffSpring = this.springDj;
     this.poleSpeed = Math.max(PHYS.poleMinFling, Math.min(PHYS.poleMaxFling, entry * 1.5 + 6));
     this.poleHold = Math.round(PHYS.poleHoldTicks - (this.poleSpeed - PHYS.poleMinFling) * 3);
     this.poleDir = Math.sign(this.vx) || this.facing;
@@ -552,10 +553,12 @@ export class Player {
     this.superJump = false;
     this.jumpCut = false;
     if (pole.vertical) {
-      // Measured (Jazz2 Resurrection): a vertical pole throws exactly as
-      // high as a blue spring, however fast the player came in.
+      // Measured (Jazz2 Resurrection): a vertical pole hands back the speed
+      // it was entered with plus 15.625 (capped at 32, a blue spring), and the
+      // rise slows at the released-jump rate, unless it came off a spring.
       this.vx = this.poleDir * 2;
-      this.vy = PHYS.springs.blue;
+      this.vy = -Math.min(-PHYS.springs.blue, 15.625 + this.poleEntry);
+      this.jumpCut = !this.poleOffSpring;
       this.y = pole.py - this.h - 4;
     } else {
       this.vx = this.poleDir * this.poleSpeed;
