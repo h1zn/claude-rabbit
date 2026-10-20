@@ -261,6 +261,8 @@ export class JJ2Level extends Level {
           case 85: case 86: case 87: case 60: {
             const [ceiling] = eventFields(ev.params, [1]);
             if (!ceiling) put(tx, ty, CHAR[id]);
+            // Event 60: a green spring frozen until fire thaws it.
+            if (!ceiling && id === 60) this.entities[this.entities.length - 1].frozen = true;
             break;
           }
           case 91: case 92: case 93: {
@@ -384,6 +386,8 @@ export class JJ2Level extends Level {
     // ammo between levels in the original) breaks with any shot instead, so
     // no level is left impassable. Missiles and TNT count as explosives.
     if ([4, 5, 7].some((n) => armed.has(n))) armed.add('blast');
+    // Likewise a frozen spring in a level without the toaster thaws with any shot.
+    this.anyThaw = !armed.has(6);
     for (const [key, need] of this.weapons) {
       if (armed.has(need === 7 ? 'blast' : need)) continue;
       const [tx, ty] = key.split(',').map(Number);

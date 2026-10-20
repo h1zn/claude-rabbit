@@ -332,7 +332,7 @@ export class Renderer {
     for (const prop of game.props) {
       if (prop.hidden && !(prop.kind === 'warp' && prop.cost > 0)) continue;
       if (prop.kind === 'spring') {
-        const f = prop.sprite(this.art);
+        const f = prop.frozen > 0 ? iced(prop.sprite(this.art)) : prop.sprite(this.art);
         if (!prop.dir) this.sprite(f, prop.x + TILE / 2, prop.y + prop.h, true);
         else {
           // Side springs: the floor spring turned to face along `dir`.

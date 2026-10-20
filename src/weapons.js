@@ -38,7 +38,7 @@ const WHAMMO = {
   fire: { w: 16, h: 8, life: 60, damage: 3, glow: '255,150,60' },
   plasma: { w: 16, h: 12, life: 40, damage: 3, glow: '255,240,140' },
 };
-const FREEZE = 210;          // ticks an enemy stays frozen (powered: 350)
+export const FREEZE = 210;   // ticks an enemy stays frozen (powered: 350)
 
 // Hit box, life, damage and how each projectile moves.
 const SPEC = {

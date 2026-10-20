@@ -70,7 +70,9 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
   // The pickups that change how the player moves stay, taken by touch (a
   // shot would open a monitor), and back for every move.
   g.enemies = []; g.enemyShots = [];
-  // Spring crates open too: their springs stand there from the start.
+  // Frozen springs thaw (a shot does it); spring crates open too: their
+  // springs stand there from the start.
+  for (const pr of g.props) if (pr.kind === 'spring') pr.frozen = 0;
   for (const k of g.pickups) if (k.spring) k.collect(g);
   const kept = g.pickups.filter((k) => k.kind === 'birdmorph' || k.kind === 'flycarrot' || k.kind === 'airboard');
   for (const k of kept) k.needsHit = false;

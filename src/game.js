@@ -21,7 +21,7 @@ import { Player } from './player.js';
 import { CONTINUES } from './save.js';
 import { Sky, Weather } from './sky.js';
 import { TerrainRenderer } from './terrain.js';
-import { Bullet, TNT, touches } from './weapons.js';
+import { Bullet, FREEZE, TNT, touches } from './weapons.js';
 
 const WEATHER = { meadow: 'leaves', winter: 'snow', crystal: 'motes', grove: 'fireflies', candy: 'sparkles', forge: 'embers' };
 
@@ -168,6 +168,7 @@ export class Game {
         // A JJ2 spring stands on whatever floor is under it (a rail can sit
         // a few pixels lower than its tile's bottom, out of the spring's reach).
         if (this.level.jj2 && !spring.dir) this.settleSpring(spring);
+        if (e.frozen) spring.frozen = Infinity;
         this.props.push(spring);
         continue;
       }
@@ -728,6 +729,21 @@ export class Game {
         if (s.explosive) { s.burst(this); continue; }
         s.dead = true;
         if (this.party) this.party.touch(this, k); else k.collect(this);
+      }
+      // The frostbiter freezes a spring a while (it springs nothing while
+      // frozen); fire thaws one (any shot, in a level without the toaster).
+      if (!s.dead) {
+        for (const pr of this.props) {
+          if (pr.kind !== 'spring' || !touches(s, pr)) continue;
+          if (s.weapon === 3) {
+            if (pr.frozen === Infinity) continue;
+            pr.frozen = s.powered ? 350 : FREEZE; s.dead = true;
+            this.audio.play('freeze'); this.effect('sparkle', pr.x + pr.w / 2, pr.y + pr.h / 2);
+          } else if (pr.frozen > 0 && (s.weapon === 6 || s.whammo === 'fire' || this.level.anyThaw)) {
+            pr.frozen = 1; s.dead = true;
+          }
+          if (s.dead) break;
+        }
       }
       // Manual: TNT can be set off by shooting it.
       if (!s.dead && s.weapon !== TNT) {
