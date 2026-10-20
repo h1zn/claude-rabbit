@@ -90,6 +90,9 @@ export class JJ2Level extends Level {
     this.lights = [];
     this.bridges = [];
     this.water = Infinity;                   // water surface (px), Infinity = none
+    // Original rule: a one-way event on the map's last cell puts a floor
+    // under the bottom row instead of a pit.
+    this.floored = (file.events[file.events.length - 1] & 0xff) === EV.ONE_WAY;
     this.waterTarget = Infinity;
     this.texts = file.texts.map(cleanText);
     this.maskCache = new Map();
@@ -477,7 +480,8 @@ export class JJ2Level extends Level {
   solidPx(x, y, oneWay = false) {
     x = Math.floor(x); y = Math.floor(y);
     if (x < 0 || x >= this.pixelW) return true;
-    if (y < 0 || y >= this.pixelH) return false;
+    if (y < 0) return false;
+    if (y >= this.pixelH) return this.floored;
     const i = (y >> 5) * this.w + (x >> 5);
     const m = this.masks[i];
     if (!m) return false;
