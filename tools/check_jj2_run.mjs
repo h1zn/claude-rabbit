@@ -7,6 +7,8 @@ const pw = require('playwright');
 
 const args = process.argv.slice(2);
 const physics = args.includes('--play');
+// --max=N: explore up to N places per level (default 5000).
+const maxNodes = Number((args.find((a) => a.startsWith('--max=')) || '--max=5000').slice(6));
 const filter = args.find((a) => !a.startsWith('--')) || '';
 // --shard=k/n: every n-th level from the k-th (to run several at once).
 const shard = (args.find((a) => a.startsWith('--shard=')) || '--shard=0/1').slice(8).split('/').map(Number);
@@ -23,17 +25,17 @@ const keys = await page.evaluate(async (f) => {
 const mine = keys.filter((_, i) => i % shard[1] === shard[0]);
 let total = 0;
 for (const key of mine) {
-  const r = physics ? await page.evaluate(async (key) => {
+  const r = physics ? await page.evaluate(async ([key, maxNodes]) => {
     const { jj2Def } = await import('/src/jj2/catalog.js');
     const { explore } = await import('/tools/check_jj2_play.mjs');
     const def = jj2Def(key);
     await window.kip.play(key);
     const g = window.kip.game;
     const t0 = performance.now();
-    const res = explore(g);
+    const res = explore(g, { maxNodes });
     window.kip.go('title');
-    return { title: def.title, mp: def.mp, ms: Math.round(performance.now() - t0), hasExit: !def.mp, ...res, home: undefined };
-  }, key) : await page.evaluate(async (key) => {
+    return { title: def.title, mp: def.mp, ms: Math.round(performance.now() - t0), hasExit: !def.mp, ...res, home: undefined, reached: undefined, fwd: undefined, touched: undefined };
+  }, [key, maxNodes]) : await page.evaluate(async (key) => {
     const { jj2Def } = await import('/src/jj2/catalog.js');
     const { analyze } = await import('/tools/check_jj2.mjs');
     const def = jj2Def(key); await def.prepare();
