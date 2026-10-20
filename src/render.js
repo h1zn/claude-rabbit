@@ -589,9 +589,10 @@ export class Renderer {
     const p = game.player;
     if (p.invuln > 0 && !p.dead && p.rush === 0 && Math.floor(p.invuln / 4) % 2) return;
     // The frog (and the change into it or back) comes from its own sheet.
-    const frogging = p.frog || p.morph > 0;
+    const frogging = p.frog || p.morph > 0 || p.birdForm;
     const sheet = frogging ? this.art.morphs : this.art.tinted(p.character, game.party && game.party.tint);
-    let name = frogging ? this.frogAnim(p) : this.heroAnim(p);
+    // The bird morph: a red bird for Jazz, yellow for the others.
+    let name = p.birdForm ? (p.character === 'jazz' ? 'chuckFly' : 'birdyFly') : frogging ? this.frogAnim(p) : this.heroAnim(p);
     if (!sheet.anims[name]) name = HERO_FALLBACK[name] || 'idle';
     if (!this.heroState || this.heroState.name !== name) this.heroState = { name, start: game.time };
     const anim = sheet.anims[name] || sheet.anims.idle;

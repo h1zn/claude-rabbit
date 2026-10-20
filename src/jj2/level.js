@@ -237,7 +237,8 @@ export class JJ2Level extends Level {
             this.objects.push({ type: 'birdcage', tx, ty, yellow: !!yellow });
             break;
           }
-          case EV.BIRD_MONITOR: this.objects.push({ type: 'birdmonitor', tx, ty }); break;
+          // The bird morph monitor: it turns the player into a bird.
+          case EV.BIRD_MONITOR: this.objects.push({ type: 'birdmorph', tx, ty }); break;
           case EV.WARP_ORIGIN: {
             // SetLap: a race counts a lap here.
             const [wid, coins, setLap] = eventFields(ev.params, [8, 8, 1]);

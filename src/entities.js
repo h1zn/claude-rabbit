@@ -607,6 +607,7 @@ export class Pickup {
     // A caged bird (src/birds.js): shoot the cage or break it to free it.
     if (o.type === 'birdcage') return new Pickup('birdcage', o.tx * TILE - 4, o.ty * TILE + TILE - 50, { w: 40, h: 50, needsHit: true, yellow: o.yellow });
     if (o.type === 'birdmonitor') return new Pickup('birdmonitor', x - 6, o.ty * TILE + TILE - 32, { w: 28, h: 32, needsHit: true });
+    if (o.type === 'birdmorph') return new Pickup('birdmorph', x - 6, o.ty * TILE + TILE - 32, { w: 28, h: 32, needsHit: true });
     return null;
   }
 
@@ -635,7 +636,7 @@ export class Pickup {
     if (this.kind === 'fastfire') return frameAt(a.fastfire, this.t, 4);
     if (this.kind === 'airboard') return boardSprite(Math.floor(this.t / 4) % 4);
     if (this.kind === 'birdcage') return frameAt(this.yellow ? art.morphs.anims.birdyCaged : art.morphs.anims.chuckCaged, this.t, 6);
-    if (this.kind === 'birdmonitor') return frameAt(art.morphs.anims.birdMonitor, this.t, 6);
+    if (this.kind === 'birdmonitor' || this.kind === 'birdmorph') return frameAt(art.morphs.anims.birdMonitor, this.t, 6);
     if (this.kind === 'shield') return frameAt(a[SHIELDS[this.shield || 'fire'].monitor], this.t, 6);
     if (this.kind === 'armor') return frameAt(a.monShieldPlasma || a[SHIELDS.plasma.monitor], this.t, 6);
     if (this.kind === 'morph') return frameAt(a.monChange, this.t, 5);
@@ -695,6 +696,9 @@ export class Pickup {
     } else if (this.kind === 'birdcage' || this.kind === 'birdmonitor') {
       // One bird at a time: a second cage stays shut.
       if (!game.freeBird(this)) { this.taken = false; return; }
+    } else if (this.kind === 'birdmorph') {
+      p.setBird(game, true);
+      game.addScore(500, cx, this.y);
     } else if (this.kind === 'airboard') {
       p.mountBoard(game);
       game.addScore(100, cx, this.y);

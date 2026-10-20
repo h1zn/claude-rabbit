@@ -59,7 +59,7 @@ export class Player {
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, armor: 0, shieldType: 'fire', pushing: 0, dash: 0, jumpCut: false,
-      hang: null, hangCool: 0, board: false, noFire: false, frog: false, morph: 0, morphDir: null, tongue: 0, tongueHit: null, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
+      hang: null, hangCool: 0, board: false, noFire: false, frog: false, morph: 0, morphDir: null, tongue: 0, tongueHit: null, birdForm: false, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0, dizzy: 0, aim: null, fastFeet: 0,
     });
   }
@@ -117,6 +117,9 @@ export class Player {
       this.anim = 'morph';
       return;
     }
+
+    // The bird morph flies (JJ2 event 94, Return of Birdland).
+    if (this.birdForm) { this.fly(game, input); return; }
 
     const controlled = this.knock === 0 && this.special === 0 && this.springLock === 0 && this.tongue === 0;
     const dir = controlled ? (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0) : 0;
@@ -655,6 +658,47 @@ export class Player {
   cry(game) {
     if (this.character === 'jazz') game.audio.play(this.health === 1 ? 'jazzLookOut' : 'jazzHurt');
     else game.audio.play(this.character === 'spaz' ? 'spazHurt' : 'loriHurt');
+  }
+
+  // As a bird: JUMP flaps upward, letting go glides down slowly, DOWN
+  // dives; it steers like walking and shoots as usual. It stays a bird
+  // until it dies or a revert area turns it back.
+  fly(game, input) {
+    const { level } = game;
+    const controlled = this.knock === 0;
+    const dir = controlled ? (input.held('right') ? 1 : 0) - (input.held('left') ? 1 : 0) : 0;
+    if (dir) this.facing = dir;
+    this.vx = dir ? accelerate(this.vx, dir, PHYS.walkAccel, PHYS.walkMax, PHYS.walkDecel) : approach(this.vx, 0, PHYS.walkDecel);
+    if (controlled && input.held('jump')) this.vy = Math.max(this.vy - 0.45, -4);
+    else if (controlled && input.held('down')) this.vy = Math.min(this.vy + 0.35, 6);
+    else this.vy = Math.min(this.vy + 0.1, 1.6);
+    if (input.pressed('jump')) game.audio.play('hover', 0.4);
+    const hit = level.move(this, this.vx, this.vy, {});
+    if (hit.top && this.vy < 0) this.vy = 0;
+    this.onGround = hit.bottom;
+    if (this.onGround) this.vy = 0;
+    if (input.released('shoot')) this.shotCooldown = Math.min(this.shotCooldown, PLAYER.tapDelay);
+    if (controlled && input.held('shoot') && this.shotCooldown === 0 && !this.noFire) {
+      if (this.weapon !== 1 && this.ammo[this.weapon] <= 0) this.nextWeapon(-1);
+      this.shotCooldown = fireDelay(this);
+      this.shootPose = 8;
+      this.aim = null;
+      if (!(game.party && game.party.items.use(game))) fire(game, this);
+    }
+    if (level.areaAt && level.areaAt(this.cx, this.cy) === EV.REVERT_MORPH) this.setBird(game, false);
+    if (level.touchesSpikes(this) && this.rush === 0) this.hurt(game, this.cx - this.facing, { spikes: true });
+    if (this.y > level.pixelH + 64) game.killPlayer();
+    this.anim = 'bird';
+  }
+
+  setBird(game, on) {
+    if (this.birdForm === on) return;
+    this.birdForm = on;
+    this.loseBoard(game);
+    Object.assign(this, { hovering: false, stomping: false, special: 0, jumping: false, frog: false, morph: 0 });
+    game.audio.play('frogMorph');
+    game.effect('poof', this.cx, this.cy);
+    if (on) game.banner('BIRD MORPH!', 70);
   }
 
   // Into a frog (on) or back: the hero's own transformation, then the

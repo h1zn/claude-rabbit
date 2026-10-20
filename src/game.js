@@ -194,7 +194,7 @@ export class Game {
         if (o.weapon === 1) k.spaz = this.character === 'spaz';
         // Bird cages and monitors settle on the floor at their column (their
         // JJ2 event can sit a tile into the ground).
-        if (k.kind === 'birdcage' || k.kind === 'birdmonitor') this.settle(k, o.ty * TILE + TILE / 2);
+        if (k.kind === 'birdcage' || k.kind === 'birdmonitor' || k.kind === 'birdmorph') this.settle(k, o.ty * TILE + TILE / 2);
         this.pickups.push(k);
       }
     }
@@ -562,7 +562,7 @@ export class Game {
     const p = this.player;
     if (p.dead) return;
     p.board = false;
-    p.frog = false; p.morph = 0;
+    p.frog = false; p.morph = 0; p.birdForm = false;
     if (this.bird) this.bird.flyAway();
     // Party: knocked out (falling off the world), back in 10 s.
     if (this.party) { this.party.knockOut(this); return; }
