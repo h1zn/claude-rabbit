@@ -363,6 +363,12 @@ spin; he also guards the exit of Candy Clouds). A level that ends with its
 boss ends when you beat it. Pinball bumpers and paddles, steam notes that
 carry you up a shaft, and springs on rails work as in the original; a warp
 whose target the level forgot finishes the level instead of doing nothing.
+The fly carrot gives copter ears (UP or JUMP climbs, DOWN dives) until a
+fly-off area; a floating lizard shot down leaves its copter hovering, and
+touching it lets you hang on and fly for a few seconds (JUMP lets go).
+Stacked poles chain into each other, a boss woken by a boss area ends the
+level when beaten, and a level marked for it has a floor under its bottom
+row instead of a pit.
 
 **Checkpoints**: dying returns you to the last checkpoint with the level as
 it was when you touched it: enemies you beat after it are back, and so are
