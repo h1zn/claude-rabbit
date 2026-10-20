@@ -450,8 +450,11 @@ export class Screens {
     if (!T) return;
     this.panel(VIEW_W / 2 - 220, 70, 440, 200, 0.92);
     if (T.kind === 'pname' || T.kind === 'hostpw' || T.kind === 'pw') {
-      this.big({ pname: 'YOUR NAME', hostpw: 'ROOM PASSWORD', pw: 'PASSWORD' }[T.kind], VIEW_W / 2, 84, { align: 'center', scale: 0.55 });
-      this.med({ pname: 'The other players see it over your head', hostpw: 'Leave it empty for an open game', pw: tr('Room {0} is locked', T.code) }[T.kind], VIEW_W / 2, 124, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+      const title = T.local ? `PLAYER ${T.local} NAME` : { pname: 'YOUR NAME', hostpw: 'ROOM PASSWORD', pw: 'PASSWORD' }[T.kind];
+      const note = T.local ? 'Shown over their head and on the scoreboard' : T.then !== undefined ? 'Pick a name to play online'
+        : { pname: 'The other players see it over your head', hostpw: 'Leave it empty for an open game', pw: tr('Room {0} is locked', T.code) }[T.kind];
+      this.big(title, VIEW_W / 2, 84, { align: 'center', scale: 0.55 });
+      this.med(note, VIEW_W / 2, 124, { align: 'center', scale: 0.5, color: '#c8b8e8' });
     } else if (T.kind === 'score') {
       this.big('NEW HIGH SCORE!', VIEW_W / 2, 84, { align: 'center', scale: 0.6, wave: 2, t });
       this.med(`${tr('{0} POINTS', T.score)}   ${tr('RANK {0}', T.rank + 1)}`, VIEW_W / 2, 124, { align: 'center', scale: 0.65 });
@@ -893,7 +896,8 @@ export class Screens {
       if (on) this.ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], VIEW_W / 2 - 206, yy);
       this.med(label, VIEW_W / 2 - 184, yy, { scale: on ? 0.58 : 0.54, color: on ? null : '#b8a8e0' });
       const show = on && i < 4 ? `< ${value} >` : value;
-      this.fitMed(show, VIEW_W / 2 + 200, yy, 230, { align: 'right', scale: 0.54, color: on ? '#ffffff' : '#d8ccf4', raw: i === 1 });
+      // Values come translated (or are names: levels, players).
+      this.fitMed(show, VIEW_W / 2 + 200, yy, 230, { align: 'right', scale: 0.54, color: on ? '#ffffff' : '#d8ccf4', raw: true });
     });
     return y + rows.length * 17;
   }
@@ -943,7 +947,8 @@ export class Screens {
       say(keys('keys2', true), 117, { scale: 0.45, color: '#ece4ff' });
       const pads = connectedPads().length;
       say(pads >= 2 ? 'Two gamepads: one each' : pads === 1 ? 'The gamepad plays player 2' : 'A gamepad plugged in plays player 2', 134, { scale: 0.45, color: pads ? '#7aff9a' : '#c8b8e8' });
-      const y = this.settingsRows(this.partySettings(), 160, t, true, [['START', '']]);
+      const names = [['PLAYER 1', save.options.playerName || tr('PLAYER 1')], ['PLAYER 2', save.options.playerName2 || tr('PLAYER 2')]];
+      const y = this.settingsRows(this.partySettings(), 156, t, true, [...names, ['START', '']]);
       if (this.lobby.status === 'loading') say('Loading...', y + 6, { scale: 0.55 });
       say('UP / DOWN: setting   LEFT / RIGHT: change', 296, { scale: 0.45, color: '#8a7ab0' });
       return;
@@ -1182,15 +1187,21 @@ export class Screens {
         this.audio.play('select');
         if (this.menu === 3) { this.typing = { kind: 'pname', buf: cleanName(save.options.playerName || ''), fresh: true }; return null; }
         if (this.menu === 2) { this.sub = 'local'; this.lobby = { status: 'idle' }; this.ps.row = 0; return null; }
-        this.lobby = { status: 'connecting', players: [] };
-        if (this.menu === 0) { this.sub = 'host'; this.ps.row = 0; return 'host'; }
-        this.sub = 'join'; this.codeBuf = ''; this.menu = 0;
-        return 'rooms';
+        // Online, everyone goes by a name: asked for first if there's none yet.
+        if (!save.options.playerName) { this.typing = { kind: 'pname', then: this.menu, buf: '', fresh: true }; return null; }
+        return this.goOnline(this.menu);
       case 'local': {
         if (back) { this.sub = 'party'; this.menu = 2; return null; }
         if (this.lobby.status === 'loading') return null;
-        if (this.settingsInput(input, 5)) return null;
-        if (choose && this.ps.row === 4) { this.audio.play('select'); return 'local-start'; }
+        if (this.settingsInput(input, 7)) return null;
+        // Rows 4 and 5: each player's name; row 6 starts.
+        if (choose && (this.ps.row === 4 || this.ps.row === 5)) {
+          const local = this.ps.row - 3;
+          this.audio.play('select');
+          this.typing = { kind: 'pname', local, buf: cleanName((local === 1 ? save.options.playerName : save.options.playerName2) || ''), fresh: true };
+          return null;
+        }
+        if (choose && this.ps.row === 6) { this.audio.play('select'); return 'local-start'; }
         return null;
       }
       case 'host': {
@@ -1252,6 +1263,14 @@ export class Screens {
     if (sub === 'scores') { this.scorePage = 0; this.highlight = -1; }
   }
 
+  // Host (0) or join (1) a game online: the lobby screen, and what main.js does.
+  goOnline(which) {
+    this.lobby = { status: 'connecting', players: [] };
+    if (which === 0) { this.sub = 'host'; this.ps.row = 0; return 'host'; }
+    this.sub = 'join'; this.codeBuf = ''; this.menu = 0;
+    return 'rooms';
+  }
+
   // Typing a name: ENTER (or A) when done, ESC (or B) to cancel. Typed keys
   // are kept out of the menus meanwhile.
   typingInput(input) {
@@ -1267,7 +1286,17 @@ export class Screens {
       this.audio.play('select');
       return 'score-name';
     }
-    if (T.kind === 'pname') { if (done) this.typedName = T.buf; this.audio.play(done ? 'select' : 'menu'); return done ? 'pname' : null; }
+    if (T.kind === 'pname') {
+      const name = T.buf.trim();
+      // Going online needs a name: an empty one asks again.
+      if (done && !name && T.then !== undefined) { this.typing = { ...T, fresh: false }; this.audio.play('denied'); return null; }
+      this.audio.play(done ? 'select' : 'menu');
+      if (!done) return null;
+      this.typedName = name;
+      if (T.local === 2) return 'pname2';
+      // pname, then host or rooms: main.js saves the name before connecting.
+      return T.then !== undefined ? `pname+${this.goOnline(T.then)}` : 'pname';
+    }
     if (T.kind === 'hostpw') { if (done) this.lobby.password = T.buf; this.audio.play(done ? 'select' : 'menu'); return done ? 'host-password' : null; }
     if (T.kind === 'pw') { this.audio.play(done ? 'select' : 'menu'); return done ? `join:${T.code}:${T.buf}` : null; }
     if (cancel) { this.sub = 'save'; this.menu = T.slot; this.audio.play('menu'); return null; }

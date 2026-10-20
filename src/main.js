@@ -285,7 +285,8 @@ async function startSplit() {
   game.viewW = VIEW_W / 2; g2.viewW = VIEW_W / 2;
   renderer.w = VIEW_W / 2; split.renderer.w = VIEW_W / 2;
   const [a, b] = localPair();
-  const players = [{ id: 1, name: 'P1' }, { id: 2, name: 'P2' }];
+  // Each player's nickname (the party menu's NAME is player 1's).
+  const players = [{ id: 1, name: save.options.playerName || tr('PLAYER 1') }, { id: 2, name: save.options.playerName2 || tr('PLAYER 2') }];
   const rules = { players, mode: st.mode, goal: st.goal, truce: st.truce, local: true };
   game.newParty(index, new Party(a, { ...rules, id: 1 }));
   g2.newParty(index, new Party(b, { ...rules, id: 2 }));
@@ -507,7 +508,12 @@ function tick() {
       else if (action === 'leave') { if (net) net.close(); net = null; }
       else if (action === 'settings') sendSettings();
       else if (action === 'host-password') { if (net) net.send({ t: 'password', password: screens.lobby.password || '' }); }
-      else if (action === 'pname') { save.options.playerName = screens.typedName; writeSave(save); }
+      else if (action === 'pname' || action.startsWith('pname+')) {
+        save.options.playerName = screens.typedName;
+        writeSave(save);
+        if (action === 'pname+host') hostParty();
+        else if (action === 'pname+rooms') listRooms();
+      } else if (action === 'pname2') { save.options.playerName2 = screens.typedName; writeSave(save); }
       else if (action === 'party-start') hostStart();
       break;
     }

@@ -83,8 +83,10 @@ accents, so the menus drop them, while in-game messages keep them.)
 ## Party mode (up to 5 players)
 
 In **PARTY** choose **HOST A GAME**, **JOIN A GAME** or **SAME COMPUTER**
-(split screen for two), and set **NAME** to the name the others see over
-your head.
+(split screen for two), and set **NAME** to the nickname the others see over
+your head, on the scoreboard and in the messages (it's asked for before you
+first host or join). On **SAME COMPUTER** each player sets their own:
+**PLAYER 1** and **PLAYER 2** rows above START.
 
 **Players and characters**: up to five per room. Slot 1 (the host) plays
 Jazz, 2 Spaz, 3 Lori, 4 purple Jazz and 5 blue Spaz. In team games odd slots

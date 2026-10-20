@@ -347,6 +347,12 @@ const ROWS = [
   ["Could not reach the party server.", "Party-Server nicht erreichbar.", "Serveur de partie injoignable.", "No se pudo conectar con el servidor.", "Server della partita irraggiungibile.", "Partyserver niet bereikbaar."],
   ["Could not reach the party server. Start the game with party.bat (serve.py --lan).", "Party-Server nicht erreichbar. Starte das Spiel mit party.bat (serve.py --lan).", "Serveur de partie injoignable. Lance le jeu avec party.bat (serve.py --lan).", "No se pudo conectar con el servidor. Inicia el juego con party.bat (serve.py --lan).", "Server della partita irraggiungibile. Avvia il gioco con party.bat (serve.py --lan).", "Partyserver niet bereikbaar. Start het spel met party.bat (serve.py --lan)."],
   ["YOUR NAME", "DEIN NAME", "TON NOM", "TU NOMBRE", "IL TUO NOME", "JOUW NAAM"],
+  ["PLAYER 1", "SPIELER 1", "JOUEUR 1", "JUGADOR 1", "GIOCATORE 1", "SPELER 1"],
+  ["PLAYER 2", "SPIELER 2", "JOUEUR 2", "JUGADOR 2", "GIOCATORE 2", "SPELER 2"],
+  ["PLAYER 1 NAME", "NAME SPIELER 1", "NOM DU JOUEUR 1", "NOMBRE JUGADOR 1", "NOME GIOCATORE 1", "NAAM SPELER 1"],
+  ["PLAYER 2 NAME", "NAME SPIELER 2", "NOM DU JOUEUR 2", "NOMBRE JUGADOR 2", "NOME GIOCATORE 2", "NAAM SPELER 2"],
+  ["Pick a name to play online", "Wähle einen Namen für das Online-Spiel", "Choisis un nom pour jouer en ligne", "Elige un nombre para jugar en línea", "Scegli un nome per giocare online", "Kies een naam om online te spelen"],
+  ["Shown over their head and on the scoreboard", "Über dem Kopf und auf der Punktetafel", "Affiché au-dessus de la tête et au tableau des scores", "Se ve sobre su cabeza y en el marcador", "Mostrato sopra la testa e nel punteggio", "Boven het hoofd en op het scorebord"],
 ];
 const TEXT = Object.fromEntries(LANGS.slice(1).map((l, i) => [l.id, Object.fromEntries(ROWS.map((r) => [r[0], r[i + 1]]))]));
 
