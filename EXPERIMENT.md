@@ -21,8 +21,8 @@ owner said so.
 | Material | Used for |
 | --- | --- |
 | IDA Pro findings from `Jazz2.exe` (Christmas Chronicles '99) | the first physics and world rules (`SPEC.md`) |
-| The JJ2 manual (`new/Jazz_Jackrabbit_2_Manual.pdf`) | rules for blocks, weapons, bosses, special moves, controls |
-| Sprite sheets ripped by Dolphman (`new/`, `new/New Tilesets/`, `new/Bosses/`) | every character, item, enemy, effect, boss, font and menu picture |
+| The JJ2 manual (`new/Jazz_Jackrabbit_2_Manual.pdf`, since removed) | rules for blocks, weapons, bosses, special moves, controls |
+| Sprite sheets ripped by Dolphman (`new/`, `new/New Tilesets/`, `new/Bosses/`; removed once cut) | every character, item, enemy, effect, boss, font and menu picture |
 | `Soundtracks/` (intro, menu, beach, castle, town, jungle) | the music |
 | `Levels/` (Xenobiotic Xeranthemum 2, Episode 2, BL18, Overgrown, Threed Realms) | original JJ2 levels the game can play |
 | Screenshots and complaints ("wtf is this level one") | the most useful bug reports |

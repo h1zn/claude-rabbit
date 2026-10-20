@@ -4,9 +4,9 @@ This prototype is an **original** fast-platformer. Its *feel* is based on
 gameplay mechanics measured from a legitimately owned copy of a 1999 platformer
 (Jazz Jackrabbit 2: Christmas Chronicles '99, `Jazz2.exe`) in IDA Pro.
 
-Mechanics come from IDA and from the game's manual (`new/Jazz_Jackrabbit_2_Manual.pdf`,
-English section pp. 11-18). Sprites and tilesets are cut from sprite sheets the
-project owner supplied (`new/`), sound effects are JJ2 samples (`assets/sfx/`) and
+Mechanics come from IDA and from the game's manual (the PDF the project owner
+supplied, English section pp. 11-18). Sprites and tilesets are cut from sprite sheets the
+project owner supplied (removed from the repo once cut), sound effects are JJ2 samples (`assets/sfx/`) and
 music comes from `Soundtracks/` and the levels' tracker files, all for personal
 use. The built-in levels and the code are this project's own.
 

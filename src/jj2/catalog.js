@@ -23,8 +23,8 @@ const MP_TITLES = {
 };
 
 export const PACKS = [
-  // The original game (JJ2-Levels.zip, packed from a JJ2 install by
-  // tools/pack_jj2.ps1): its episodes in the order of their .j2e files, each
+  // The original game (JJ2-Levels.zip, packed from a JJ2 install): its
+  // episodes in the order of their .j2e files, each
   // with its secret or bonus level last, then the community levels and the
   // official multiplayer maps. Its music comes from JJ2-Music.zip.
   {
@@ -57,7 +57,7 @@ export const PACKS = [
     blurb: 'The three levels of the shareware demo.',
     levels: ['Share1', 'Share2', 'Share3'].map((f) => ({ file: `${f}.j2l` })),
   },
-  // The Christmas Chronicles (JJ2-Christmas.zip, from tools/pack_jj2cc.ps1):
+  // The Christmas Chronicles (JJ2-Christmas.zip, packed from its install):
   // its episode, then the Easter levels and holiday maps that came with it.
   {
     id: 'xmas', title: 'The Christmas Chronicles', zip: 'Levels/JJ2-Christmas.zip',
@@ -464,7 +464,7 @@ export async function cinematicFile(name) {
   const pack = [...LIBRARIES, ...PACKS].find((p) => p.files && p.files.some((f) => f.toLowerCase() === lower));
   try {
     if (pack && !pack.zip) return await fetch(url(pack, packFile(pack, name))).then((r) => (r.ok ? r.arrayBuffer() : null));
-    // No folder listing: where tools/pack_jj2.ps1 puts them.
+    // No folder listing: where the original game's films are kept.
     return await (await openZip(pack ? pack.zip : 'Levels/JJ2-Cinematics.zip')).read(name);
   } catch (e) { return null; }
 }

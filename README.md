@@ -5,8 +5,8 @@ and Lori. Its movement and world rules are modelled on the original:
 mechanics measured from the game in IDA and from Jazz2 Resurrection's traces,
 plus the rules in its manual (see [SPEC.md](SPEC.md)). How it was built is
 written up in [EXPERIMENT.md](EXPERIMENT.md). The hero, item, enemy and effect sprites and five of the
-tilesets are cut from JJ2 sprite sheets the project owner supplied (`new/`,
-built by `tools/`), for personal use, as is the soundtrack in `Soundtracks/`.
+tilesets are cut from JJ2 sprite sheets the project owner supplied (built by
+`tools/`; the source sheets and `Anims.j2a` left the repo once cut), for personal use, as is the soundtrack in `Soundtracks/`.
 Code and levels are this project's own.
 
 ## Play
@@ -210,8 +210,8 @@ Chaining kills and gems quickly builds a combo (up to x4 score).
 - **Things to use**: red, green and blue springs, side springs, swinging poles
   (measured: held up to 70 ticks, flung at up to 20 px/tick), warps and coin
   warps (they show `xN` when you are N coins short), lava (burns).
-- **Extra moves** from the original's unused animations (new/sprites other
-  movements.png): Jazz and Spaz aim up and diagonally (Lori uses her own
+- **Extra moves** from the original's unused animations (the "sprites other
+  movements" sheet): Jazz and Spaz aim up and diagonally (Lori uses her own
   poses), fidget when left standing, spin dizzy in the Queen's scream and get
   knocked down when they lose a life.
 - **Pickups**: speed shoes (15 s faster), the freeze hourglass (freezes the
@@ -265,7 +265,7 @@ and every level pack. The menus use JJ2's own fonts and title screen, the
 level card is JJ2's loading screen and game over asks **Continue?**. The main
 menu has the manual's items: New Game, Load Game, Party, High Scores, Help
 and Options.
-(Art from `new/New Tilesets/`, cut by `tools/build_sprites.py` with
+(Art from the supplied menu sheets, cut by `tools/build_sprites.py` with
 `tools/spaz_anims.json`, `lori_anims.json`, `charsel_anims.json`, and by
 `tools/build_font.py`.)
 
@@ -277,7 +277,7 @@ from `Levels/`: each folder holds `.j2l` levels with their `.j2t` tile sets
 the menus (adding the missing `.j2t` brings them back). Included now:
 
 - **The original game** (`JJ2-Levels.zip`, `JJ2-Music.zip` and
-  `JJ2-Cinematics.zip`, packed from a JJ2 install with `tools/pack_jj2.ps1`):
+  `JJ2-Cinematics.zip`, packed from a JJ2 install):
   Formerly a Prince, Jazz in Time, Flashback, Funky Monkeys, The Secret Files,
   the shareware levels and the Home Cooked levels, each level with its own
   song; the 35 official multiplayer maps are in PARTY mode. The first key
@@ -285,8 +285,8 @@ the menus (adding the missing `.j2t` brings them back). Included now:
   key skips to the menu), and beating Funky Monkeys plays the ending.
   `src/cinematic.js` decodes the `.j2v` films (after Jazz2 Resurrection).
   Without the cinematics zip the splash plays the intro track as before.
-- **The Christmas Chronicles** (`JJ2-Christmas.zip`, packed with
-  `tools/pack_jj2cc.ps1`): Snow Bunnies, Dashing thru the Snow and Tinsel
+- **The Christmas Chronicles** (`JJ2-Christmas.zip`, packed from its
+  install): Snow Bunnies, Dashing thru the Snow and Tinsel
   Town, with the wintry turtles and lizards and Bilsy in a winter coat
   (Anims.j2a's Christmas sets); six Easter levels that came with it (Easter
   Time! ends on the ending film); and its holiday maps in PARTY mode (six
@@ -307,12 +307,12 @@ the menus (adding the missing `.j2t` brings them back). Included now:
 **Tile sets borrowed between packs**: a level whose pack lacks a tile set
 takes it from a tile set library (a folder or zip in `Levels/` holding only
 `.j2t` files, like **jj1-conversions.zip** with its 91 Jazz 1 conversions, or
-`Levels/Tilesets/` for loose ones),
+a `Levels/Tilesets/` folder for loose ones),
 or else from another pack that has it. That is how Team Race gets its Medivo
 set and xlmlots its Carrotus Night (from ChristmasJarVos.ZIP).
 - **BL18** (`BL18.zip`): a JJ2+ pack built on scripts and extra tile sets;
-  all nine levels play (No Smoke Without Fire borrows `Levels/Tilesets/Damn1.j2t`;
-  its scripted finale boss isn't there, as JJ2+ scripts don't run).
+  all nine levels play (No Smoke Without Fire borrows Damn1.j2t from
+  JJ2-Levels.zip; its JJ2+ script starts the finale boss).
 - **Threed Realms**: three worlds in one level, on the retail Jungle, Town
   and Diamondus sets (borrowed from the packs that include them).
 
@@ -324,7 +324,7 @@ carrots, springs, poles, checkpoints, warps and coin warps, text signs,
 exits, destructible/stomp/speed/collapsing scenery and enemies (each JJ2
 enemy moves like the closest one we have, drawn as itself: fencers, fat
 chicks, fish, lab rats, Doggy Dogg, skeletons, ravens, bees, crabs and the
-Mad Hatter from the enemies sheet in `Levels/`; sparks, suckers, witches,
+Mad Hatter from the supplied enemies sheet; sparks, suckers, witches,
 copter lizards, Helmut, rapiers, dragons, tough turtles, tube turtles and
 the smoking caterpillar from `Anims.j2a`). Vines, hooks, tubes, water
 (swimming), wind, belts, float-up columns, bridges and light zones work as in
@@ -404,8 +404,8 @@ src/screens.js          splash intro, menus, level select, lobby, tally
 src/cinematic.js        JJ2's .j2v films (intro, ending): four zlib streams -> 8-bit frames
 serve.py                web server + party relay (WebSocket /ws, rooms of 5, room list)
 tools/check_levels.mjs  reachability check for all levels
-tools/build_sprites.py  cuts sprite sheets in new/ into assets/*.png + .json
-tools/j2a.py            reads JJ2's Anims.j2a: named samples -> assets/sfx/jj2/, animations
+tools/build_sprites.py  cuts sprite sheets (put in new/) into assets/*.png + .json
+tools/j2a.py            reads JJ2's Anims.j2a (put in the root): named samples -> assets/sfx/jj2/, animations
                         -> sprite sheets (assets/jj2_enemies from tools/jj2_enemies.json)
 tools/build_blocks.py   packs the special block tiles into assets/blocks.png
 tools/build_font.py     cuts the JJ2 menu fonts into assets/font_*.png
