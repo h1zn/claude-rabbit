@@ -13,7 +13,7 @@ const shard = (args.find((a) => a.startsWith('--shard=')) || '--shard=0/1').slic
 const browser = await pw.chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const page = await browser.newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto('http://127.0.0.1:8770/'); await page.waitForFunction(() => window.kip);
+await page.goto(`http://127.0.0.1:${process.env.PORT || 8770}/`); await page.waitForFunction(() => window.kip);
 const keys = await page.evaluate(async (f) => {
   const cat = await import('/src/jj2/catalog.js'); await cat.scanPlayable();
   return cat.playableJJ2().filter((d) => d.key.includes(f)).map((d) => d.key);
