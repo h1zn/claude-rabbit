@@ -169,11 +169,24 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
     if (move.as && CHARS.has(move.as)) p.character = move.as;
     if (move.vx) { p.vx = move.vx; p.dash = 30; }
     if (move.copter) { p.copter = COPTER_TICKS; p.onGround = false; p.vy = Math.min(p.vy, 0); }
-    let hurt = false;
+    let hurt = false; let shot = null;
+    // A trigger crate level with the gun, in a clear line on either side:
+    // shot on the way (from the air too).
+    const aim = () => {
+      const gy = p.y + p.h - 18; const gty = Math.floor(gy / T);
+      for (const k of crates) {
+        if (Math.abs(gy - (k.ty * T + 21)) > 14 || Math.abs(p.cx - (k.tx * T + 16)) > 10 * T) continue;
+        const a = Math.floor(p.cx / T); const b = k.tx; let clear = true;
+        for (let x = Math.min(a, b) + 1; x < Math.max(a, b); x++) if (L.solidAt(x * T + 16, gty * T + 16)) { clear = false; break; }
+        if (clear) return k;
+      }
+      return null;
+    };
     const run = (keys, n) => {
       held = new Set(keys);
       for (let t = 0; t < n; t++) {
         const hp = p.health; tick();
+        if (!shot && crates.length && !p.onGround) shot = aim();
         if (p.health < hp) hurt = true;
         if (p.dead || g.state !== 'play' || bossMet) return true;
       }
@@ -198,7 +211,7 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
     p.character = startChar;
     if (g.state !== 'play' || bossMet) { g.state = 'play'; g.clearTime = 0; return [-3, hurt]; }
     if (p.dead) return [-2, hurt];
-    return [cell(), hurt, settled];
+    return [cell(), hurt, settled, shot];
   };
 
   // Start where the level puts the player.
@@ -227,7 +240,13 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
     const cx = (i % w) * T + 16; const cy = Math.floor((i % WH) / w) * T + 16;
     const copter = lizards.some((l) => Math.hypot(l.x - cx, l.y - cy) < 260) ? COPTER_MOVES.map((m) => ({ ...m, copter: true })) : [];
     for (const move of saved.get(i).birdForm || saved.get(i).flyCarrot ? [...MOVES, ...FLIGHTS] : [...MOVES, ...copter]) {
-      const [n, hurt, settled] = play(saved.get(i), move);
+      const [n, hurt, settled, shot] = play(saved.get(i), move);
+      // A crate shot on the way: where the move ends, with its trigger switched.
+      if (shot && n >= 0) {
+        L.setTrigger(shot.id, shot.toggle ? !L.triggerState.has(shot.id) : shot.on);
+        const n2 = cell();
+        if (n2 !== n && n2 >= 0) { out.add(n2); if (!seen.has(n2)) { seen.add(n2); saved.set(n2, snapshot()); queue.push(n2); } }
+      }
       if (hurt) out.add(-2);
       if (n === -3) exitReached = true;
       if (n < 0) { out.add(n); continue; }
