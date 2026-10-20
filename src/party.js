@@ -267,9 +267,11 @@ export class Party {
   // poles, warps), so a place it can't get out of truly has no way out.
   // Its biggest group of places all reachable from each other is the
   // arena; a place is good if a player there can get into the arena.
-  // Spawns go on good places, and items and gold in the arena. null: no
-  // map to go by (a built-in level).
-  goodPlaces(level, springs = []) {
+  // Spawns go on good places, and items and gold in the arena. `safe`:
+  // the strict map instead (plain jumps only, no vines, tubes or wind), on
+  // which whatever it reaches surely can be. null: no map to go by (a
+  // built-in level).
+  goodPlaces(level, springs = [], safe = false) {
     const { w, h } = level;
     if (!level.masks) return null;
     const n = w * h;
@@ -284,7 +286,7 @@ export class Party {
       const area = level.areaAt(cx(tx), ty * TILE + 16);
       const ch = level.tiles[ty][tx];
       if (area === 2 || ch === '^' || ch === '~') continue;
-      if (area || ty * TILE + 16 > level.water) { place[ty * w + tx] = 2; continue; }
+      if ((area && !safe) || ty * TILE + 16 > level.water) { place[ty * w + tx] = 2; continue; }
       // A floor under the middle, in this cell's lower part or the top of
       // the next (a slope or a rounded top can sit either way).
       if ([20, 24, 28, 36, 42, 48].some((d) => level.solidPx(cx(tx), ty * TILE + d, true))) place[ty * w + tx] = 1;
@@ -295,10 +297,10 @@ export class Party {
     const addThrow = (i, t) => { if (i < 0) return; if (!place[i]) place[i] = 1; if (!throws.has(i)) throws.set(i, []); throws.get(i).push(t); };
     for (const sp of springs) {
       if (sp.dir) addThrow(at(sp.x + sp.w / 2, sp.y + sp.h / 2), { dir: sp.dir });
-      else addThrow(at(sp.x + sp.w / 2, sp.y - 1), { up: { red: 10, green: 16, blue: 23 }[sp.color] || 10 });
+      else addThrow(at(sp.x + sp.w / 2, sp.y - 1), { up: (safe ? { red: 8, green: 13, blue: 19 } : { red: 10, green: 16, blue: 23 })[sp.color] || 8 });
     }
     for (const o of level.objects) {
-      if (o.type === 'pole') addThrow(at(cx(o.tx), o.ty * TILE + 16), { up: 8, reach: 12 });
+      if (o.type === 'pole') addThrow(at(cx(o.tx), o.ty * TILE + 16), safe ? { up: 4, reach: 8 } : { up: 8, reach: 12 });
       if (o.type === 'warp' && o.to) {
         const t = level.objects.find((q) => q.type === 'warp' && q.id === o.to);
         if (t) for (const dy of [0, -1]) addThrow(at(cx(o.tx), (o.ty + dy) * TILE + 16), { to: [t.tx, t.ty] });
@@ -329,10 +331,10 @@ export class Party {
       for (const d of [-1, 1]) if (hollow(tx + d, ty)) { const l = land(tx + d, ty); if (l >= 0) out.add(l); }
       if (place[i] === 2) for (const j of [i - w, i + w]) if (place[j]) out.add(j); else if (j === i - w && hollow(tx, ty - 1)) arc(tx, ty - 1, 1, 6, out);
       const l = land(tx, ty + 1); if (place[i] === 2 && l >= 0) out.add(l);
-      arc(tx, ty, 6, 8, out);
+      if (safe) arc(tx, ty, 4, 4, out); else arc(tx, ty, 6, 8, out);
       for (const t of throws.get(i) || []) {
         if (t.up) arc(tx, ty, t.up, t.reach || 8, out);
-        if (t.dir) for (let k = 1; k <= 16 && hollow(tx + t.dir * k, ty); k++) { const f = land(tx + t.dir * k, ty); if (f >= 0) out.add(f); }
+        if (t.dir) for (let k = 1; k <= (safe ? 10 : 16) && hollow(tx + t.dir * k, ty); k++) { const f = land(tx + t.dir * k, ty); if (f >= 0) out.add(f); }
         if (t.to) { const f = land(t.to[0], t.to[1]); if (f >= 0) out.add(f); else if (hollow(t.to[0], t.to[1])) out.add(t.to[1] * w + t.to[0]); }
       }
       out.delete(i);
@@ -386,8 +388,8 @@ export class Party {
   }
 
   // Standable cells joined through open air to the given spots (so none is
-  // in a sealed room), every third column.
-  openFloor(level, from) {
+  // in a sealed room) and on the given map of places, every third column.
+  openFloor(level, from, map = this.good) {
     const { w, h } = level;
     const seen = new Uint8Array(w * h);
     const air = (tx, ty) => tx >= 0 && ty >= 0 && tx < w && ty < h && !level.solidAt(tx * TILE + 16, ty * TILE + 16);
@@ -396,7 +398,7 @@ export class Party {
     const out = [];
     for (let i = 0; i < queue.length; i++) {
       const tx = queue[i] % w; const ty = (queue[i] - tx) / w;
-      if (tx % 3 === 0 && this.standable(level, tx, ty) && this.goodAt(level, tx, ty, 1, this.arena)) out.push([tx, ty]);
+      if (tx % 3 === 0 && this.standable(level, tx, ty) && this.goodAt(level, tx, ty, 1, map)) out.push([tx, ty]);
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = tx + dx; const ny = ty + dy;
         if (air(nx, ny) && !seen[ny * w + nx]) { seen[ny * w + nx] = 1; queue.push(ny * w + nx); }
@@ -413,7 +415,13 @@ export class Party {
     const near = (tx, ty) => this.mode !== 'race' && exits.some((e) => Math.hypot(e.x / TILE - tx, e.y / TILE - ty) < EXIT_CLEAR);
     const out = [];
     let starts = level.allStarts || level.entities.filter((e) => e.ch === 'P').map((e) => [e.tx, e.ty]);
-    ({ good: this.good, arena: this.arena } = this.goodPlaces(level, game.props.filter((pr) => pr.kind === 'spring')) || {});
+    const springs = game.props.filter((pr) => pr.kind === 'spring');
+    ({ good: this.good, arena: this.arena } = this.goodPlaces(level, springs) || {});
+    // Items and gold: the arena again on a stricter map (plain jumps, no
+    // vines, tubes or wind), unless that splits the level up too much.
+    const strict = this.arena && this.goodPlaces(level, springs, true);
+    const size = (a) => a.reduce((n, v) => n + v, 0);
+    if (strict && size(strict.arena) * 3 >= size(this.arena)) this.arena = strict.arena;
     const add = (tx, ty, start) => {
       if (near(tx, ty) || out.some((s) => s.tx === tx && s.ty === ty) || !this.goodAt(level, tx, ty)) return;
       out.push({ tx, ty, start });
@@ -531,7 +539,7 @@ export class Party {
     if (gems.length < count) {
       // More spots: open floor joined to the spawns, every third column,
       // away from the exits and the gems already there.
-      const floor = this.openFloor(level, this.spots).map(([tx, ty]) => ({ x: tx * TILE + 6, y: ty * TILE + 6 }))
+      const floor = this.openFloor(level, this.spots, this.arena).map(([tx, ty]) => ({ x: tx * TILE + 6, y: ty * TILE + 6 }))
         .filter((c) => !nearExit(c.x, c.y) && !gems.some((k) => Math.abs(k.x - c.x) < TILE && Math.abs(k.y - c.y) < TILE));
       floor.sort((a, b) => (spawnD(b) - spawnD(a)) || (a.x - b.x) || (a.y - b.y));
       // Spread: every so many of them, as many as needed.
@@ -568,11 +576,13 @@ export class Party {
     const order = [...gems].sort((a, b) => (hard(b) - hard(a)) || (a.x - b.x) || (a.y - b.y));
     const set = (k, color, value) => Object.assign(k, { color, value, score: value * 100 });
     gems.forEach((k) => set(k, 'red', 1));
-    // Gold: the hardest ones, at least 12 tiles apart, each just over a
-    // good place (hard to get, never impossible).
+    // Gold: the hardest ones, at least 12 tiles apart, each on a floor in
+    // the arena (hard to get, never impossible).
     const fair = (k) => {
       const tx = Math.floor((k.x + k.w / 2) / TILE); const ty = Math.floor((k.y + k.h / 2) / TILE);
-      return [0, -1, 1].some((d) => tx + d >= 0 && tx + d < level.w && this.goodAt(level, tx + d, ty, 4, this.arena));
+      // Not in a warp's mouth (it whisks the player off before the gem).
+      if (game.warps.some((o) => Math.abs(o.tx - tx) <= 1 && ty >= o.ty - 2 && ty <= o.ty + 1)) return false;
+      return this.goodAt(level, tx, ty, 2, this.arena);
     };
     const golds = [];
     for (const k of order) {
@@ -747,7 +757,12 @@ export class Party {
       this.gone.delete(id);
       // The armor comes back somewhere else each time.
       if (id === 'armor' && this.itemSpots.length > 1) {
-        this.armorSpot = (this.armorSpot + 1 + Math.floor(this.itemSpots.length / 2)) % this.itemSpots.length;
+        // Hop round the spots, half the list on, skipping any right by the
+        // last place (however few spots the level has, it moves).
+        const last = this.itemSpots[this.armorSpot]; const n = this.itemSpots.length;
+        let next = (this.armorSpot + 1 + Math.floor(n / 2)) % n;
+        for (let k = 0; k < n && (next === this.armorSpot || Math.hypot(this.itemSpots[next].x - last.x, this.itemSpots[next].y - last.y) < 4 * TILE); k++) next = (next + 1) % n;
+        this.armorSpot = next;
         const s = this.itemSpots[this.armorSpot];
         const at = { x: s.x - 5, y: s.y + game.player.h - 30 };
         this.restore(game, id, at);
