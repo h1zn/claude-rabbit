@@ -1,10 +1,10 @@
 // World drawing and the in-game HUD.
 
-import { arcadeText } from './art.js';
+import { arcadeText, FONT } from './art.js';
 import { PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import { frameAt } from './sheets.js';
 import { tr } from './lang.js';
-import { SECOND, TEAMS } from './party.js';
+import { PARTY_HEARTS, SECOND, TEAMS } from './party.js';
 import { boxSprite, ITEMS } from './partyitems.js';
 import { AREA, BLOCKS } from './level.js';
 import { THEME_TILESET } from './tilesets.js';
@@ -741,6 +741,8 @@ export class Renderer {
     }
     for (const r of party.rivals.values()) {
       if (!r.seen || r.dead) continue;
+      // Just hit: blinking, like the player.
+      if (r.hurtT > 0 && Math.floor(r.hurtT / 4) % 2) continue;
       const speed = Math.abs(r.vx);
       const sheet = r.frog ? this.art.morphs : this.art.tinted(r.character, r.tint);
       const name = r.frog ? (sheet.anims[r.anim] ? r.anim : 'idle') : { run: speed > 4.2 ? 'run' : 'walk', jump: speed > 2 ? 'jumpFwd' : 'jump', fall: speed > 2 ? 'fallFwd' : 'fall', pole: 'spring' }[r.anim] || (sheet.anims[r.anim] ? r.anim : 'idle');
@@ -753,6 +755,11 @@ export class Renderer {
       if (leader === r.id) this.crown(x + f.w / 2, y - 26, game.time);
       if (r.carry >= 0) this.flag(x + f.w / 2 + 4, y + 8, r.carry, game.time, 0.6);
       arcadeText(ctx, r.name, x + f.w / 2, y - 16, { size: 9, align: 'center', shadow: false, top: '#ffffff', bottom: r.color });
+      // Their hearts under the name.
+      for (let k = 0; k < PARTY_HEARTS; k++) {
+        ctx.fillStyle = k < r.hearts ? '#ff3a5a' : 'rgba(40,20,60,0.7)';
+        ctx.fillRect(Math.round(x + f.w / 2 - PARTY_HEARTS * 3.5 + k * 7), y - 5, 5, 4);
+      }
     }
     if (party.carry >= 0 && !game.player.dead) {
       const p = game.player;
@@ -908,7 +915,7 @@ export class Renderer {
 
   popups(game) {
     for (const q of game.popups) {
-      arcadeText(this.ctx, q.text, q.x, q.y, { size: 10, align: 'center', alpha: Math.min(1, q.life / 20), shadow: false, top: '#ffffff', bottom: '#cfe6ff' });
+      arcadeText(this.ctx, q.text, q.x, q.y, { size: 10, align: 'center', alpha: Math.min(1, q.life / 20), shadow: false, top: '#ffffff', bottom: q.color || '#cfe6ff' });
     }
   }
 
@@ -1036,7 +1043,11 @@ export class Renderer {
     if (game.bannerTime > 0 && game.state === 'play') {
       const a = Math.min(1, game.bannerTime / 30);
       const s = 1 + Math.max(0, (game.bannerTime - 140) / 20);
-      arcadeText(ctx, tr(game.bannerText), this.w / 2, 70, { size: Math.round(24 * s), align: 'center', alpha: a });
+      // Shrunk to fit the view (half the screen in split screen).
+      const text = tr(game.bannerText);
+      ctx.font = `${Math.round(24 * s)}px ${FONT}`;
+      const fit = Math.min(1, (this.w - 24) / Math.max(1, ctx.measureText(text).width));
+      arcadeText(ctx, text, this.w / 2, 70, { size: Math.max(10, Math.round(24 * s * fit)), align: 'center', alpha: a });
     }
   }
 }

@@ -345,7 +345,14 @@ export class Queen extends Boss {
         if (this.at === 30) {
           // A brick drops on the player from high above.
           game.audio.play('stompLand'); game.shake(10);
-          game.enemyShots.push(new Brick(p.cx + rand(-50, 50) - 8, this.y - 200));
+          // From up to 200 px above, but under the ceiling: a brick made
+          // inside a low ceiling would break before it fell.
+          const bx = p.cx + rand(-50, 50) - 8;
+          let by = Math.min(this.y, p.y) - 200;
+          for (let y = p.y - 8; y > by; y -= 4) {
+            if (game.level.solidAt(bx + 8, y)) { by = y + 6; break; }
+          }
+          game.enemyShots.push(new Brick(bx, by));
         }
         if (this.at >= 45) { this.state = 'toBack'; this.st = Math.round(rand(70, 80) * T); this.anim = 'idle'; }
         break;

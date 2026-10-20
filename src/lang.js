@@ -348,6 +348,8 @@ const ROWS = [
   ["Could not reach the party server. Start the game with party.bat (serve.py --lan).", "Party-Server nicht erreichbar. Starte das Spiel mit party.bat (serve.py --lan).", "Serveur de partie injoignable. Lance le jeu avec party.bat (serve.py --lan).", "No se pudo conectar con el servidor. Inicia el juego con party.bat (serve.py --lan).", "Server della partita irraggiungibile. Avvia il gioco con party.bat (serve.py --lan).", "Partyserver niet bereikbaar. Start het spel met party.bat (serve.py --lan)."],
   ["YOUR NAME", "DEIN NAME", "TON NOM", "TU NOMBRE", "IL TUO NOME", "JOUW NAAM"],
   ["PLAYER 1", "SPIELER 1", "JOUEUR 1", "JUGADOR 1", "GIOCATORE 1", "SPELER 1"],
+  ["LEAVE THE GAME?", "SPIEL VERLASSEN?", "QUITTER LA PARTIE ?", "¿SALIR DE LA PARTIDA?", "LASCIARE LA PARTITA?", "SPEL VERLATEN?"],
+  ["ENTER: leave   ESC: keep playing", "ENTER: verlassen   ESC: weiterspielen", "ENTRÉE : quitter   ÉCHAP : continuer", "ENTER: salir   ESC: seguir jugando", "INVIO: esci   ESC: continua", "ENTER: verlaten   ESC: verder spelen"],
   ["PLAYER 2", "SPIELER 2", "JOUEUR 2", "JUGADOR 2", "GIOCATORE 2", "SPELER 2"],
   ["PLAYER 1 NAME", "NAME SPIELER 1", "NOM DU JOUEUR 1", "NOMBRE JUGADOR 1", "NOME GIOCATORE 1", "NAAM SPELER 1"],
   ["PLAYER 2 NAME", "NAME SPIELER 2", "NOM DU JOUEUR 2", "NOMBRE JUGADOR 2", "NOME GIOCATORE 2", "NAAM SPELER 2"],

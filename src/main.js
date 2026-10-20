@@ -91,6 +91,7 @@ window.kip = {
   go: (s) => go(s),
   scene: () => scene,
   cinema: () => cinema,
+  split: () => split,
   play: async (index = 0) => {
     const def = levelDef(index);
     if (def.prepare) await def.prepare();
@@ -105,6 +106,7 @@ function go(next) {
 }
 
 function toMenu() {
+  leaving = false;
   if (net) { net.close(); net = null; }
   if (split) endSplit();
   game.party = null;
@@ -514,6 +516,13 @@ function tick() {
         if (action === 'pname+host') hostParty();
         else if (action === 'pname+rooms') listRooms();
       } else if (action === 'pname2') { save.options.playerName2 = screens.typedName; writeSave(save); }
+      else if (action === 'pname1+local' || action === 'pname2+local') {
+        save.options[action === 'pname1+local' ? 'playerName' : 'playerName2'] = screens.typedName;
+        writeSave(save);
+        // Both named: off they go; else the other name is asked for next.
+        if (save.options.playerName && save.options.playerName2) startSplit();
+        else screens.askLocalName(save.options.playerName ? 2 : 1, save);
+      }
       else if (action === 'party-start') hostStart();
       break;
     }
@@ -530,9 +539,11 @@ function tick() {
     case 'play':
       irisTime++;
       if (game.party) {
-        // Esc leaves the hunt (the rival is told); Enter after the result.
-        if (input.pressed('pause') || (game.party.result && input.pressed('start'))) { toMenu(); break; }
-        game.update(input);
+        // Esc asks before leaving (the game goes on meanwhile; the others
+        // are told if you go); Enter after the result.
+        if (game.party.result && (input.pressed('start') || input.pressed('pause'))) { toMenu(); break; }
+        if (leaveAsk(input.pressed('pause'), input.pressed('start'))) break;
+        game.update(leaving ? IDLE : input);
         break;
       }
       if (game.state === 'play' && input.pressed('pause')) {
@@ -575,9 +586,10 @@ function tick() {
       // Esc leaves; ENTER after the result.
       irisTime++;
       const done = game.party && game.party.result;
-      if (input.pressed('pause') || split.input.pressed('pause') || (done && (input.pressed('start') || split.input.pressed('start')))) { toMenu(); break; }
-      game.update(input);
-      split.game.update(split.input);
+      if (done && (input.pressed('start') || split.input.pressed('start') || input.pressed('pause') || split.input.pressed('pause'))) { toMenu(); break; }
+      if (leaveAsk(input.pressed('pause') || split.input.pressed('pause'), input.pressed('start') || split.input.pressed('start'))) break;
+      game.update(leaving ? IDLE : input);
+      split.game.update(leaving ? IDLE : split.input);
       break;
     }
     case 'paused': {
@@ -595,6 +607,20 @@ function tick() {
     default:
       break;
   }
+}
+
+// Leaving a party game: Esc asks, ENTER leaves, Esc again plays on.
+// True once it has left.
+let leaving = false;
+const IDLE = { held: () => false, pressed: () => false, released: () => false, padPressed: () => false };
+function leaveAsk(esc, enter) {
+  if (!leaving) {
+    if (esc) { leaving = true; audio.play('pause'); }
+    return false;
+  }
+  if (enter) { leaving = false; toMenu(); return true; }
+  if (esc) { leaving = false; audio.play('select'); }
+  return false;
 }
 
 // Split screen: each player's view in their half, with their own HUD.
@@ -625,7 +651,7 @@ function drawCinema() {
 function render(alpha) {
   if (scene === 'splash') return screens.splash(sceneTime, gated);
   if (scene === 'cinema') return drawCinema();
-  if (scene === 'split') return renderSplit(alpha);
+  if (scene === 'split') { renderSplit(alpha); if (leaving) screens.leaveAsk(); return null; }
   if (scene === 'title') return screens.title(game.time, save);
   if (scene === 'card') return screens.card(game, sceneTime, save);
   if (game.state === 'win') return screens.win(game, game.overTime || 0);
@@ -634,6 +660,7 @@ function render(alpha) {
   if (game.state === 'clear') screens.tally(game);
   if (game.state === 'gameover') screens.gameOver(game, game.overTime || 0);
   if (scene === 'paused') screens.pause(sceneTime, save);
+  if (leaving && game.party) screens.leaveAsk();
   if (irisTime < 45) {
     const p = game.player;
     const cx = p.cx - game.cam.x;

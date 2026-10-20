@@ -858,6 +858,7 @@ export class Checkpoint {
     if (!this.active && !game.player.dead && overlap(this, game.player)) {
       this.active = true;
       game.respawn = { x: this.x, y: this.y + this.h - game.player.h };
+      game.markCheckpoint();
       game.audio.play('checkpoint');
       game.banner('CHECKPOINT!', 90);
       for (let i = 0; i < 16; i++) game.spark(this.x + 14, this.y + 20, '#ffd54a');

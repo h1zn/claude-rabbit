@@ -143,7 +143,7 @@ class Rival {
     Object.assign(this, {
       id, name, x: -999, y: -999, prevX: -999, prevY: -999, tx: -999, ty: -999, vx: 0, vy: 0,
       w: PLAYER.w, h: PLAYER.h, facing: 1, anim: 'idle', gems: 0, hearts: PARTY_HEARTS, roasts: 0, laps: 0,
-      carry: -1, dead: false, seen: false,
+      carry: -1, dead: false, seen: false, hurtT: 0,
     });
     Object.assign(this, SLOTS[id] || SLOTS[1]);
   }
@@ -153,6 +153,7 @@ class Rival {
 
   update() {
     this.prevX = this.x; this.prevY = this.y;
+    if (this.hurtT > 0) this.hurtT--;
     if (!this.seen) return;
     // Extrapolate by the reported speed, then ease toward the target.
     this.tx += Math.max(-8, Math.min(8, this.vx)); this.ty += this.vy;
@@ -662,6 +663,11 @@ export class Party {
         const r = this.rivals.get(from);
         if (!r) break;
         if (!r.seen) { r.x = m.x; r.y = m.y; r.prevX = m.x; r.prevY = m.y; }
+        // A heart gone: they blink, and we see what it cost them.
+        if (r.seen && !r.dead && m.h < r.hearts && !m.d) {
+          r.hurtT = 60;
+          game.popups.push({ x: r.cx, y: r.y - 24, text: '-1', life: 50, color: '#ff4a6a' });
+        }
         Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, hearts: m.h, roasts: m.r, laps: m.l, carry: m.c, bubble: !!(m.e & 1), shrink: !!(m.e & 2), frog: !!(m.e & 4), seen: true });
         break;
       }

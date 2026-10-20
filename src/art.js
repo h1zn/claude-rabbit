@@ -151,7 +151,7 @@ export async function buildArt() {
   return art;
 }
 
-const FONT = '"Arial Black", "Segoe UI Black", Impact, sans-serif';
+export const FONT = '"Arial Black", "Segoe UI Black", Impact, sans-serif';
 
 // Draw chunky arcade text: drop shadow, thick outline, vertical gradient.
 export function arcadeText(ctx, str, x, y, {

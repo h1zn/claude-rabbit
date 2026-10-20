@@ -523,13 +523,20 @@ export class Screens {
     this.big('EPISODE SELECT', VIEW_W / 2, 14, { align: 'center', scale: 0.5 });
     const eps = this.episodes();
     this.episode = Math.min(this.episode, eps.length - 1);   // the list can shrink after the check
-    eps.forEach((ep, i) => {
+    // Eight rows at a time, scrolling with the selection.
+    const shown = 8;
+    const first = Math.max(0, Math.min(eps.length - shown, this.episode - 3));
+    eps.slice(first, first + shown).forEach((ep, k) => {
+      const i = first + k;
       const on = i === this.episode;
-      const y = 58 + i * 34;
-      this.med(ep.title, 52, y, { scale: on ? 0.72 : 0.64, color: on ? null : '#9d8fc8', wave: on ? 2 : 0, t });
+      const y = 58 + k * 34;
+      const scale = Math.min(on ? 0.72 : 0.64, 300 / jjWidth(this.art.fonts.med, tr(ep.title), 1));
+      this.med(ep.title, 52, y, { scale, color: on ? null : '#9d8fc8', wave: on ? 2 : 0, t });
       this.med(ep.count === 1 ? tr('1 level') : tr('{0} levels', ep.count), 52, y + 17, { scale: 0.45, color: '#8a7ab0' });
       if (on) ctx.drawImage(this.art.gems.red[Math.floor(t / 5) % 8], 26, y + 1);
     });
+    if (first > 0) this.med('...', 52, 40, { scale: 0.6, color: '#8a7ab0' });
+    if (first + shown < eps.length) this.med('...', 52, 58 + shown * 34 - 8, { scale: 0.6, color: '#8a7ab0' });
     const ep = eps[this.episode];
     const img = this.art.episodes[EPISODE_ART[ep.id] || 'homecooked'];
     const h = 220; const w = Math.round(img.width * (h / img.height));
@@ -1201,7 +1208,12 @@ export class Screens {
           this.typing = { kind: 'pname', local, buf: cleanName((local === 1 ? save.options.playerName : save.options.playerName2) || ''), fresh: true };
           return null;
         }
-        if (choose && this.ps.row === 6) { this.audio.play('select'); return 'local-start'; }
+        if (choose && this.ps.row === 6) {
+          this.audio.play('select');
+          // Nicknames first, so nobody plays as PLAYER 1.
+          if (!save.options.playerName || !save.options.playerName2) { this.askLocalName(save.options.playerName ? 2 : 1, save, true); return null; }
+          return 'local-start';
+        }
         return null;
       }
       case 'host': {
@@ -1263,6 +1275,19 @@ export class Screens {
     if (sub === 'scores') { this.scorePage = 0; this.highlight = -1; }
   }
 
+  // Split screen: ask player 1's or 2's nickname (`start`: then start).
+  askLocalName(local, save, start = true) {
+    this.typing = { kind: 'pname', local, start, buf: cleanName((local === 1 ? save.options.playerName : save.options.playerName2) || ''), fresh: true };
+  }
+
+  // Party games: Esc asks before leaving.
+  leaveAsk() {
+    this.dim(0.45);
+    this.panel(VIEW_W / 2 - 170, VIEW_H / 2 - 40, 340, 80, 0.92);
+    this.big('LEAVE THE GAME?', VIEW_W / 2, VIEW_H / 2 - 30, { align: 'center', scale: 0.5 });
+    this.med('ENTER: leave   ESC: keep playing', VIEW_W / 2, VIEW_H / 2 + 12, { align: 'center', scale: 0.5, color: '#c8b8e8' });
+  }
+
   // Host (0) or join (1) a game online: the lobby screen, and what main.js does.
   goOnline(which) {
     this.lobby = { status: 'connecting', players: [] };
@@ -1293,6 +1318,10 @@ export class Screens {
       this.audio.play(done ? 'select' : 'menu');
       if (!done) return null;
       this.typedName = name;
+      if (T.start) {
+        if (!name) { this.typing = { ...T, fresh: false }; this.audio.play('denied'); return null; }
+        return `pname${T.local}+local`;
+      }
       if (T.local === 2) return 'pname2';
       // pname, then host or rooms: main.js saves the name before connecting.
       return T.then !== undefined ? `pname+${this.goOnline(T.then)}` : 'pname';

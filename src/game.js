@@ -88,6 +88,43 @@ export class Game {
     }
   }
 
+  // An enemy (or boss) from a level entity, remembering where it came from.
+  makeFoe(e) {
+    const px = e.tx * TILE; const py = e.ty * TILE;
+    const enemy = makeEnemy(e.ch, px, py) || (BOSS_CHARS[e.ch] && new BOSS_CHARS[e.ch](px, py));
+    if (!enemy) return null;
+    enemy.src = e;
+    if (e.skin) enemy.skin = e.skin;
+    // In an original level, only a final boss (no other exit) locks the way out.
+    if (enemy.boss && this.level.jj2 && !this.level.bossEnds) enemy.guard = false;
+    return enemy;
+  }
+
+  // The level as it stands (at the start, and at each checkpoint): the
+  // enemies still around, the pickups still there, the tally and the kit.
+  markCheckpoint() {
+    if (this.party) { this.checkpoint = null; return; }
+    const p = this.player;
+    this.checkpoint = {
+      foes: this.enemies.filter((e) => !e.boss && !e.dead && e.src).map((e) => e.src),
+      pickups: this.pickups.filter((k) => !k.taken).map((k) => ({ k, x: k.x, y: k.y, falling: k.falling, vx: k.vx, vy: k.vy })),
+      stats: { score: this.score, gems: this.gems, coins: this.coins, food: this.food, levelGems: this.levelGems, levelCoins: this.levelCoins, enemiesKilled: this.enemiesKilled },
+      kit: { ammo: [...p.ammo], powered: [...p.powered], weapon: p.weapon, shotDelay: p.shotDelay },
+    };
+  }
+
+  // After a death: everything taken or beaten since the checkpoint is back.
+  restoreCheckpoint() {
+    const c = this.checkpoint;
+    if (!c) return;
+    this.enemies = [...this.enemies.filter((e) => e.boss), ...c.foes.map((src) => this.makeFoe(src)).filter(Boolean)];
+    this.pickups = c.pickups.map(({ k, ...at }) => Object.assign(k, at, { taken: false, pending: false }));
+    Object.assign(this, c.stats);
+    const p = this.player;
+    Object.assign(p, { ammo: [...c.kit.ammo], powered: [...c.kit.powered], weapon: c.kit.weapon, shotDelay: c.kit.shotDelay });
+    this.combo = 0; this.comboMult = 1; this.comboTimer = 0;
+  }
+
   loadLevel(index, freshPlayer = false) {
     this.levelIndex = index;
     // What the player brought into the level, for RESTART LEVEL.
@@ -124,13 +161,8 @@ export class Game {
     for (const e of entitiesFor(this.level, difficulty)) {
       const px = e.tx * TILE;
       const py = e.ty * TILE;
-      const enemy = makeEnemy(e.ch, px, py) || (BOSS_CHARS[e.ch] && new BOSS_CHARS[e.ch](px, py));
-      if (enemy) {
-        if (e.skin) enemy.skin = e.skin;
-        // In an original level, only a final boss (no other exit) locks the way out.
-        if (enemy.boss && this.level.jj2 && !this.level.bossEnds) enemy.guard = false;
-        this.enemies.push(enemy); totals.enemies++; continue;
-      }
+      const enemy = this.makeFoe(e);
+      if (enemy) { this.enemies.push(enemy); totals.enemies++; continue; }
       if (SPRING_CHARS.includes(e.ch)) { this.props.push(new Spring(e.tx, e.ty, e.ch)); continue; }
       switch (e.ch) {
         case 'P': start = { x: px + (TILE - PLAYER.w) / 2, y: py + TILE - playerH }; break;
@@ -196,6 +228,8 @@ export class Game {
     this.banner(this.party ? this.partyBanner() : this.level.meta.name.toUpperCase(), 160);
     this.voice('jazzHey');
     this.audio.startMusic(this.level.meta.music, { restart: true });
+    // Dying puts the level back as it was at the last checkpoint (or here).
+    this.markCheckpoint();
     // A JJ2+ level's script (src/jj2/script.js): its set-up runs now.
     this.script = this.level.meta.script ? new LevelScript(this.level.meta.script, this.scriptHost()) : null;
     if (this.script) { this.script.call('onLevelLoad'); this.script.call('onLevelBegin'); }
@@ -615,6 +649,7 @@ export class Game {
       p.spawn(this.respawn.x, this.respawn.y);
       p.health = PLAYER.maxHealth;
       p.invuln = 100;
+      this.restoreCheckpoint();
       // Bosses start their fight over.
       for (const e of this.enemies) if (e.boss && !e.dead) e.reset();
       this.enemyShots = this.enemyShots.filter((b) => !b.solid);
