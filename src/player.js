@@ -60,7 +60,7 @@ export class Player {
       coyote: 0, jumpBuffer: 0, jumping: false, hovering: false, hoverLeft: PHYS.hoverTicks,
       invuln: 0, knock: 0, dropThrough: 0, shotCooldown: 0, shootPose: 0,
       stomping: false, special: 0, rush: 0, celebrate: false,
-      pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
+      pole: null, poleT: 0, poleCool: 0, lastPole: null, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, armor: 0, shieldType: 'fire', pushing: 0, dash: 0, jumpCut: false,
       hang: null, hangCool: 0, board: false, noFire: false, frog: false, morph: 0, morphDir: null, tongue: 0, tongueHit: null, birdForm: false, flyCarrot: false, copter: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0, dizzy: 0, aim: null, fastFeet: 0,
@@ -406,12 +406,16 @@ export class Player {
     const morph = level.areaAt(this.cx, this.cy);
     if (morph === EV.MORPH_FROG && !this.frog) this.setFrog(game, true);
     else if (morph === EV.REVERT_MORPH && this.frog) this.setFrog(game, false);
-    // In water, unless leaping out of it.
+    // In water, unless leaping out of it (or thrown out by a spring).
     const wasIn = this.swimming;
     this.swimming = ((level.water !== Infinity && this.cy > level.water) || level.areaAt(this.cx, this.cy) === EV.WATER_BLOCK)
-      && !(this.jumping && this.vy < -3);
+      && !((this.jumping || this.springDj) && this.vy < -3);
     if (this.swimming && !wasIn && this.vy > 2) game.audio.play('splash');
-    this.floatUp = level.areaAt(this.cx, this.cy) === EV.FLOAT_UP || level.areaAt(this.cx, this.y + this.h - 2) === EV.FLOAT_UP;
+    // The centre and the corners of the body 2 px out, as the original
+    // samples it: a column zigzagging between two tiles still carries you.
+    const fx = [this.x - 2, this.x + this.w + 2]; const fy = [this.y - 2, this.y + this.h + 2];
+    this.floatUp = level.areaAt(this.cx, this.cy) === EV.FLOAT_UP
+      || fx.some((x) => fy.some((y) => level.areaAt(x, y) === EV.FLOAT_UP));
     // A tube carries Kip at its own speed, straight through its walls.
     if (level.areaAt(this.cx, this.cy) === EV.TUBE) {
       let [xs, ys] = eventFields(level.areaParam(this.cx, this.cy), [-7, -7]);
@@ -541,7 +545,10 @@ export class Player {
     this.anim = 'pole';
     if (this.poleT < this.poleHold && !(this.poleT > 8 && input.pressed('jump'))) return;
     this.pole = null;
-    this.poleCool = 24;
+    // Only the pole just left is out of reach a while: another one in the
+    // launch's path takes the player on (stacked poles chain, as in JJ2).
+    this.poleCool = 80;
+    this.lastPole = pole;
     this.superJump = false;
     this.jumpCut = false;
     if (pole.vertical) {
@@ -654,7 +661,7 @@ export class Player {
     this.invuln = PHYS.hurtInvulnTicks;
     this.knock = 20;
     this.special = 0;
-    if (this.pole) this.poleCool = 24;
+    if (this.pole) { this.poleCool = 24; this.lastPole = null; }
     this.pole = null;
     if (this.hang) { this.hang = null; this.hangCool = 20; }
     this.stomping = false;

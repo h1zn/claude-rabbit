@@ -874,7 +874,7 @@ export class Spring {
     if (p.vy >= 0 && feet >= this.y && feet <= this.y + 20 && p.x + p.w > this.x + 4 && p.x < this.x + this.w - 4) {
       p.y = this.y - p.h;
       p.vy = PHYS.springs[this.color];
-      p.jumping = false; p.jumpCut = false; p.onGround = false; p.stomping = false;
+      p.jumping = false; p.jumpCut = false; p.onGround = false; p.stomping = false; p.swimming = false;
       p.hoverLeft = PHYS.hoverTicks;
       // Measured: a spring hands Spaz's double jump back, for when its rise is over.
       p.doubleJumped = false; p.springDj = true; p.djWindow = 0; p.superJump = false;
@@ -1149,7 +1149,11 @@ export class Pole {
 
   update(game) {
     const p = game.player;
-    if (p.dead || p.pole || p.poleCool > 0 || p.stomping || p.special > 0) return;
+    if (p.dead || p.pole || p.stomping || p.special > 0) return;
+    // After a launch, the pole left (its tile and the one beside it, which
+    // is the same pole) stays out of reach; after a hit, every pole does.
+    const last = p.lastPole;
+    if (p.poleCool > 0 && (!last || Math.abs(this.px - last.px) + Math.abs(this.py - last.py) <= TILE)) return;
     if (!overlap(this, { x: p.cx - 4, y: p.y + 2, w: 8, h: 18 })) return;
     p.grabPole(this, game);
   }
