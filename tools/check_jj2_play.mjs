@@ -25,8 +25,10 @@ const MOVES = [];
 for (const d of ['left', 'right']) {
   MOVES.push({ steps: [[10, d]] }, { steps: [[30, d]] });
   MOVES.push({ steps: [[45, 'jump', d]] }, { steps: [[8, 'jump', d]] });
+  // Let go of the direction mid-air, to come down on a small block.
+  MOVES.push({ steps: [[16, 'jump', d], [29, 'jump']] }, { steps: [[26, 'jump', d], [19, 'jump']] });
   MOVES.push({ vx: d === 'left' ? -8 : 8, steps: [[45, 'jump', d]] });
-  MOVES.push({ steps: [[18, 'down'], [45, 'jump', d]] });
+  MOVES.push({ steps: [[18, 'down'], [2, 'down', 'jump'], [43, 'jump', d]] });   // crouch super jump
   MOVES.push({ as: 'jazz', steps: [[24, 'jump', d], [2, d], [150, 'jump', d]] });
   MOVES.push({ as: 'spaz', steps: [[16, 'jump', d], [2, d], [45, 'jump', d]] });
   MOVES.push({ steps: [[40, d, 'up']] }, { steps: [[40, d, 'down']] });
@@ -36,7 +38,7 @@ for (const d of ['left', 'right']) {
   MOVES.push({ steps: [[40, 'jump', d], [2, d], [40, 'jump', d], [2, d], [40, 'jump', d]] });   // hops
   MOVES.push({ steps: [[10, d], [20, back]] });                               // off a ledge, back under
 }
-MOVES.push({ steps: [[45, 'jump']] }, { steps: [[18, 'down'], [45, 'jump']] });
+MOVES.push({ steps: [[45, 'jump']] }, { steps: [[18, 'down'], [2, 'down', 'jump'], [43, 'jump']] });
 MOVES.push({ as: 'spaz', steps: [[16, 'jump'], [2], [45, 'jump']] });
 MOVES.push({ steps: [[20, 'down']] }, { steps: [[60, 'up']] }, { steps: [[25, 'jump'], [30, 'down']] });
 
@@ -98,6 +100,9 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
     return tx >= 0 && ty >= 0 && tx < w && ty < h ? ty * w + tx + WH * trigIndex() : -1;
   };
   const saved = new Map();     // node -> player state to start its moves from
+  // Nodes whose saved state is still in motion (a move that never settled,
+  // e.g. mid-bounce): a settled arrival later replaces it and they're re-run.
+  const rough = new Set();
   const snapshot = () => {
     const s = {};
     for (const k of Object.keys(p)) if (typeof p[k] !== 'function') s[k] = p[k];
@@ -166,7 +171,7 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
       }
       return false;
     };
-    let over = false;
+    let over = false; let settled = false;
     for (const [n, ...keys] of move.steps) { if ((over = run(keys, n))) break; }
     // Let go and wait to settle: standing, hanging, or still in water.
     if (!over) {
@@ -179,13 +184,13 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
         if (p.dead || g.state !== 'play' || bossMet) { over = true; break; }
         const still = Math.abs(p.x - x) < 0.5 && Math.abs(p.y - y) < 0.5;
         calm = (p.onGround || p.hang || p.swimming || p.platform) && (still || p.swimming || p.platform) ? calm + 1 : 0;
-        if (calm > 4) break;
+        if (calm > 4) { settled = true; break; }
       }
     }
     p.character = startChar;
     if (g.state !== 'play' || bossMet) { g.state = 'play'; g.clearTime = 0; return [-3, hurt]; }
     if (p.dead) return [-2, hurt];
-    return [cell(), hurt];
+    return [cell(), hurt, settled];
   };
 
   // Start where the level puts the player.
@@ -197,9 +202,9 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
   const queue = [start];
   const seen = new Set([start]);
   let exitReached = false;
-  for (let q = 0; q < queue.length && queue.length < maxNodes; q++) {
+  for (let q = 0; q < queue.length && seen.size < maxNodes; q++) {
     const i = queue[q];
-    const out = new Set();
+    const out = fwd.get(i) || new Set();
     // Breaking a trigger crate: the same place with the trigger switched.
     for (const k of cratesFrom(i % WH)) {
       restore(saved.get(i));
@@ -214,13 +219,14 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
     const cx = (i % w) * T + 16; const cy = Math.floor((i % WH) / w) * T + 16;
     const copter = lizards.some((l) => Math.hypot(l.x - cx, l.y - cy) < 260) ? COPTER_MOVES.map((m) => ({ ...m, copter: true })) : [];
     for (const move of saved.get(i).birdForm || saved.get(i).flyCarrot ? [...MOVES, ...FLIGHTS] : [...MOVES, ...copter]) {
-      const [n, hurt] = play(saved.get(i), move);
+      const [n, hurt, settled] = play(saved.get(i), move);
       if (hurt) out.add(-2);
       if (n === -3) exitReached = true;
       if (n < 0) { out.add(n); continue; }
       if (n === i) continue;
       out.add(n);
-      if (!seen.has(n)) { seen.add(n); saved.set(n, snapshot()); queue.push(n); }
+      if (!seen.has(n)) { seen.add(n); saved.set(n, snapshot()); queue.push(n); if (!settled) rough.add(n); }
+      else if (settled && rough.has(n)) { rough.delete(n); saved.set(n, snapshot()); queue.push(n); }
     }
     fwd.set(i, out);
   }
@@ -239,7 +245,7 @@ export function explore(game, { maxNodes = 5000, touch = false } = {}) {
   const byExit = (i) => exits.some((o) => Math.abs((i % w) - o.tx) <= 2 && Math.abs(Math.floor((i % WH) / w) - o.ty) <= 2);
   for (const [i, out] of fwd) if (near(i) || byExit(i) || out.has(-2) || out.has(-3)) { home.add(i); bq.push(i); }
   for (let k = 0; k < bq.length; k++) for (const pr of back.get(bq[k]) || []) if (!home.has(pr)) { home.add(pr); bq.push(pr); }
-  const trapped = queue.filter((i) => fwd.has(i) && !home.has(i));
+  const trapped = [...seen].filter((i) => fwd.has(i) && !home.has(i));
   const group = new Map(); const traps = [];
   for (const i of trapped) {
     if (group.has(i)) continue;
