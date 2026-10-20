@@ -335,6 +335,47 @@ export class Dragonfly extends Enemy {
   }
 
   sprite(art) { return this.anim(art, 'dragonfly', 3); }
+
+  // A floating lizard shot down leaves its copter behind.
+  kill(game) {
+    if (this.dead) return;
+    super.kill(game);
+    if (this.skin === 'lizardFloat' || this.skin === 'lizardFloatXmas') game.props.push(new Copter(this.cx, this.y, this.skin === 'lizardFloatXmas'));
+  }
+}
+
+// A floating lizard's copter (JJ2): the lizard falls, the copter hovers on
+// a while. Touch it to hang on and fly for the original's 279 ticks; Jump
+// lets go. Then it flies off.
+export const LIZARD_COPTER_TICKS = 279;
+export class Copter {
+  constructor(cx, y, xmas) {
+    Object.assign(this, { kind: 'copter', xmas, t: 0, held: false, gone: 0, dead: false });
+    this.w = 30; this.h = 24; this.x = cx - this.w / 2; this.y = y; this.baseY = y;
+  }
+
+  get cx() { return this.x + this.w / 2; }
+
+  update(game) {
+    this.t++;
+    const p = game.player;
+    if (this.held) {
+      if (p.copter > 0 && !p.dead) { this.x = p.cx - this.w / 2; this.y = p.y - this.h + 6; return; }
+      this.held = false; this.gone = 1;
+    }
+    if (this.gone) { this.y -= 2; if (++this.gone > 120) this.dead = true; return; }
+    this.y = this.baseY + Math.sin(this.t / 12) * 4;
+    if (this.t > 600) { this.gone = 1; return; }
+    if (p.dead || p.copter > 0 || p.board || p.birdForm || p.frog || p.pole || p.hang || !overlap(this, p)) return;
+    Object.assign(p, { copter: LIZARD_COPTER_TICKS, vy: Math.min(p.vy, 0), onGround: false, hovering: false, stomping: false, jumping: false });
+    this.held = true;
+    game.audio.play('select');
+  }
+
+  draw(r) {
+    const a = r.art.jj2e.anims[this.xmas ? 'lizardCopterXmas' : 'lizardCopter'];
+    if (a) r.sprite(frameAt(a, this.t, a.speed || 3), this.cx, this.y + this.h);
+  }
 }
 
 // True when no solid tile lies on the straight line between two points.

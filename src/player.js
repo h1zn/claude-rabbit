@@ -12,6 +12,9 @@ const KICK_WINDUP = 8;   // tuned: Spaz's and Lori's kicks
 const KICK_END = 30;
 // Airboard speeds (tuned): across, across holding Run, and up or down.
 const BOARD = { walk: 5, run: 7, climb: 3 };
+// The original's flying model (Jazz2 Resurrection's legacy measurements),
+// which the lizard copter shares.
+const COPTER = { rise: 0.25, maxRise: 32, brake: 0.75, brakeHeld: 0.25, descent: 1.0625, fall: 0.0625, maxFall: 12 };
 // The frog's top speed (Resurrection: the dizzy speed).
 const FROG_SPEED = 2.5;
 
@@ -59,7 +62,7 @@ export class Player {
       stomping: false, special: 0, rush: 0, celebrate: false,
       pole: null, poleT: 0, poleCool: 0, springLock: 0, warpLock: null,
       crouchT: 0, superJump: false, shield: 0, armor: 0, shieldType: 'fire', pushing: 0, dash: 0, jumpCut: false,
-      hang: null, hangCool: 0, board: false, noFire: false, frog: false, morph: 0, morphDir: null, tongue: 0, tongueHit: null, birdForm: false, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
+      hang: null, hangCool: 0, board: false, noFire: false, frog: false, morph: 0, morphDir: null, tongue: 0, tongueHit: null, birdForm: false, copter: 0, swimming: false, floatUp: false, inTube: 0, doubleJumped: false, platform: null, launched: false,
       dead: false, deadTimer: 0, anim: 'idle', animTime: 0, skid: 0, idleTime: 0, weaponShown: 0, djWindow: 0, rfBlast: 0, rfDir: 0, dizzy: 0, aim: null, fastFeet: 0,
     });
   }
@@ -210,7 +213,10 @@ export class Player {
     else if (this.jumpBuffer > 0) this.jumpBuffer--;
     if (this.surfaceGrace > 0 && !this.swimming) this.surfaceGrace--;
     const onPlatform = this.onGround && level.platform(Math.floor(this.cx / TILE), Math.floor((this.y + this.h + 1) / TILE));
-    if (this.special === 0 && !this.swimming && !this.board) {
+    // Hanging from a lizard's copter: Jump lets go (no jump, no ears).
+    const holding = this.copter > 0;
+    if (holding && controlled && input.pressed('jump')) { this.copter = 0; this.jumpBuffer = 0; }
+    if (this.special === 0 && !this.swimming && !this.board && !holding) {
       if (this.jumpBuffer > 0 && input.held('down') && onPlatform) {
         this.dropThrough = 10;
         this.jumpBuffer = 0;
@@ -288,6 +294,17 @@ export class Player {
         : this.cy - level.water < 20;
       if (surf) this.surfaceGrace = 10;
       if (input.pressed('jump') && surf) this.surfaceLeap(audio);
+    } else if (this.copter > 0) {
+      // The lizard copter flies as the original's flying carrot does: Up
+      // climbs, Down sinks at a flat rate, otherwise a climb brakes to a
+      // stop and then sinks slowly.
+      this.copter--;
+      const vdir = controlled ? (input.held('down') ? 1 : 0) - (input.held('up') ? 1 : 0) : 0;
+      if (vdir < 0) this.vy = Math.max(this.vy - COPTER.rise, -COPTER.maxRise);
+      else if (vdir > 0) this.vy = COPTER.descent;
+      else if (this.vy < 0) this.vy = Math.min(this.vy + (input.held('jump') ? COPTER.brakeHeld : COPTER.brake), 0);
+      else this.vy = Math.min(this.vy + COPTER.fall, COPTER.maxFall);
+      this.stomping = false; this.hovering = false; this.jumping = false;
     } else if (this.floatUp) {
       // Updraft: carried up to 8 px/tick (original float-up speed).
       this.vy = Math.max(this.vy - 0.5, -8);
@@ -315,9 +332,9 @@ export class Player {
         : PHYS.fallGravity;
       this.vy = Math.min(this.vy, PHYS.maxFall);
     }
-    audio.hover(this.hovering);
+    audio.hover(this.hovering || this.copter > 0);
     // Only the gravity branch spends the launch tick; any other mode ends it.
-    if (this.special > 0 || this.swimming || this.floatUp || this.stomping || this.hovering) this.launched = false;
+    if (this.special > 0 || this.swimming || this.floatUp || this.stomping || this.hovering || this.copter > 0) this.launched = false;
 
     this.collide(game);
     if (level.areas) this.areaPush(level);

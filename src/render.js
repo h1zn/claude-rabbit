@@ -553,7 +553,7 @@ export class Renderer {
     const speed = Math.abs(p.vx);
     if (p.dead) return 'knockdown';
     if (p.celebrate) return 'victory';
-    if (p.pole || p.hang) return 'spring';
+    if (p.pole || p.hang || p.copter > 0) return 'spring';
     if (p.knock > 0) return 'hurt';
     if (p.board) return 'airboard';
     if (p.dizzy > 0) return 'dizzy';

@@ -30,6 +30,12 @@
     "lizardFloat": {
       "j2a": "Lizard/copter_idle"
     },
+    "lizardCopter": {
+      "j2a": "Lizard/copter"
+    },
+    "lizardCopterXmas": {
+      "j2a": "Lizard/xmas_copter"
+    },
     "helmut": {
       "j2a": "Helmut/walk"
     },

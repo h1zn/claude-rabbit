@@ -582,7 +582,7 @@ export class Game {
     const p = this.player;
     if (p.dead) return;
     p.board = false;
-    p.frog = false; p.morph = 0; p.birdForm = false;
+    p.frog = false; p.morph = 0; p.birdForm = false; p.copter = 0;
     if (this.bird) this.bird.flyAway();
     // Party: knocked out (falling off the world), back in 10 s.
     if (this.party) { this.party.knockOut(this); return; }
@@ -706,6 +706,7 @@ export class Game {
     this.pickups = this.pickups.filter((k) => !k.taken);
     this.particles = this.particles.filter((q) => q.life > 0);
     this.effects = this.effects.filter((fx) => !fx.dead);
+    if (this.props.some((pr) => pr.dead)) this.props = this.props.filter((pr) => !pr.dead);
     this.debris = this.debris.filter((d) => d.life > 0);
     this.popups = this.popups.filter((q) => --q.life > 0);
     this.popups.forEach((q) => { q.y -= 0.6; });
