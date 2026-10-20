@@ -6,6 +6,9 @@
 // edge. A place reachable from the start with no way back to it (and no
 // exit, and nothing to die on and respawn) is a trap.
 //
+// A floating lizard close by can be shot down for its copter, so flying on
+// it is a move there too.
+//
 // Triggers are part of the state: a node is a cell plus the set of triggers
 // that are on, so a trigger zone that closes a door behind the player is
 // seen, and a trigger crate within reach (stomped or shot) is a move too.
@@ -37,6 +40,14 @@ MOVES.push({ steps: [[45, 'jump']] }, { steps: [[18, 'down'], [45, 'jump']] });
 MOVES.push({ as: 'spaz', steps: [[16, 'jump'], [2], [45, 'jump']] });
 MOVES.push({ steps: [[20, 'down']] }, { steps: [[60, 'up']] }, { steps: [[25, 'jump'], [30, 'down']] });
 
+// Hanging from a floating lizard's copter (shot down near the player, it
+// is theirs to grab): the original's 279 ticks of flight.
+const COPTER_TICKS = 279;
+const COPTER_MOVES = [{ steps: [[150, 'up']] }];
+for (const d of ['left', 'right']) {
+  COPTER_MOVES.push({ steps: [[60, 'up'], [180, 'up', d]] }, { steps: [[120, 'up', d], [120, d]] }, { steps: [[240, d]] }, { steps: [[40, 'up'], [200, d]] });
+}
+
 const CHARS = new Set(['jazz', 'spaz', 'lori']);
 
 export function explore(game, { maxNodes = 5000 } = {}) {
@@ -45,6 +56,7 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   // Out of the way: enemies, pickups, the clock; open every breakable.
   // A boss area finishes the level (beating the boss it wakes ends it).
   const bossy = g.enemies.some((e) => e.boss);
+  const lizards = g.enemies.filter((e) => /^lizardFloat/.test(e.skin || '')).map((e) => ({ x: e.cx, y: e.y + e.h / 2 }));
   g.enemies = []; g.pickups = []; g.enemyShots = [];
   g.coins = 9999;
   for (let ty = 0; ty < h; ty++) for (let tx = 0; tx < w; tx++) {
@@ -120,6 +132,7 @@ export function explore(game, { maxNodes = 5000 } = {}) {
     restore(state); bossMet = false;
     if (move.as && CHARS.has(move.as)) p.character = move.as;
     if (move.vx) { p.vx = move.vx; p.dash = 30; }
+    if (move.copter) { p.copter = COPTER_TICKS; p.onGround = false; p.vy = Math.min(p.vy, 0); }
     let hurt = false;
     const run = (keys, n) => {
       held = new Set(keys);
@@ -174,7 +187,10 @@ export function explore(game, { maxNodes = 5000 } = {}) {
         if (!seen.has(n)) { seen.add(n); saved.set(n, snapshot()); queue.push(n); }
       }
     }
-    for (const move of MOVES) {
+    // A floating lizard close enough to come at the player: its copter.
+    const cx = (i % w) * T + 16; const cy = Math.floor((i % WH) / w) * T + 16;
+    const copter = lizards.some((l) => Math.hypot(l.x - cx, l.y - cy) < 260) ? COPTER_MOVES.map((m) => ({ ...m, copter: true })) : [];
+    for (const move of [...MOVES, ...copter]) {
       const [n, hurt] = play(saved.get(i), move);
       if (hurt) out.add(-2);
       if (n === -3) exitReached = true;
