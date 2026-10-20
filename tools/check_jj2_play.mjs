@@ -6,6 +6,10 @@
 // edge. A place reachable from the start with no way back to it (and no
 // exit, and nothing to die on and respawn) is a trap.
 //
+// Triggers are part of the state: a node is a cell plus the set of triggers
+// that are on, so a trigger zone that closes a door behind the player is
+// seen, and a trigger crate within reach (stomped or shot) is a move too.
+//
 // Runs in the browser on a loaded game (window.kip.play(key) first):
 // explore(game) -> { nodes, exitReached, traps, ... }.
 // tools/check_jj2_run.mjs --play drives it over every level.
@@ -39,6 +43,8 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   const g = game; const p = g.player; const L = g.level;
   const { w, h } = L;
   // Out of the way: enemies, pickups, the clock; open every breakable.
+  // A boss area finishes the level (beating the boss it wakes ends it).
+  const bossy = g.enemies.some((e) => e.boss);
   g.enemies = []; g.pickups = []; g.enemyShots = [];
   g.coins = 9999;
   for (let ty = 0; ty < h; ty++) for (let tx = 0; tx < w; tx++) {
@@ -46,21 +52,54 @@ export function explore(game, { maxNodes = 5000 } = {}) {
     L.tiles[ty][tx] = '.';
     if (L.masks) L.masks[ty * w + tx] = null;
   }
-  if (L.triggers) for (const id of L.triggers.keys()) L.setTrigger(id, true);
   const audio = g.audio; const ctx = audio.ctx; audio.ctx = null;
   const startChar = p.character;
 
+  // Node ids: cell + WH * (index of the trigger set that is on).
+  const WH = w * h;
+  const trigSets = new Map([['', 0]]); const trigList = [[]];
+  const trigIndex = () => {
+    const on = [...(L.triggerState || [])].sort((a, b) => a - b);
+    const k = on.join(',');
+    if (!trigSets.has(k)) { trigSets.set(k, trigList.length); trigList.push(on); }
+    return trigSets.get(k);
+  };
+  const setTriggers = (on) => {
+    if (!L.triggerState) return;
+    const want = new Set(on);
+    for (const id of [...L.triggerState]) if (!want.has(id)) L.setTrigger(id, false);
+    for (const id of want) L.setTrigger(id, true);
+  };
   const cell = () => {
     const tx = Math.floor(p.cx / T); const ty = Math.floor((p.y + p.h - 1) / T);
-    return tx >= 0 && ty >= 0 && tx < w && ty < h ? ty * w + tx : -1;
+    return tx >= 0 && ty >= 0 && tx < w && ty < h ? ty * w + tx + WH * trigIndex() : -1;
   };
   const saved = new Map();     // node -> player state to start its moves from
   const snapshot = () => {
     const s = {};
     for (const k of Object.keys(p)) if (typeof p[k] !== 'function') s[k] = p[k];
+    s.level = { trig: trigList[trigIndex()], water: L.water, waterTarget: L.waterTarget, zoneKey: L.zoneKey };
     return s;
   };
-  const restore = (s) => { Object.assign(p, s); p.prevX = p.x; p.prevY = p.y; };
+  const restore = (s) => {
+    const { level, ...ps } = s;
+    Object.assign(p, ps); p.prevX = p.x; p.prevY = p.y;
+    setTriggers(level.trig);
+    L.water = level.water; L.waterTarget = level.waterTarget; L.zoneKey = level.zoneKey;
+  };
+  // Trigger crates the player can break from a cell: close by, or level
+  // with it and in a clear line to shoot.
+  const crates = L.triggerCrates || [];
+  const cratesFrom = (c) => {
+    const cx = c % w; const cy = Math.floor(c / w);
+    return crates.filter((k) => {
+      const dx = k.tx - cx; const dy = k.ty - cy;
+      if (Math.abs(dx) <= 2 && Math.abs(dy) <= 2) return true;
+      if (Math.abs(dy) > 0 || Math.abs(dx) > 10) return false;
+      for (let x = Math.min(k.tx, cx) + 1; x < Math.max(k.tx, cx); x++) if (L.solidAt(x * T + 16, cy * T + 16)) return false;
+      return true;
+    });
+  };
 
   let held = new Set(); let prev = new Set();
   const input = {
@@ -69,14 +108,16 @@ export function explore(game, { maxNodes = 5000 } = {}) {
     released: (k) => prev.has(k) && !held.has(k),
     padPressed: () => false,
   };
+  let bossMet = false;
   const tick = () => {
     p.invuln = 50; p.health = Math.max(p.health, 1);
     g.update(input);
     prev = held;
+    if (g.bossCall) { g.bossCall = false; if (bossy) bossMet = true; }
   };
   // Play a move from a state; where it settles: a node, -2 death, -3 exit.
   const play = (state, move) => {
-    restore(state);
+    restore(state); bossMet = false;
     if (move.as && CHARS.has(move.as)) p.character = move.as;
     if (move.vx) { p.vx = move.vx; p.dash = 30; }
     let hurt = false;
@@ -85,7 +126,7 @@ export function explore(game, { maxNodes = 5000 } = {}) {
       for (let t = 0; t < n; t++) {
         const hp = p.health; tick();
         if (p.health < hp) hurt = true;
-        if (p.dead || g.state !== 'play') return true;
+        if (p.dead || g.state !== 'play' || bossMet) return true;
       }
       return false;
     };
@@ -99,14 +140,14 @@ export function explore(game, { maxNodes = 5000 } = {}) {
         const x = p.x; const y = p.y;
         const hp = p.health; tick();
         if (p.health < hp) hurt = true;
-        if (p.dead || g.state !== 'play') { over = true; break; }
+        if (p.dead || g.state !== 'play' || bossMet) { over = true; break; }
         const still = Math.abs(p.x - x) < 0.5 && Math.abs(p.y - y) < 0.5;
         calm = (p.onGround || p.hang || p.swimming || p.platform) && (still || p.swimming || p.platform) ? calm + 1 : 0;
         if (calm > 4) break;
       }
     }
     p.character = startChar;
-    if (g.state !== 'play') { g.state = 'play'; g.clearTime = 0; return [-3, hurt]; }
+    if (g.state !== 'play' || bossMet) { g.state = 'play'; g.clearTime = 0; return [-3, hurt]; }
     if (p.dead) return [-2, hurt];
     return [cell(), hurt];
   };
@@ -123,6 +164,16 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   for (let q = 0; q < queue.length && queue.length < maxNodes; q++) {
     const i = queue[q];
     const out = new Set();
+    // Breaking a trigger crate: the same place with the trigger switched.
+    for (const k of cratesFrom(i % WH)) {
+      restore(saved.get(i));
+      L.setTrigger(k.id, k.toggle ? !L.triggerState.has(k.id) : k.on);
+      const n = cell();
+      if (n !== i && n >= 0) {
+        out.add(n);
+        if (!seen.has(n)) { seen.add(n); saved.set(n, snapshot()); queue.push(n); }
+      }
+    }
     for (const move of MOVES) {
       const [n, hurt] = play(saved.get(i), move);
       if (hurt) out.add(-2);
@@ -142,11 +193,11 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   const bq = [];
   // Home: the start and the places right by it (a move rarely lands on
   // the start's own cell), and anywhere with a way out.
-  const near = (i) => Math.abs((i % w) - (start % w)) <= 2 && Math.abs(Math.floor(i / w) - Math.floor(start / w)) <= 1;
+  const near = (i) => Math.abs((i % w) - (start % w)) <= 2 && Math.abs(Math.floor((i % WH) / w) - Math.floor(start / w)) <= 1;
   // Right by an exit is out too (a move that finishes the level there can
   // leave the explorer standing beside it).
   const exits = [...L.objects.filter((o) => o.type === 'exit'), ...L.entities.filter((e) => e.ch === 'E')];
-  const byExit = (i) => exits.some((o) => Math.abs((i % w) - o.tx) <= 2 && Math.abs(Math.floor(i / w) - o.ty) <= 2);
+  const byExit = (i) => exits.some((o) => Math.abs((i % w) - o.tx) <= 2 && Math.abs(Math.floor((i % WH) / w) - o.ty) <= 2);
   for (const [i, out] of fwd) if (near(i) || byExit(i) || out.has(-2) || out.has(-3)) { home.add(i); bq.push(i); }
   for (let k = 0; k < bq.length; k++) for (const pr of back.get(bq[k]) || []) if (!home.has(pr)) { home.add(pr); bq.push(pr); }
   const trapped = queue.filter((i) => fwd.has(i) && !home.has(i));
@@ -159,12 +210,13 @@ export function explore(game, { maxNodes = 5000 } = {}) {
         if (n >= 0 && fwd.has(n) && !home.has(n) && !group.has(n)) { group.set(n, traps.length); cells.push(n); }
       }
     }
-    const xs = cells.map((c) => c % w); const ys = cells.map((c) => Math.floor(c / w));
+    const xs = cells.map((c) => c % w); const ys = cells.map((c) => Math.floor((c % WH) / w));
     const entry = queue.find((pr) => home.has(pr) && [...(fwd.get(pr) || [])].some((n) => cells.includes(n)));
-    traps.push({ size: cells.length, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys), cells: cells.slice(0, 40).map((c) => [c % w, Math.floor(c / w)]), from: entry === undefined ? null : [entry % w, Math.floor(entry / w)] });
+    traps.push({ size: cells.length, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys), cells: cells.slice(0, 40).map((c) => [c % w, Math.floor((c % WH) / w)]), from: entry === undefined ? null : [entry % w, Math.floor((entry % WH) / w)] });
   }
   traps.sort((a, b) => b.size - a.size);
-  const outOf = (x, y) => [...(fwd.get(y * w + x) || [])].map((n) => (n < 0 ? n : `${n % w},${Math.floor(n / w)}${home.has(n) ? 'h' : ''}`));
-  const far = (n) => queue.filter((i) => fwd.has(i)).sort((a, b) => (b % w) - (a % w)).slice(0, n).map((i) => [i % w, Math.floor(i / w)]);
-  return { far, outOf, nodes: queue.length, explored: fwd.size, start: [start % w, Math.floor(start / w)], exitReached, traps, home: [...home], reached: queue };
+  const xy = (n) => `${n % w},${Math.floor((n % WH) / w)}${n >= WH ? 't' + Math.floor(n / WH) : ''}`;
+  const outOf = (x, y, t = 0) => [...(fwd.get(y * w + x + t * WH) || [])].map((n) => (n < 0 ? n : `${xy(n)}${home.has(n) ? 'h' : ''}`));
+  const far = (n) => queue.filter((i) => fwd.has(i)).sort((a, b) => (b % w) - (a % w)).slice(0, n).map((i) => [i % w, Math.floor((i % WH) / w)]);
+  return { far, outOf, nodes: queue.length, explored: fwd.size, start: [start % w, Math.floor(start / w)], exitReached, traps, home: [...home].map((i) => i % WH), reached: queue.map((i) => i % WH), triggerSets: trigList.length };
 }
