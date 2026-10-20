@@ -32,6 +32,9 @@ export const PARTY_DROP = 5;        // most gem value a hit drops
 export const PARTY_HEARTS = PLAYER.maxHealth;
 export const SECOND = 1000 / 14;    // ticks per second
 const GEM_BACK = 45 * SECOND;       // a collected pickup comes back after this
+const BOARD_TIME = Math.round(30 * SECOND);    // an airboard ride lasts this long
+const ARMOR_TIME = Math.round(10 * SECOND);    // treasure armor: no harm for this long
+const ARMOR_BACK = Math.round(120 * SECOND);    // ...and the next one shows up this much later
 const EXIT_CLEAR = 18;              // tiles: nobody (re)spawns this close to the exit
 
 // Who plays as whom: join order picks the hero. Players 4 and 5 are Jazz and
@@ -223,6 +226,8 @@ export class Party {
     if (this.mode === 'treasure' && !exits.length) this.placeExit(game);
     if (this.mode === 'treasure') this.layGems(game);
     if (this.mode !== 'race') placeBoxes(game, this);
+    this.placeBoard(game);
+    if (this.mode === 'treasure') this.placeArmor(game);
     // CTF bases (blue 0, red 1) from the level.
     this.bases = [0, 1].map((team) => {
       const o = game.level.objects.find((b) => b.type === 'base' && b.team === team);
@@ -363,20 +368,141 @@ export class Party {
     game.addExit(spot[0], spot[1]);
   }
 
-  // Treasure gems: red ones are worth 1, and ten green (3), eight purple
-  // (5) and one gold (10) go where the level put its better gems, then on
-  // the red ones farthest from the spawn spots.
+  // Treasure gems: worth twice the goal in all, and they never come back.
+  // About a fifth of the value each in gold (10), purple (5) and green (3),
+  // the rest red (1). The level's own gem spots are used first (spread out,
+  // trimmed if there are too many), then open floor joined to the spawns.
+  // Gold goes where it's hardest to get: far from every spawn, high up,
+  // and apart from the other gold. Every side lays out the same gems.
   layGems(game) {
-    const gems = game.pickups.filter((k) => k.kind === 'gem');
-    const far = (k) => Math.min(...this.spots.map((s) => Math.hypot(s.x - k.x, s.y - k.y)));
-    const order = [...gems].sort((a, b) => (b.value - a.value) || (far(b) - far(a)) || (a.x - b.x) || (a.y - b.y));
+    const target = this.goal * 2;
+    const gold = Math.max(1, Math.round((target * 0.2) / 10));
+    const purple = Math.round((target * 0.2) / 5);
+    const green = Math.round((target * 0.2) / 3);
+    const red = Math.max(0, target - gold * 10 - purple * 5 - green * 3);
+    const count = gold + purple + green + red;
+    const level = game.level;
+    let gems = game.pickups.filter((k) => k.kind === 'gem' && !k.droppedBy);
+    const spawnD = (k) => Math.min(...this.spots.map((s) => Math.hypot(s.x - k.x, s.y - k.y))) / TILE;
+    const exits = game.props.filter((pr) => pr.kind === 'sign');
+    const nearExit = (x, y) => exits.some((e) => Math.hypot(e.x - x, e.y - y) < 3 * TILE);
+    if (gems.length < count) {
+      // More spots: open floor joined to the spawns, every third column,
+      // away from the exits and the gems already there.
+      const floor = this.openFloor(level, this.spots).map(([tx, ty]) => ({ x: tx * TILE + 6, y: ty * TILE + 6 }))
+        .filter((c) => !nearExit(c.x, c.y) && !gems.some((k) => Math.abs(k.x - c.x) < TILE && Math.abs(k.y - c.y) < TILE));
+      floor.sort((a, b) => (spawnD(b) - spawnD(a)) || (a.x - b.x) || (a.y - b.y));
+      // Spread: every so many of them, as many as needed.
+      const step = Math.max(1, Math.floor(floor.length / Math.max(1, count - gems.length)));
+      for (let i = 0; i < floor.length && gems.length < count; i += step) {
+        const k = new Pickup('gem', floor[i].x, floor[i].y, { color: 'red', value: 1, score: 100, w: 20, h: 20 });
+        k.id = `t${i}`; k.home = { x: k.x, y: k.y };
+        this.byId.set(k.id, k);
+        game.pickups.push(k);
+        gems.push(k);
+      }
+    } else if (gems.length > count) {
+      // Too many: keep the ones most apart from each other.
+      const keep = [];
+      const rest = [...gems].sort((a, b) => (a.x - b.x) || (a.y - b.y));
+      keep.push(rest.shift());
+      while (keep.length < count && rest.length) {
+        let best = 0; let bestD = -1;
+        rest.forEach((k, i) => {
+          const d = Math.min(...keep.map((q) => Math.hypot(q.x - k.x, q.y - k.y)));
+          if (d > bestD) { bestD = d; best = i; }
+        });
+        keep.push(rest.splice(best, 1)[0]);
+      }
+      const gone = new Set(rest);
+      game.pickups = game.pickups.filter((k) => !gone.has(k));
+      for (const k of rest) this.byId.delete(k.id);
+      gems = keep;
+    }
+    // How hard each is to get to: distance from the spawns, and height
+    // above the lowest spawn.
+    const low = Math.max(...this.spots.map((s) => s.y));
+    const hard = (k) => spawnD(k) + Math.max(0, (low - k.y) / TILE) * 0.8;
+    const order = [...gems].sort((a, b) => (hard(b) - hard(a)) || (a.x - b.x) || (a.y - b.y));
     const set = (k, color, value) => Object.assign(k, { color, value, score: value * 100 });
     gems.forEach((k) => set(k, 'red', 1));
-    order.forEach((k, i) => {
-      if (i === 0) set(k, 'gold', 10);
-      else if (i <= 8) set(k, 'purple', 5);
-      else if (i <= 18) set(k, 'green', 3);
-    });
+    // Gold: the hardest ones, at least 12 tiles apart.
+    const golds = [];
+    for (const k of order) {
+      if (golds.length >= gold) break;
+      if (golds.every((q) => Math.hypot(q.x - k.x, q.y - k.y) >= 12 * TILE)) golds.push(k);
+    }
+    for (const k of order) { if (golds.length >= gold) break; if (!golds.includes(k)) golds.push(k); }
+    golds.forEach((k) => set(k, 'gold', 10));
+    const others = order.filter((k) => !golds.includes(k));
+    others.slice(0, purple).forEach((k) => set(k, 'purple', 5));
+    others.slice(purple, purple + green).forEach((k) => set(k, 'green', 3));
+    // A small level with too few spots: the hardest red gems turn green,
+    // then green ones purple, until the value adds up.
+    let short = target - gems.reduce((n, k) => n + k.value, 0);
+    for (const [from, to, value] of [['red', 'green', 3], ['green', 'purple', 5]]) {
+      for (const k of others) {
+        if (short <= 0) break;
+        if (k.color !== from || value - k.value > short) continue;
+        short -= value - k.value;
+        set(k, to, value);
+      }
+    }
+  }
+
+  // One airboard in the level (the level's own go): whoever takes it rides
+  // for 30 s; a hit or a knockout drops it where they were, and when the
+  // ride ends it turns up somewhere else.
+  placeBoard(game) {
+    game.pickups = game.pickups.filter((k) => k.kind !== 'airboard');
+    const s = this.spots[this.spots.length - 1];
+    if (!s) return;
+    const k = new Pickup('airboard', s.x - 7, s.y + game.player.h - 18, { w: 32, h: 14, id: 'board', t: 0 });
+    k.home = { x: k.x, y: k.y };
+    game.pickups.push(k);
+    this.byId.set(k.id, k);
+    this.boardTime = 0;
+  }
+
+  // Put the airboard down at (x, y) (it falls to the floor): here, and for
+  // everyone else.
+  dropBoard(game, x, y, tell = true) {
+    const k = this.byId.get('board');
+    if (!k) return;
+    Object.assign(k, { taken: false, pending: false, x: Math.round(x - k.w / 2), y: Math.round(y - k.h), vx: 0, vy: 0, falling: true });
+    k.home = { x: k.x, y: k.y };
+    if (!game.pickups.includes(k)) game.pickups.push(k);
+    game.effect('sparkle', k.x + k.w / 2, k.y + k.h / 2);
+    if (tell) this.net.send({ t: 'board', x: Math.round(x), y: Math.round(y) });
+  }
+
+  // Off the board (a hit, a knockout, or the time is up).
+  leaveBoard(game, timeUp = false) {
+    const p = game.player;
+    if (!p.board) return;
+    p.loseBoard(game);
+    this.boardTime = 0;
+    if (!timeUp) { this.dropBoard(game, p.cx, p.y + p.h); return; }
+    // Its time is up: it turns up at the spot farthest from us.
+    let best = this.spots[0]; let bestD = -1;
+    for (const s of this.spots) {
+      const d = Math.hypot(s.x - p.x, s.y - p.y);
+      if (d > bestD) { bestD = d; best = s; }
+    }
+    this.dropBoard(game, best.x + PLAYER.w / 2, best.y + game.player.h);
+    game.banner(tr('THE AIRBOARD FLEW OFF'), 60);
+  }
+
+  // Treasure hunt armor: no harm for 10 s; one at a time, the next one two
+  // minutes after it's taken, somewhere else.
+  placeArmor(game) {
+    this.armorSpot = Math.max(0, this.spots.length - 2);
+    const s = this.spots[this.armorSpot];
+    if (!s) return;
+    const k = new Pickup('armor', s.x - 5, s.y + game.player.h - 30, { w: 28, h: 30, id: 'armor', t: 0 });
+    k.home = { x: k.x, y: k.y };
+    game.pickups.push(k);
+    this.byId.set(k.id, k);
   }
 
   // A spot to come back at: the one farthest from the other players.
@@ -413,6 +539,8 @@ export class Party {
       this.beam(game, p.cx, p.y + p.h);
       game.audio.play('secret');
     }
+    if (p.armor > 0) p.armor--;
+    if (p.board && this.boardTime > 0 && --this.boardTime <= 0) this.leaveBoard(game, true);
     // Last seconds of the truce: 3, 2, 1.
     const left = Math.ceil(this.truce / SECOND);
     if (this.truce > 0 && left <= 3 && this.truce % Math.round(SECOND) === 0) game.audio.play('tally');
@@ -422,7 +550,7 @@ export class Party {
       this.net.send({
         t: 's', x: Math.round(p.x), y: Math.round(p.y), vx: +p.vx.toFixed(2), vy: +p.vy.toFixed(2), f: p.facing, a: p.anim,
         g: game.gems, d: p.dead ? 1 : 0, h: p.health, r: this.roasts, l: this.laps, c: this.carry,
-        e: (this.items.bubble ? 1 : 0) | (this.items.shrink ? 2 : 0) | (p.frog ? 4 : 0),
+        e: (this.items.bubble ? 1 : 0) | (this.items.shrink ? 2 : 0) | (p.frog ? 4 : 0) | (p.armor > 0 ? 8 : 0),
       });
     }
     for (const r of this.rivals.values()) r.update();
@@ -456,14 +584,24 @@ export class Party {
     for (const [id, at] of this.gone) {
       if (this.clock < at) continue;
       this.gone.delete(id);
+      // The armor comes back somewhere else each time.
+      if (id === 'armor' && this.spots.length > 1) {
+        this.armorSpot = (this.armorSpot + 1 + Math.floor(this.spots.length / 2)) % this.spots.length;
+        const s = this.spots[this.armorSpot];
+        const at = { x: s.x - 5, y: s.y + game.player.h - 30 };
+        this.restore(game, id, at);
+        this.net.send({ t: 'back', id, x: at.x, y: at.y });
+        continue;
+      }
       this.restore(game, id);
       this.net.send({ t: 'back', id });
     }
   }
 
-  restore(game, id) {
+  restore(game, id, at = null) {
     const k = this.byId.get(id);
     if (!k) return;
+    if (at) k.home = { x: at.x, y: at.y };
     Object.assign(k, { taken: false, pending: false, x: k.home.x, y: k.home.y });
     if (!game.pickups.includes(k)) game.pickups.push(k);
     game.effect('sparkle', k.x + k.w / 2, k.y + k.h / 2);
@@ -474,7 +612,11 @@ export class Party {
     k.taken = true;
     const t = k.trigger;
     if (t && by !== this.id) game.level.setTrigger(t.id, t.toggle ? !game.level.triggerState.has(t.id) : t.on);
-    if (this.host && k.home && !k.droppedBy && !k.trigger) this.gone.set(k.id, this.clock + GEM_BACK);
+    if (k.kind === 'airboard') return;          // it comes back when the ride ends
+    if (k.kind === 'armor') { if (this.host) this.gone.set(k.id, this.clock + ARMOR_BACK); return; }
+    // Treasure gems are gone for good (the hunt is for what's out there).
+    const keep = this.mode === 'treasure' && k.kind === 'gem';
+    if (this.host && k.home && !k.droppedBy && !k.trigger && !keep) this.gone.set(k.id, this.clock + GEM_BACK);
   }
 
   // ---------------------------------------------------------------- harm
@@ -486,8 +628,9 @@ export class Party {
     const p = game.player;
     if (p.dead || p.invuln > 0 || this.result) return;
     if (by && this.truce) return;
+    if (p.armor > 0) { game.audio.play('shieldHit'); game.effect('hitSpark', p.cx, p.cy); return; }
     p.health--;
-    p.loseBoard(game);
+    this.leaveBoard(game);
     if (game.bird) game.bird.flyAway();
     if (this.mode === 'treasure' && game.gems > 0) {
       const lost = Math.min(PARTY_DROP, game.gems);
@@ -515,7 +658,8 @@ export class Party {
     const p = game.player;
     if (p.dead) return;
     if (this.carry >= 0) this.dropFlag(game);
-    p.dead = true; p.health = 0; p.vy = -8; p.vx = 0; p.pole = null;
+    this.leaveBoard(game);
+    p.dead = true; p.health = 0; p.vy = -8; p.vx = 0; p.pole = null; p.armor = 0; p.shield = 0;
     this.respawn = PARTY_RESPAWN;
     game.audio.play('death');
     game.shake(10);
@@ -573,6 +717,21 @@ export class Party {
 
   // Collect a pickup that's ours: an item box gives its item.
   grab(game, k, item) {
+    const p = game.player;
+    if (k.kind === 'armor') {
+      k.taken = true;
+      Object.assign(p, { armor: ARMOR_TIME, shield: ARMOR_TIME, shieldType: 'plasma' });
+      game.audio.play('shieldHit');
+      game.banner(tr('ARMOR!'), 60);
+      game.ring(p.cx, p.cy, '#7ae8ff');
+      return;
+    }
+    if (k.kind === 'airboard') {
+      if (p.board) return;
+      k.collect(game);
+      this.boardTime = BOARD_TIME;
+      return;
+    }
     if (k.kind !== 'itembox') { k.collect(game); return; }
     k.taken = true;
     game.effect('sparkle', k.x + k.w / 2, k.y + k.h / 2);
@@ -668,7 +827,7 @@ export class Party {
           r.hurtT = 60;
           game.popups.push({ x: r.cx, y: r.y - 24, text: '-1', life: 50, color: '#ff4a6a' });
         }
-        Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, hearts: m.h, roasts: m.r, laps: m.l, carry: m.c, bubble: !!(m.e & 1), shrink: !!(m.e & 2), frog: !!(m.e & 4), seen: true });
+        Object.assign(r, { tx: m.x, ty: m.y, vx: m.vx, vy: m.vy, facing: m.f, anim: m.a, gems: m.g, dead: !!m.d, hearts: m.h, roasts: m.r, laps: m.l, carry: m.c, bubble: !!(m.e & 1), shrink: !!(m.e & 2), frog: !!(m.e & 4), armor: !!(m.e & 8), seen: true });
         break;
       }
       case 'shot': {
@@ -698,7 +857,8 @@ export class Party {
         break;
       }
       case 'deny': { const k = this.byId.get(m.id); if (k) k.pending = false; break; }
-      case 'back': this.restore(game, m.id); break;
+      case 'back': this.restore(game, m.id, m.x !== undefined ? { x: m.x, y: m.y } : null); break;
+      case 'board': this.dropBoard(game, m.x, m.y, false); break;
       case 'tile': game.hitTile(m.x, m.y, { stomp: true, speed: true, collapse: true, weapon: m.w, blast: !!m.b, remote: true }); break;
       case 'boom': {
         const near = (s) => s.weapon === TNT && !s.dead && Math.abs(s.cx - m.x) < 24 && Math.abs(s.cy - m.y) < 24;

@@ -754,6 +754,7 @@ export class Renderer {
       this.drawHero(right ? f.right : f.left, x, y, f, r.shrink, r.bubble);
       if (leader === r.id) this.crown(x + f.w / 2, y - 26, game.time);
       if (r.carry >= 0) this.flag(x + f.w / 2 + 4, y + 8, r.carry, game.time, 0.6);
+      if (r.armor) this.shieldRing(game, x + f.w / 2, y + f.h / 2, 'plasma');
       arcadeText(ctx, r.name, x + f.w / 2, y - 16, { size: 9, align: 'center', shadow: false, top: '#ffffff', bottom: r.color });
       // Their hearts under the name.
       for (let k = 0; k < PARTY_HEARTS; k++) {
@@ -967,6 +968,10 @@ export class Renderer {
       arcadeText(ctx, `${game.gems}`, 32, 32, { size: 12, top: '#ffffff', bottom: '#ffb0c0' });
       this.centred(items.coinSilver.frames[0], 84, 40);
       arcadeText(ctx, `${game.coins}`, 96, 32, { size: 12, top: '#ffffff', bottom: '#ffe08a' });
+    }
+    // Party: the airboard's time left.
+    if (game.party && p.board && game.party.boardTime > 0) {
+      arcadeText(ctx, tr('AIRBOARD {0}', Math.ceil(game.party.boardTime / 70)), 210, 52, { size: 11, top: '#ffffff', bottom: '#7ae8ff' });
     }
     if (p.fastFeet > 0) {
       this.centred(this.art.beta.anims.speedShoes.frames[0], 210, 40);

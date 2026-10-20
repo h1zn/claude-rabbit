@@ -637,6 +637,7 @@ export class Pickup {
     if (this.kind === 'birdcage') return frameAt(this.yellow ? art.morphs.anims.birdyCaged : art.morphs.anims.chuckCaged, this.t, 6);
     if (this.kind === 'birdmonitor') return frameAt(art.morphs.anims.birdMonitor, this.t, 6);
     if (this.kind === 'shield') return frameAt(a[SHIELDS[this.shield || 'fire'].monitor], this.t, 6);
+    if (this.kind === 'armor') return frameAt(a.monShieldPlasma || a[SHIELDS.plasma.monitor], this.t, 6);
     if (this.kind === 'morph') return frameAt(a.monChange, this.t, 5);
     if (this.kind === 'ammo') return frameAt(a[WEAPONS[this.weapon].icon], this.t, 5);
     if (this.kind === 'item') return frameAt(art.beta.anims[{ fastFeet: 'speedShoes', freeze: 'hourglass', stopwatch: 'stopwatch' }[this.item]], this.t, 5);
