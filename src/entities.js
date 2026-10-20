@@ -572,11 +572,11 @@ export class Butterfly extends Enemy {
 
   update(game) {
     this.begin();
-    // A lazy loop a few tiles across about its spot, through the scenery
-    // like any small flier.
-    const k = this.t / 70;
-    this.x = this.homeX + Math.sin(k) * 80;
-    this.y = this.homeY + Math.sin(k * 2.3) * 20;
+    // A small lazy loop about its spot (through the scenery, like any small
+    // flier): close enough to its place to be a stepping stone.
+    const k = this.t / 50;
+    this.x = this.homeX + Math.sin(k) * 12;
+    this.y = this.homeY + Math.sin(k * 2.3) * 6;
     this.facing = Math.cos(k) > 0 ? 1 : -1;
   }
 
