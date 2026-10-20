@@ -143,7 +143,11 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   // Home: the start and the places right by it (a move rarely lands on
   // the start's own cell), and anywhere with a way out.
   const near = (i) => Math.abs((i % w) - (start % w)) <= 2 && Math.abs(Math.floor(i / w) - Math.floor(start / w)) <= 1;
-  for (const [i, out] of fwd) if (near(i) || out.has(-2) || out.has(-3)) { home.add(i); bq.push(i); }
+  // Right by an exit is out too (a move that finishes the level there can
+  // leave the explorer standing beside it).
+  const exits = [...L.objects.filter((o) => o.type === 'exit'), ...L.entities.filter((e) => e.ch === 'E')];
+  const byExit = (i) => exits.some((o) => Math.abs((i % w) - o.tx) <= 2 && Math.abs(Math.floor(i / w) - o.ty) <= 2);
+  for (const [i, out] of fwd) if (near(i) || byExit(i) || out.has(-2) || out.has(-3)) { home.add(i); bq.push(i); }
   for (let k = 0; k < bq.length; k++) for (const pr of back.get(bq[k]) || []) if (!home.has(pr)) { home.add(pr); bq.push(pr); }
   const trapped = queue.filter((i) => fwd.has(i) && !home.has(i));
   const group = new Map(); const traps = [];

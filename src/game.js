@@ -8,7 +8,7 @@ import { tr } from './lang.js';
 import { THEME_TILESET } from './tilesets.js';
 import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import {
-  Bumper, Checkpoint, Effect, Hint, ScriptArea, makeEnemy, overlap, Paddle, Particle, Pickup, Pole, SecretZone, Sign, Spring, SPRING_CHARS, Warp,
+  Bumper, Checkpoint, SteamNote, Effect, Hint, ScriptArea, makeEnemy, overlap, Paddle, Particle, Pickup, Pole, SecretZone, Sign, Spring, SPRING_CHARS, Warp,
 } from './entities.js';
 import { jj2Tick } from './jj2/play.js';
 import { cleanText } from './jj2/files.js';
@@ -195,6 +195,7 @@ export class Game {
       if (o.type === 'exit') this.props.push(new Sign(o.tx, o.ty, true));
       if (o.type === 'pole') this.props.push(new Pole(o.tx, o.ty, o.vertical, true));
       if (o.type === 'bumper') this.props.push(new Bumper(o));
+      if (o.type === 'note') this.props.push(new SteamNote(o));
       if (o.type === 'paddle') { const pd = new Paddle(o); this.settleSpring(pd); this.props.push(pd); }
       // JJ2 bombs: TNT lying in wait.
       if (o.type === 'bomb') { const t = new Bullet(TNT, false, o.tx * TILE + 9, o.ty * TILE + 18, 0, 0); t.placed = true; t.armed = 0; this.shots.push(t); }

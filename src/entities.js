@@ -885,6 +885,43 @@ export class Bumper {
   draw(r) { r.sprite(this.sprite(r.art), this.cx, this.cy + 16); }
 }
 
+// JJ2 steam vents (Psych levels' organ pipes): musical notes drift up
+// from them, and the steam lifts a player in its column up to the first
+// ceiling (DOWN sinks through it).
+export class SteamNote {
+  constructor({ tx, ty }) {
+    Object.assign(this, { kind: 'note', cx: tx * TILE + TILE / 2, cy: ty * TILE + TILE / 2, t: 0, top: null, sung: 0 });
+    this.x = this.cx - 18; this.y = this.cy - 14; this.w = 36; this.h = 28;
+  }
+
+  update(game) {
+    this.t++;
+    if (this.sung > 0) this.sung--;
+    const L = game.level;
+    if (this.top === null) {
+      let y = this.cy - TILE;
+      while (y > this.cy - 40 * TILE && y > 0 && !L.solidAt(this.cx, y)) y -= 8;
+      this.top = y + 8;
+    }
+    const p = game.player;
+    if (p.dead || p.pole || p.hang) return;
+    const feet = p.y + p.h;
+    if (Math.abs(p.cx - this.cx) > 20 || feet < this.top + p.h || p.y > this.cy + 14) return;
+    if (p.vy > -7) p.vy = Math.max(p.vy - 1, -7);
+    Object.assign(p, { onGround: false, stomping: false, jumping: false, jumpCut: false });
+    if (!this.sung) { game.audio.play('steamNote', 0.5); this.sung = 50; }
+  }
+
+  draw(r) {
+    const a = r.art.jj2e.anims.steamNote;
+    const span = Math.max(TILE, this.cy - (this.top ?? this.cy - 4 * TILE));
+    for (let k = 0; k < 3; k++) {
+      const up = (this.t * 1.5 + (k * span) / 3) % span;
+      r.sprite(frameAt(a, this.t + k * 5, a.speed || 6), this.cx + Math.sin((this.t + k * 40) / 15) * 6, this.cy + 14 - up);
+    }
+  }
+}
+
 // JJ2 pinball paddles: land on one and it flicks the player up and across
 // (the left paddle throws to the right).
 export class Paddle {

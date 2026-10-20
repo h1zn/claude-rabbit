@@ -55,6 +55,7 @@ export const JJ2_SFX = {
   oneUp: ['Pickup/1up'],
   spring: ['Spring/spring'],
   bumper: ['Pinball/bumper_hit'],
+  steamNote: ['Common/steam_note'],
   paddle: ['Pinball/paddle_hit_1', 'Pinball/paddle_hit_2', 'Pinball/paddle_hit_3', 'Pinball/paddle_hit_4'],
   jump: ['Common/char_jump'],
   doubleJump: ['Common/char_double_jump'],

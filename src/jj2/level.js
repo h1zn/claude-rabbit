@@ -242,6 +242,8 @@ export class JJ2Level extends Level {
           // Pinball paddles (137 left, 138 right) and bumpers (139, 140 carrot).
           case 137: case 138: this.objects.push({ type: 'paddle', tx, ty, dir: id === 137 ? 1 : -1 }); break;
           case 139: case 140: this.objects.push({ type: 'bumper', tx, ty, carrot: id === 140 }); break;
+          // Steam notes (Psych levels): musical notes that bounce the player up.
+          case 129: this.objects.push({ type: 'note', tx, ty }); break;
           case EV.WARP_ORIGIN: {
             // SetLap: a race counts a lap here.
             const [wid, coins, setLap] = eventFields(ev.params, [8, 8, 1]);
@@ -390,6 +392,15 @@ export class JJ2Level extends Level {
         this.masks[i] = BRIDGE_MASK;
         if (this.tiles[b.ty][b.tx + k] === '.') this.tiles[b.ty][b.tx + k] = '-';
       }
+    }
+
+    // A warp whose target the level doesn't have leads out of it (Far Out
+    // ends at one, with no exit of its own).
+    const targets = new Set(this.objects.filter((o) => o.type === 'warp' && o.exitOnly).map((o) => o.id));
+    for (const o of this.objects) {
+      if (o.type !== 'warp' || o.exitOnly || targets.has(o.to)) continue;
+      Object.assign(o, { type: 'exit' });
+      exits++;
     }
 
     const start = (starts[EV.JAZZ_START] || starts[EV.SPAZ_START] || starts[EV.LORI_START] || starts[EV.MP_START] || [[2, 2]]);

@@ -181,6 +181,9 @@
     },
     "paddle": {
       "j2a": "Pinball/paddle_left"
+    },
+    "steamNote": {
+      "j2a": "Common/steam_note"
     }
   }
 }
