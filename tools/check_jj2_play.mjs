@@ -48,6 +48,12 @@ for (const d of ['left', 'right']) {
   COPTER_MOVES.push({ steps: [[60, 'up'], [180, 'up', d]] }, { steps: [[120, 'up', d], [120, d]] }, { steps: [[240, d]] }, { steps: [[40, 'up'], [200, d]] });
 }
 
+// As a bird: long flights, since a bird only settles where it can stand.
+const FLIGHTS = [{ steps: [[200, 'jump']] }, { steps: [[500, 'jump']] }];
+for (const d of ['left', 'right']) {
+  FLIGHTS.push({ steps: [[60, 'jump', d]] }, { steps: [[200, 'jump', d]] }, { steps: [[500, 'jump'], [120, 'jump', d]] }, { steps: [[200, 'jump'], [200, d]] }, { steps: [[300, 'down', d]] });
+}
+
 const CHARS = new Set(['jazz', 'spaz', 'lori']);
 
 export function explore(game, { maxNodes = 5000 } = {}) {
@@ -57,7 +63,12 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   // A boss area finishes the level (beating the boss it wakes ends it).
   const bossy = g.enemies.some((e) => e.boss);
   const lizards = g.enemies.filter((e) => /^lizardFloat/.test(e.skin || '')).map((e) => ({ x: e.cx, y: e.y + e.h / 2 }));
-  g.enemies = []; g.pickups = []; g.enemyShots = [];
+  // The pickups that change how the player moves stay, taken by touch (a
+  // shot would open a monitor), and back for every move.
+  g.enemies = []; g.enemyShots = [];
+  const kept = g.pickups.filter((k) => k.kind === 'birdmorph' || k.kind === 'airboard');
+  for (const k of kept) k.needsHit = false;
+  g.pickups = [...kept];
   g.coins = 9999;
   for (let ty = 0; ty < h; ty++) for (let tx = 0; tx < w; tx++) {
     if (!'xmpKW'.includes(L.tiles[ty][tx])) continue;
@@ -130,6 +141,8 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   // Play a move from a state; where it settles: a node, -2 death, -3 exit.
   const play = (state, move) => {
     restore(state); bossMet = false;
+    for (const k of kept) k.taken = false;
+    g.pickups = [...kept];
     if (move.as && CHARS.has(move.as)) p.character = move.as;
     if (move.vx) { p.vx = move.vx; p.dash = 30; }
     if (move.copter) { p.copter = COPTER_TICKS; p.onGround = false; p.vy = Math.min(p.vy, 0); }
@@ -190,7 +203,7 @@ export function explore(game, { maxNodes = 5000 } = {}) {
     // A floating lizard close enough to come at the player: its copter.
     const cx = (i % w) * T + 16; const cy = Math.floor((i % WH) / w) * T + 16;
     const copter = lizards.some((l) => Math.hypot(l.x - cx, l.y - cy) < 260) ? COPTER_MOVES.map((m) => ({ ...m, copter: true })) : [];
-    for (const move of [...MOVES, ...copter]) {
+    for (const move of saved.get(i).birdForm ? [...MOVES, ...FLIGHTS] : [...MOVES, ...copter]) {
       const [n, hurt] = play(saved.get(i), move);
       if (hurt) out.add(-2);
       if (n === -3) exitReached = true;
