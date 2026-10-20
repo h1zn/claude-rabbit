@@ -366,7 +366,10 @@ whose target the level forgot finishes the level instead of doing nothing.
 The fly carrot gives copter ears (UP or JUMP climbs, DOWN dives) until a
 fly-off area; a floating lizard shot down leaves its copter hovering, and
 touching it lets you hang on and fly for a few seconds (JUMP lets go).
-Stacked poles chain into each other, a boss woken by a boss area ends the
+Frozen springs spring nothing until fire thaws them (any shot, in a level
+without the toaster), spring crates leave their spring behind when broken,
+vertical poles throw as hard as you came in plus a fixed boost, stacked
+poles chain into each other, a boss woken by a boss area ends the
 level when beaten, and a level marked for it has a floor under its bottom
 row instead of a pit.
 
