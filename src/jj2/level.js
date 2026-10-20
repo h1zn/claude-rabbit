@@ -42,10 +42,12 @@ const CHAR = {
   108: 'f',
   123: 'd', 105: 'd', 107: 'd', 225: 'd', 237: 'd', 127: 'd', 190: 'd', 152: 'd', 106: 'd', 197: 'd',
   124: 'J', 184: 'J', 183: 'd', 250: 'd',   // copter lizards hover and dive
+  236: 'Y',                                   // TSF's butterfly
 };
 // Enemies that move like one of ours but look like themselves
 // (assets/enemies2, from the enemies sheet in Levels/).
 const SKIN = {
+  236: 'butterfly',
   126: 'fencer', 125: 'fatChick', 127: 'fish', 102: 'labRat', 116: 'dog', 115: 'skeleton', 190: 'raven', 105: 'bee', 225: 'bee', 196: 'crab', 113: 'hatter',
   // From Anims.j2a (assets/jj2_enemies).
   107: 'sparks', 109: 'sucker', 152: 'suckerFloat', 197: 'witch', 183: 'lizardFloat', 118: 'helmut', 106: 'rapier',
@@ -171,8 +173,9 @@ export class JJ2Level extends Level {
         if (ev.id === EV.GENERATOR) {
           // Generators spawn objects; ids up to 32 are area events (exits,
           // hooks...), which a generator never makes real.
-          const [inner] = eventFields(ev.params, [8]);
-          ev = inner <= 32 ? { id: 0, difficulty: 0, params: 0 } : { id: inner, difficulty: ev.difficulty, params: 0 };
+          // What it makes comes back the delay's seconds after it is gone.
+          const [inner, delay] = eventFields(ev.params, [8, 5]);
+          ev = inner <= 32 ? { id: 0, difficulty: 0, params: 0 } : { id: inner, difficulty: ev.difficulty, params: 0, gen: Math.max(1, delay) };
         }
         const mask = word ? this.maskOf(word) : null;
         this.masks[i] = mask && mask.m;
@@ -187,6 +190,17 @@ export class JJ2Level extends Level {
           case EV.VINE: case EV.HOOK:
             this.kind[i] = PASS; ch = '.'; this.areas[i] = id; this.vineY = this.vineY || new Map();
             this.vineY.set(i, vineRow(mask && mask.m));
+            break;
+          // TSF's Cheshire cat: a platform to stand on (112) or a hook to hang
+          // from (111), drawn as the grinning cat.
+          case 112:
+            this.kind[i] = ONE_WAY; this.masks[i] = BRIDGE_MASK; ch = '-';
+            this.objects.push({ type: 'cheshire', tx, ty });
+            break;
+          case 111:
+            this.kind[i] = PASS; ch = '.'; this.areas[i] = EV.HOOK; this.vineY = this.vineY || new Map();
+            this.vineY.set(i, 8);
+            this.objects.push({ type: 'cheshire', tx, ty, hook: true });
             break;
           case EV.H_POLE: case EV.V_POLE:
             this.objects.push({ type: 'pole', tx, ty, vertical: id === EV.V_POLE });
@@ -370,7 +384,9 @@ export class JJ2Level extends Level {
             break;
           default:
             if (BOSSES.has(id)) { bosses.push([tx, ty]); put(tx, ty, BOSS_CHAR[id] || 'n'); break; }
-            if (CHAR[id]) put(tx, ty, CHAR[id], SKIN[id]);
+            if (CHAR[id]) { put(tx, ty, CHAR[id], SKIN[id]); if (ev.gen) this.entities[this.entities.length - 1].gen = ev.gen; }
+            // Events with no counterpart here, by id (for the level checkers).
+            else (this.unused ||= {})[id] = (this.unused[id] || 0) + 1;
         }
         this.tiles[ty][tx] = ch;
       }
@@ -491,7 +507,9 @@ export class JJ2Level extends Level {
     x = Math.floor(x); y = Math.floor(y);
     if (x < 0 || x >= this.pixelW) return true;
     if (y < 0) return false;
-    if (y >= this.pixelH) return this.floored;
+    // Below the map: a floor if the level asks for one, else the bottom row
+    // carries on down (as in the original: no slipping under its walls).
+    if (y >= this.pixelH) { if (this.floored) return true; y = this.pixelH - 1; }
     const i = (y >> 5) * this.w + (x >> 5);
     const m = this.masks[i];
     if (!m) return false;
