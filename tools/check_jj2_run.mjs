@@ -1,6 +1,6 @@
 // Runs tools/check_jj2.mjs over every JJ2 level in a headless browser
 // (serve.py on port 8770 first) and lists each level's traps: places the
-// player can reach but never leave. usage: node tools/check_jj2_run.mjs [filter]
+// player can reach but never leave. usage: node tools/check_jj2_run.mjs [--play] [--shard=k/n] [filter,filter...]
 import { createRequire } from 'node:module';
 const require = createRequire('/opt/node-tools/node_modules/');
 const pw = require('playwright');
@@ -16,7 +16,9 @@ const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
 await page.goto(`http://127.0.0.1:${process.env.PORT || 8770}/`); await page.waitForFunction(() => window.kip);
 const keys = await page.evaluate(async (f) => {
   const cat = await import('/src/jj2/catalog.js'); await cat.scanPlayable();
-  return cat.playableJJ2().filter((d) => d.key.includes(f)).map((d) => d.key);
+  // Comma-separated filters; a full key (ending in its number) matches only itself.
+  const fs = f.split(',');
+  return cat.playableJJ2().filter((d) => fs.some((x) => (/:\d+$/.test(x) ? d.key === x : d.key.includes(x)))).map((d) => d.key);
 }, filter);
 const mine = keys.filter((_, i) => i % shard[1] === shard[0]);
 let total = 0;
