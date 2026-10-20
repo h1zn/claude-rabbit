@@ -347,7 +347,9 @@ export class Game {
     // (the original's ExitType::Boss), however many others are about.
     // With several bosses, the level ends with the last of them.
     const name = boss.name.replace('!', '');
-    if (this.level.bossEnds && !this.enemies.some((e) => e.boss && !e.dead && e !== boss)) { this.banner(tr('{0} DEFEATED!', name), 140); this.bossEnd = 160; return; }
+    // So does any boss its level woke with a boss area (the original ends the
+    // level on the death of the boss such an area called, exit or not).
+    if ((this.level.bossEnds && !this.enemies.some((e) => e.boss && !e.dead && e !== boss)) || (boss.called && this.level.jj2 && !this.party)) { this.banner(tr('{0} DEFEATED!', name), 140); this.bossEnd = 160; return; }
     if (this.level.bossEnds) { this.banner(tr('{0} DEFEATED!', name), 140); return; }
     if (!boss.guard || this.bossGuarding()) { this.banner(tr('{0} DEFEATED!', name), 140); return; }
     this.banner(tr('{0} DEFEATED! EXIT OPEN!', name), 140);

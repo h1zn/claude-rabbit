@@ -34,6 +34,8 @@ class Boss extends Enemy {
     if (!near && !(game.bossCall && Math.hypot(p.cx - this.cx, p.cy - this.cy) < 800)) return false;
     this.active = true;
     this.hp = this.maxHp;
+    // Woken by a JJ2 boss area: beating this boss ends the level.
+    this.called = game.bossCall;
     game.activeBoss = this;
     game.bossCall = false;
     game.banner(this.name, 120);
@@ -294,7 +296,9 @@ export class Queen extends Boss {
     const ahead = (p.cx - this.cx) * this.facing;
     if (p.dead || ahead < -60 || ahead > 300 || Math.abs(p.cy - this.cy) > 120) return false;
     this.active = true;
+    this.called = game.bossCall;
     game.activeBoss = this;
+    game.bossCall = false;
     game.banner(this.name, 120);
     game.audio.play('rush');
     game.voice('jazzWatchOut');
