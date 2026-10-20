@@ -366,7 +366,7 @@ export class Copter {
     if (this.gone) { this.y -= 2; if (++this.gone > 120) this.dead = true; return; }
     this.y = this.baseY + Math.sin(this.t / 12) * 4;
     if (this.t > 600) { this.gone = 1; return; }
-    if (p.dead || p.copter > 0 || p.board || p.birdForm || p.frog || p.pole || p.hang || !overlap(this, p)) return;
+    if (p.dead || p.copter > 0 || p.board || p.birdForm || p.flyCarrot || p.frog || p.pole || p.hang || !overlap(this, p)) return;
     Object.assign(p, { copter: LIZARD_COPTER_TICKS, vy: Math.min(p.vy, 0), onGround: false, hovering: false, stomping: false, jumping: false });
     this.held = true;
     game.audio.play('select');
@@ -649,6 +649,7 @@ export class Pickup {
     if (o.type === 'birdcage') return new Pickup('birdcage', o.tx * TILE - 4, o.ty * TILE + TILE - 50, { w: 40, h: 50, needsHit: true, yellow: o.yellow });
     if (o.type === 'birdmonitor') return new Pickup('birdmonitor', x - 6, o.ty * TILE + TILE - 32, { w: 28, h: 32, needsHit: true });
     if (o.type === 'birdmorph') return new Pickup('birdmorph', x - 6, o.ty * TILE + TILE - 32, { w: 28, h: 32, needsHit: true });
+    if (o.type === 'flycarrot') return new Pickup('flycarrot', x - 4, y - 4, { w: 24, h: 24 });
     return null;
   }
 
@@ -678,6 +679,7 @@ export class Pickup {
     if (this.kind === 'airboard') return boardSprite(Math.floor(this.t / 4) % 4);
     if (this.kind === 'birdcage') return frameAt(this.yellow ? art.morphs.anims.birdyCaged : art.morphs.anims.chuckCaged, this.t, 6);
     if (this.kind === 'birdmonitor' || this.kind === 'birdmorph') return frameAt(art.morphs.anims.birdMonitor, this.t, 6);
+    if (this.kind === 'flycarrot') return frameAt(art.morphs.anims.carrotFly, this.t, 7);
     if (this.kind === 'shield') return frameAt(a[SHIELDS[this.shield || 'fire'].monitor], this.t, 6);
     if (this.kind === 'armor') return frameAt(a.monShieldPlasma || a[SHIELDS.plasma.monitor], this.t, 6);
     if (this.kind === 'morph') return frameAt(a.monChange, this.t, 5);
@@ -739,6 +741,9 @@ export class Pickup {
       if (!game.freeBird(this)) { this.taken = false; return; }
     } else if (this.kind === 'birdmorph') {
       p.setBird(game, true);
+      game.addScore(500, cx, this.y);
+    } else if (this.kind === 'flycarrot') {
+      p.setFlyCarrot(game, true);
       game.addScore(500, cx, this.y);
     } else if (this.kind === 'airboard') {
       p.mountBoard(game);

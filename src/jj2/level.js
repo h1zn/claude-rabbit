@@ -340,6 +340,8 @@ export class JJ2Level extends Level {
           case 79: this.objects.push({ type: 'item', tx, ty, kind: 'fastFeet' }); break;
           case 89: this.objects.push({ type: 'item', tx, ty, kind: 'stopwatch' }); break;
           case 90: this.objects.push({ type: 'item', tx, ty, kind: 'freeze' }); break;
+          // The fly carrot: copter ears until a fly-off area (or a death).
+          case 96: this.objects.push({ type: 'flycarrot', tx, ty }); break;
           case BOMB: this.objects.push({ type: 'bomb', tx, ty }); armed.add('blast'); break;
           // Pushable rock and box (push them along; stand on them).
           case 231: this.objects.push({ type: 'push', tx, ty, kind: 'rock' }); break;
@@ -352,7 +354,7 @@ export class JJ2Level extends Level {
             break;
           case EV.BELT_RIGHT: case EV.BELT_LEFT: case EV.ACC_BELT_RIGHT: case EV.ACC_BELT_LEFT:
           case EV.WIND_LEFT: case EV.WIND_RIGHT: case EV.FLOAT_UP: case EV.TUBE: case EV.SET_WATER:
-          case EV.LIGHT_SET: case EV.LIGHT_RESET: case EV.STOP_ENEMY: case EV.SLIDE: case EV.MORPH_FROG: case EV.REVERT_MORPH:
+          case EV.LIGHT_SET: case EV.LIGHT_RESET: case EV.STOP_ENEMY: case EV.SLIDE: case EV.MORPH_FROG: case EV.REVERT_MORPH: case EV.FLY_OFF:
             this.areas[i] = id; this.areaParams[i] = ev.params;
             break;
           default:

@@ -22,6 +22,7 @@
     "birdyCageBroken": {"j2a": "BirdyYellow/cage_destroyed"},
     "birdyFly": {"j2a": "BirdyYellow/fly"},
     "birdyCharge": {"j2a": "BirdyYellow/charge_diag_downright_placeholder"},
-    "birdMonitor": {"j2a": "Object/powerup_transform_birdy"}
+    "birdMonitor": {"j2a": "Object/powerup_transform_birdy"},
+    "carrotFly": {"j2a": "Pickup/carrot_fly"}
   }
 }

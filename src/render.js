@@ -556,6 +556,7 @@ export class Renderer {
     if (p.pole || p.hang || p.copter > 0) return 'spring';
     if (p.knock > 0) return 'hurt';
     if (p.board) return 'airboard';
+    if (p.flyCarrot) return p.shootPose > 0 ? 'hoverShoot' : 'hover';
     if (p.dizzy > 0) return 'dizzy';
     // Aiming up: straight up standing (or in the air), diagonally while moving.
     if (p.shootPose > 0 && p.aim && !p.hovering && !p.stomping && p.special === 0 && !p.swimming) {

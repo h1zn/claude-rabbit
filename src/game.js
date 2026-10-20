@@ -582,7 +582,7 @@ export class Game {
     const p = this.player;
     if (p.dead) return;
     p.board = false;
-    p.frog = false; p.morph = 0; p.birdForm = false; p.copter = 0;
+    p.frog = false; p.morph = 0; p.birdForm = false; p.flyCarrot = false; p.copter = 0;
     if (this.bird) this.bird.flyAway();
     // Party: knocked out (falling off the world), back in 10 s.
     if (this.party) { this.party.knockOut(this); return; }
