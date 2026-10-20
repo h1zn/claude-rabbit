@@ -28,11 +28,11 @@ export function carrotusTown() {
   for (let r = STREET - 4, side = 0; r > 10; r -= 3) L.plat(side++ % 2 ? 197 : 200, r, 3);
   L.plat(199, 8, 2);
   L.put(201, 7, 'E');
-  L.hint(192, STREET - 1, 'The clock tower door is held by switch blocks.\nFind the ! crate somewhere below the street.');
+  L.hint(192, STREET - 1, 'The clock tower door is held by switch blocks.\nWhatever flips them is not up here.');
 
   // Street.
   L.put(3, STREET - 1, 'P');
-  L.hint(6, STREET - 1, 'Houses can be entered and climbed. Roofs, sewers\nand the sky all hide treasure. Exit: the clock tower.');
+  L.hint(6, STREET - 1, 'Every house can be explored, top to bottom.\nThe way out tolls the hours.');
   ['arc', 'line5', 'hump', 'diamond'].forEach((n, i) => {
     for (let x = 7 + i * 11; x < 190; x += 44) over(L, x, STREET - 6, n, 'o', 2);
   });
@@ -58,7 +58,7 @@ export function carrotusTown() {
   // Cellar under the street, behind a butt-stomp lid.
   L.stomp(113, STREET, 2, 1).carve(110, STREET + 1, 7, 3);
   L.row(111, STREET + 3, 5, 'g').put(113, STREET + 2, 'X').put(115, STREET + 3, 'F');
-  L.hint(108, STREET - 1, 'Cracked street? Butt-stomp it!');
+  L.hint(108, STREET - 1, 'That crack sounds hollow...');
 
   // Sky garden over the tallest roof.
   L.put(91, 17, 'T');
@@ -80,7 +80,7 @@ export function carrotusTown() {
   L.put(90, 42, 'f').put(170, 42, 'f');
   L.row(20, 43, 6, '$').row(140, 43, 5, '$');
   L.put(205, 46, 'Y');
-  L.hint(200, 46, 'The ! crate! Shoot it to open the clock tower.');
+  L.hint(200, 46, 'A crate like this one locks a door far above.');
   L.warp(120, 46, 'coin3', 'bonus3', { cost: 25, label: 'COIN WARP!' });
   L.hint(116, 46, 'Coin Warp: 25 coins.');
   L.on(176, 'Q', 42);
@@ -96,7 +96,7 @@ export function carrotusTown() {
   for (const c of [20, 64, 140]) L.on(c, '+', 30);
   // A sewer vault that only a missile opens.
   weaponVault(L, 35, 46, 4, { loot: 'b' });
-  L.hint(26, 46, 'This vault opens only to MISSILES.\nSelect them with C or 4.');
+  L.hint(26, 46, 'This vault laughs at bullets.\nSomething that explodes might do it (C or 1-9).');
   // Schwartzenguard guards the open square in front of the clock tower
   // (every way to the tower crosses it).
   L.put(186, STREET - 1, 'V');

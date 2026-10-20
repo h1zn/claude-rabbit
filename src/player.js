@@ -474,7 +474,9 @@ export class Player {
       }
     };
     const wind = level.areaAt(this.cx, this.cy);
-    let push = wind === EV.WIND_LEFT || wind === EV.WIND_RIGHT ? force(wind, level.areaParam(this.cx, this.cy)) : 0;
+    // Wind blows at half a pixel a tick per unit of strength (measured by
+    // Jazz2 Resurrection); belts carry at a full pixel.
+    let push = wind === EV.WIND_LEFT || wind === EV.WIND_RIGHT ? force(wind, level.areaParam(this.cx, this.cy)) * 0.5 : 0;
     if (this.onGround) {
       const fy = this.y + this.h + 2;
       const belt = level.areaAt(this.cx, fy);

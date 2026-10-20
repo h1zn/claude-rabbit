@@ -40,7 +40,7 @@ export function fireflyGrove() {
 
   // ---- Forest floor.
   L.put(3, 49, 'P');
-  L.hint(6, 49, 'Climb the glowing trees: branches spiral up their\ntrunks. Poles link the canopies; roots hide secrets.');
+  L.hint(6, 49, 'The trees go higher than they look.\nThe roots have secrets too.');
   for (const [x, n] of [[8, 'arc'], [30, 'hump'], [52, 'arc'], [66, 'line5'], [90, 'hump'], [106, 'arc'], [128, 'hump'], [146, 'arc'], [170, 'line5']]) over(L, x, 40, n, 'o', 2);
   L.on(24, 'h', 40).on(56, 'w', 40).on(92, 'G', 40).on(110, 'k', 40).on(132, 'w', 40).on(166, 'n', 40);
   L.put(60, 47, 'C');
@@ -63,7 +63,7 @@ export function fireflyGrove() {
   L.put(124, 16, '1').put(123, 16, 'g').put(125, 16, 'g');
   L.put(150, 15, 'C');
   L.put(192, 12, 'E');
-  L.hint(186, 12, 'The highest canopy - the way out!');
+  L.hint(186, 12, 'The highest canopy.');
 
   // ---- Glowing root caves under the floor: drop in through two holes,
   // springs carry you back up through two shafts.
@@ -78,7 +78,7 @@ export function fireflyGrove() {
   L.on(50, 'G', 55).on(104, 'h', 55).on(146, 'k', 55);
   L.put(80, 55, 'f');
   L.put(116, 58, 'Y');
-  L.hint(112, 58, 'The ! crate opens a cage\nhigh in the canopy.');
+  L.hint(112, 58, 'Somewhere high in the canopy, a cage is waiting\nfor this crate.');
   L.on(30, 'Q', 55);
   // Root chamber behind a crack at the west end.
   L.breakable(8, 55, 1, 4);
@@ -106,7 +106,7 @@ export function fireflyGrove() {
   shape(L, 49, 40, 'line5', 'b');
   shape(L, 54, 40, 'line5', 'b');
   L.vine(88, 41, 9);
-  L.hint(44, 41, 'VINES: jump up to grab one, then move along.\nDOWN lets go, JUMP leaps off.');
+  L.hint(44, 41, 'Vines hold you if you reach them.\nDOWN lets go, JUMP leaps off.');
   return L.build({ name: 'Firefly Grove', theme: 'grove', music: 'jungle', horizon: 50, dark: { color: '8,4,32', amount: 0.5 } });
 }
 fireflyGrove.title = 'Firefly Grove';

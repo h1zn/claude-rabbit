@@ -13,13 +13,13 @@ export function frostfallRidge() {
 
   // Foot of the mountain.
   L.put(3, 71, 'P');
-  L.hint(6, 71, 'Climb to the summit! Ice caves inside the\nmountain lead up too, and hide treasure.');
+  L.hint(6, 71, 'The summit is the way out.\nThe mountain has an inside, too.');
   L.arc(8, 69, 7, 'o', 1);
   L.on(20, 'w').on(36, 'k').on(48, 'h');
   // On the ground (a fixed row cut into the slope and left a pit).
   for (let x = 26; x < 31; x++) L.on(x, '*');
   L.put(60, 57, 'T');
-  L.hint(56, 57, 'Spring up the cliff, or find the cave.');
+  L.hint(56, 57, 'Up the cliff... or through it?');
 
   // Cave 1 under the foot: hole in, spring and shaft out.
   L.carve(14, 72, 2, 3).carve(4, 75, 44, 4);
@@ -36,7 +36,7 @@ export function frostfallRidge() {
   over(L, 78, 54, 'hump', 'o', 2);
   L.countdown(75, 54, 1, 4, 2);
   L.put(70, 57, 'Y').on(80, 'k', 54);
-  L.hint(66, 57, 'The ! crate opens a switch vault\ndeep inside the mountain.');
+  L.hint(66, 57, 'Deep inside the mountain, a vault waits\nfor this crate.');
   L.carve(86, 50, 3, 4).plat(86, 54, 3);
 
   // Ridge up to the second cliff and its vertical pole.
@@ -45,7 +45,7 @@ export function frostfallRidge() {
   L.row(64, 46, 6, '$').row(144, 18, 4, '$');
   L.row(100, 39, 6, 'g');
   L.put(108, 37, 'I');
-  L.hint(102, 41, 'Vertical poles fling you upward.');
+  L.hint(102, 41, 'Grab the pole and hold on tight.');
   L.put(95, 36, 'd');
   // Sky ledges over the ridge.
   L.plat(84, 40, 4).row(84, 39, 4, 'o');
@@ -69,7 +69,7 @@ export function frostfallRidge() {
   L.on(116, 'k').on(146, 'w').on(154, 'J');
   for (let x = 142; x < 147; x++) L.on(x, 'g');
   L.put(157, 21, 'T');
-  L.hint(153, 21, 'A green spring - higher than red!');
+  L.hint(153, 21, 'Not all springs are equal.');
   L.put(166, 11, 'E');
   // Sky secret beyond the summit spring.
   L.plat(150, 8, 5).row(150, 7, 5, 'b').put(154, 7, 'X');
@@ -91,7 +91,7 @@ export function frostfallRidge() {
   // Frostbiter: ammo by the start, a crate, and a cave vault only ice opens.
   L.ammo(8, 71, 3).ammo(9, 71, 3).ammoCrate(17, 71, 3);
   weaponVault(L, 42, 78, 3, { w: 6, loot: 'g' });
-  L.hint(34, 78, 'An ice block! Only the FROSTBITER (3) breaks it.\nFrozen enemies shatter at a touch.');
+  L.hint(34, 78, 'Ice blocks shrug off most guns.\nFight cold with cold. (3)');
   return L.build({ name: 'Frostfall Ridge', theme: 'winter', music: 'winter', horizon: 50 });
 }
 frostfallRidge.title = 'Frostfall Ridge';

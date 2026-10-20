@@ -6,7 +6,7 @@ export function tubelectric() {
   const S = M.startRoom;
   const at = (R, ch, from = 1, dir = 1) => L.put(M.spot(R, from, dir), R.floor - 1, ch);
   at(S, 'P');
-  L.hint(M.spot(S, 4), S.floor - 1, 'A maze of circuits! Warp tubes join far rooms.\nThe exit is at the end of the longest path.');
+  L.hint(M.spot(S, 4), S.floor - 1, 'A maze of circuits. Warp tubes join far rooms;\nmap them, the exit is a long way round.');
   const E = M.exit;
   at(E, 'E', 2, -1);
   for (const R of M.deadEnds) L.put(Math.floor((R.x0 + R.x1) / 2), R.floor - 3, 'X').row(R.x0 + 2, R.floor - 2, 4, 'b').put(M.spot(R, 2, -1), R.floor - 1, '1');

@@ -37,7 +37,7 @@ export function dungeonEscape() {
   // Dungeon (stand row 73).
   L.put(4, 73, 'P');
   L.pushable(14, 73, 'box');                   // walk into it to push it
-  L.hint(7, 73, 'Thrown in the dungeon! Climb out of the castle.\nHoles in the ceiling lead up a floor.');
+  L.hint(7, 73, 'Thrown in the dungeon! The only way out is up.');
   corridor(66, 8, 120);
   L.on(30, 'w', 68).on(60, 'h', 68).on(91, 'w', 69).put(80, 68, 'f');
   L.row(40, 70, 4, '*').row(70, 70, 4, '*');
@@ -45,7 +45,7 @@ export function dungeonEscape() {
   L.ammoCrate(110, 73, 7).ammo(64, 73, 7).ammo(100, 73, 7);
   weaponVault(L, 132, 73, 7, { h: 3, loot: 'g' });
   L.put(135, 72, '%');
-  L.hint(125, 73, 'TNT BLOCK: only an explosion opens it.\nPick TNT (C or 7), drop it, stand back!');
+  L.hint(125, 73, 'This block needs a bang. Drop one, then run.\n(C or 7)');
   // Pole lift: a vertical pole under a shaft through two floors.
   L.carve(66, 66, 3, 2).carve(66, 58, 3, 2).put(67, 70, 'I');
   L.put(67, 62, '$').put(67, 56, '$');
@@ -53,7 +53,7 @@ export function dungeonEscape() {
   // Floor 66 corridor (stand 65): countdown wall.
   corridor(58, 20, 122);
   L.countdown(80, 60, 1, 6, 2);
-  L.hint(84, 65, 'Countdown blocks: the number is\nhow many hits each one needs.');
+  L.hint(84, 65, 'The numbers on these blocks are counting...\nbut counting what?');
   L.on(100, 'G', 60).on(50, 'w', 60).put(40, 60, 'f');
   L.row(86, 62, 5, 'g');
   L.on(30, '+', 60);
@@ -61,7 +61,7 @@ export function dungeonEscape() {
   // Floor 58 corridor (stand 57): the switch crate.
   corridor(50, 20, 120);
   L.put(30, 57, 'Y');
-  L.hint(26, 57, 'Shoot the ! crate. Somewhere above,\na switch wall will open.');
+  L.hint(26, 57, 'Somewhere above, a wall listens for this crate.');
   L.on(60, 'h', 52).on(90, 'G', 52);
   L.row(70, 54, 6, '*').put(110, 57, '@');
 
@@ -89,7 +89,7 @@ export function dungeonEscape() {
   L.spikes(56, 33, 12);
   L.put(72, 29, 'H');
   L.row(56, 29, 12, '*');
-  L.hint(78, 33, 'Swinging poles: touch one to spin,\nthen fly off. Jump lets go early.');
+  L.hint(78, 33, 'Swing, spin, fly. JUMP lets go early.');
   L.on(95, 'n', 28).on(110, 'G', 28);
 
   // Floor 26 corridor (stand 25): checkpoint, speed blocks, coin warp.
@@ -97,7 +97,7 @@ export function dungeonEscape() {
   L.put(20, 25, 'C');
   L.warp(22, 25, 'back2');
   L.speedBlocks(70, 20, 1, 6);
-  L.hint(60, 25, 'Speed blocks: RUN into them\nat full speed to smash them.');
+  L.hint(60, 25, 'These blocks only fear a full-speed run.');
   L.warp(110, 25, 'coin2', 'bonus2', { cost: 20, label: 'COIN WARP!' });
   L.on(40, 'w', 20).on(90, 'h', 20).put(100, 20, 'f');
   L.row(74, 22, 6, 'g');
@@ -128,7 +128,7 @@ export function dungeonEscape() {
   // Push her back into the pit behind her; the spring below throws her away
   // (and brings you back up if you fall in).
   L.carve(77, 10, 4, 2).put(78, 14, 'S').put(75, 9, 'Z');
-  L.hint(60, 9, 'THE QUEEN blocks the exit! Shoot her while she\nSCREAMS to push her back, then off the ledge.');
+  L.hint(60, 9, 'THE QUEEN guards the exit. She only flinches\nwhen she screams... and she stands near a ledge.');
   return L.build({ name: 'Dungeon Escape', theme: 'castle', music: 'castle' });
 }
 dungeonEscape.title = 'Dungeon Escape';

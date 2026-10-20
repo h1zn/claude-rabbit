@@ -14,7 +14,7 @@ export function lavaForge() {
   // ---- Crater rim (open sky, floor row 12).
   L.put(3, 11, 'P');
   L.pushable(62, 11, 'rock');                  // a boulder on the rim: push it into the crater
-  L.hint(6, 11, 'Into the volcano! Lava burns, so keep moving.\nEach chamber’s way down is at the far end.');
+  L.hint(6, 11, 'Into the volcano! The lava will not wait.\nEvery chamber hides its way down.');
   over(L, 12, 0, 'arc', 'o', 2);
   over(L, 30, 0, 'hump', 'o', 2);
   L.on(40, 'w', 0).on(52, 'J', 0);
@@ -55,7 +55,7 @@ export function lavaForge() {
   for (let x = 22; x < 118; x += 9) L.fill(x, 44, 3, 1, '#');
   for (let x = 30; x < 112; x += 18) L.plat(x, 38, 5);
   L.put(76, 43, 'Y');
-  L.hint(72, 43, 'The ! crate builds a bridge\nover the lava lake below.');
+  L.hint(72, 43, 'Down below, the lava lake needs a bridge.\nMaybe this crate knows how.');
   for (const [x, n] of [[34, 'line3'], [52, 'hump'], [88, 'line3'], [106, 'hump']]) shape(L, x, 34, n, 'o');
   shape(L, 66, 34, 'line5', '$');
   L.on(128, 'k', 30).on(10, 'G', 30).put(60, 33, 'd').put(100, 33, 'f');
@@ -96,7 +96,7 @@ export function lavaForge() {
   L.plat(100, 76, 6).put(102, 75, '@');
   shape(L, 62, 78, 'line5', '$');
   L.put(20, 81, 'E');
-  L.hint(26, 81, 'The forge heart - you made it!');
+  L.hint(26, 81, 'The forge heart - nearly there.');
   shape(L, 10, 76, 'ring', 'b');
   for (const x of [10, 40, 70, 100, 130]) L.deco('torch', x, 76);
 
@@ -114,7 +114,7 @@ export function lavaForge() {
   // Toaster: ammo at the crater rim, a crate, and a vault only fire opens.
   L.ammo(8, 11, 6).ammo(10, 11, 6).ammoCrate(15, 11, 6);
   weaponVault(L, 42, 11, 6, { loot: 'g' });
-  L.hint(36, 11, 'The TOASTER (6) burns through this block.\nFastfire makes its flame longer.');
+  L.hint(36, 11, 'Only fire melts this block.\nWhich of your guns runs hot? (6)');
   // Bilsy haunts the last chamber, between the countdown wall and the exit.
   L.put(32, 81, 'B');
   return L.build({ name: 'Lava Forge', theme: 'forge', music: 'castle', horizon: 12, dark: { color: '22,4,2', amount: 0.55 } });

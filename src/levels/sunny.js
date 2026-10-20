@@ -21,7 +21,7 @@ export function sunnySpires() {
 
   // ---- Upper ground.
   L.put(3, 21, 'P');
-  L.hint(6, 21, 'Explore everywhere! Three layers of ground,\nsky islands, secrets and a Coin Warp.');
+  L.hint(6, 21, 'There is more to this island than the beach.\nLook up, look down.');
   over(L, 9, 0, 'arc', 'o', 2);
   shape(L, 16, 18, 'line3', '*');
   L.ammoCrate(20, 21, 2);                              // bouncer ammo
@@ -41,13 +41,13 @@ export function sunnySpires() {
   // Stash on the hilltop: stone roof and back wall, speed blocks in front.
   L.block(107, 15, 8, 1).block(114, 16, 1, 4).speedBlocks(107, 16, 1, 4);
   L.put(109, 19, '@').put(110, 19, 'F').put(111, 19, '@').put(112, 19, 'g');
-  L.hint(92, 21, 'Speed blocks break when you\nRUN into them at full speed.');
+  L.hint(92, 21, 'Some blocks only give way to speed.');
   // A one-way lid over a shaft down, with ledges below it.
   L.plat(97, 22, 3).carve(97, 23, 3, 3).plat(97, 25, 3).plat(95, 28, 5);
   L.on(120, 'h');
   L.put(124, 21, 'C');
   L.stomp(132, 22, 2, 1).carve(132, 23, 2, 3);
-  L.hint(129, 21, 'Cracked floor: JUMP, then DOWN to butt-stomp.');
+  L.hint(129, 21, 'Cracked floor... what if you landed hard?\n(JUMP, then DOWN)');
   L.on(140, 'n');
   L.on(148, 'J');
   over(L, 136, 0, 'hump', 'o', 2);
@@ -93,7 +93,7 @@ export function sunnySpires() {
   over(L, 130, 28, 'line5', 'o', 2);
   L.on(138, 'n', 30);
   L.warp(150, 31, 'coin1', 'bonus1', { cost: 20, label: 'COIN WARP!' });
-  L.hint(146, 31, 'Coin Warp: bring 20 coins.');
+  L.hint(146, 31, 'Coin Warp: 20 coins.');
   L.on(160, 'Q', 30);
 
   // ---- Bottom.
@@ -103,10 +103,10 @@ export function sunnySpires() {
   // Bouncer vault: a weapon block opens only to the gun on its face.
   weaponVault(L, 34, 45, 2, { h: 3, loot: 'g' });
   L.put(37, 44, '@');
-  L.hint(25, 45, 'WEAPON BLOCK: only the gun shown breaks it.\nC / TAB (or 1-9) changes weapon.');
+  L.hint(25, 45, 'This block wants one particular gun.\nC / TAB or 1-9 changes weapon.');
   over(L, 40, 40, 'hump', 'o', 2);
   L.put(60, 41, 'Y');
-  L.hint(63, 41, 'Shoot the ! crate to flip\nthe switch blocks.');
+  L.hint(63, 41, 'Those switch blocks answer to a crate.');
   L.on(68, 'w', 40);
   // Ghost-block stair (solid once the switch flips) up into the hollow
   // under the middle band, where coins wait.
@@ -132,7 +132,7 @@ export function sunnySpires() {
   // and a shaft up to the plateau.
   L.carve(186, 36, 3, 4).carve(187, 24, 2, 12).fill(186, 36, 1, 4, 'u');
   L.put(188, 39, 'U');
-  L.hint(176, 39, 'A blue spring behind the switch door!\nShoot the ! crate to open it.');
+  L.hint(176, 39, 'Something bouncy waits behind that door.');
   L.put(188, 33, 'g').put(188, 28, 'g').put(188, 25, 'b');
   over(L, 190, 0, 'line5', 'o', 2);
   L.put(196, 23, 'E');
@@ -159,7 +159,7 @@ export function sunnySpires() {
   L.put(120, 48, '%');
   L.put(108, 45, 'L');                         // a bubble shield by the pool
   L.on(52, 'M');                               // Quick Change monitor: shoot it to switch hero
-  L.hint(112, 45, 'A rock pool! Dive in and swim (UP / DOWN).\nJUMP at the surface to leap out.');
+  L.hint(112, 45, 'The pool goes deeper than it looks.\n(UP / DOWN swim, JUMP leaps out)');
   L.item(163, 31, 'stopwatch');                // extra time for the fire shield next to it
   return L.build({ name: 'Shipwreck Shores', theme: 'meadow', music: 'beach', horizon: 22 });
 }

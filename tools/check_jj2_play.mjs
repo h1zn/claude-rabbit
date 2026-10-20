@@ -23,6 +23,11 @@ for (const d of ['left', 'right']) {
   MOVES.push({ as: 'jazz', steps: [[24, 'jump', d], [2, d], [150, 'jump', d]] });
   MOVES.push({ as: 'spaz', steps: [[16, 'jump', d], [2, d], [45, 'jump', d]] });
   MOVES.push({ steps: [[40, d, 'up']] }, { steps: [[40, d, 'down']] });
+  const back = d === 'left' ? 'right' : 'left';
+  MOVES.push({ steps: [[14, d], [45, 'jump', d]] });                         // walk, then jump
+  MOVES.push({ steps: [[22, 'jump', d], [30, 'jump', back]] });               // turn in the air
+  MOVES.push({ steps: [[40, 'jump', d], [2, d], [40, 'jump', d], [2, d], [40, 'jump', d]] });   // hops
+  MOVES.push({ steps: [[10, d], [20, back]] });                               // off a ledge, back under
 }
 MOVES.push({ steps: [[45, 'jump']] }, { steps: [[18, 'down'], [45, 'jump']] });
 MOVES.push({ as: 'spaz', steps: [[16, 'jump'], [2], [45, 'jump']] });
@@ -135,7 +140,10 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   for (const [i, out] of fwd) for (const n of out) if (n >= 0) { if (!back.has(n)) back.set(n, []); back.get(n).push(i); }
   const home = new Set();
   const bq = [];
-  for (const [i, out] of fwd) if (i === start || out.has(-2) || out.has(-3)) { home.add(i); bq.push(i); }
+  // Home: the start and the places right by it (a move rarely lands on
+  // the start's own cell), and anywhere with a way out.
+  const near = (i) => Math.abs((i % w) - (start % w)) <= 2 && Math.abs(Math.floor(i / w) - Math.floor(start / w)) <= 1;
+  for (const [i, out] of fwd) if (near(i) || out.has(-2) || out.has(-3)) { home.add(i); bq.push(i); }
   for (let k = 0; k < bq.length; k++) for (const pr of back.get(bq[k]) || []) if (!home.has(pr)) { home.add(pr); bq.push(pr); }
   const trapped = queue.filter((i) => fwd.has(i) && !home.has(i));
   const group = new Map(); const traps = [];
@@ -152,5 +160,7 @@ export function explore(game, { maxNodes = 5000 } = {}) {
     traps.push({ size: cells.length, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys), cells: cells.slice(0, 40).map((c) => [c % w, Math.floor(c / w)]), from: entry === undefined ? null : [entry % w, Math.floor(entry / w)] });
   }
   traps.sort((a, b) => b.size - a.size);
-  return { nodes: queue.length, explored: fwd.size, start: [start % w, Math.floor(start / w)], exitReached, traps, home: [...home] };
+  const outOf = (x, y) => [...(fwd.get(y * w + x) || [])].map((n) => (n < 0 ? n : `${n % w},${Math.floor(n / w)}${home.has(n) ? 'h' : ''}`));
+  const far = (n) => queue.filter((i) => fwd.has(i)).sort((a, b) => (b % w) - (a % w)).slice(0, n).map((i) => [i % w, Math.floor(i / w)]);
+  return { far, outOf, nodes: queue.length, explored: fwd.size, start: [start % w, Math.floor(start / w)], exitReached, traps, home: [...home] };
 }
