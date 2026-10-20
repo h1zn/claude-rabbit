@@ -8,7 +8,7 @@ import { tr } from './lang.js';
 import { THEME_TILESET } from './tilesets.js';
 import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import {
-  Bumper, Checkpoint, SteamNote, Effect, Hint, ScriptArea, makeEnemy, overlap, Paddle, Particle, Pickup, Pole, SecretZone, Sign, Spring, SPRING_CHARS, Warp,
+  Bumper, Checkpoint, Cheshire, SteamNote, Effect, Hint, ScriptArea, makeEnemy, overlap, Paddle, Particle, Pickup, Pole, SecretZone, Sign, Spring, SPRING_CHARS, Warp,
 } from './entities.js';
 import { jj2Tick } from './jj2/play.js';
 import { cleanText } from './jj2/files.js';
@@ -106,7 +106,7 @@ export class Game {
     if (this.party) { this.checkpoint = null; return; }
     const p = this.player;
     this.checkpoint = {
-      foes: this.enemies.filter((e) => !e.boss && !e.dead && e.src).map((e) => e.src),
+      foes: [...this.enemies.filter((e) => !e.boss && !e.dead && e.src).map((e) => e.src), ...this.regen.map((q) => q.src)],
       pickups: this.pickups.filter((k) => !k.taken).map((k) => ({ k, x: k.x, y: k.y, falling: k.falling, vx: k.vx, vy: k.vy })),
       stats: { score: this.score, gems: this.gems, coins: this.coins, food: this.food, levelGems: this.levelGems, levelCoins: this.levelCoins, enemiesKilled: this.enemiesKilled },
       kit: { ammo: [...p.ammo], powered: [...p.powered], weapon: p.weapon, shotDelay: p.shotDelay },
@@ -118,6 +118,7 @@ export class Game {
     const c = this.checkpoint;
     if (!c) return;
     this.enemies = [...this.enemies.filter((e) => e.boss), ...c.foes.map((src) => this.makeFoe(src)).filter(Boolean)];
+    this.regen = [];
     this.pickups = c.pickups.map(({ k, ...at }) => Object.assign(k, at, { taken: false, pending: false }));
     Object.assign(this, c.stats);
     const p = this.player;
@@ -152,7 +153,7 @@ export class Game {
       platforms: [...(this.level.platforms || []).map((o) => new Platform(o)),
         // (A box or rock an original level keeps inside a wall stays out.)
         ...this.level.objects.filter((o) => o.type === 'push' && !this.level.solidAt(o.tx * TILE + TILE / 2, o.ty * TILE + TILE / 2)).map((o) => new Pushable(o))],
-      levelTime: 0, levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null, hintHold: null,
+      levelTime: 0, regen: [], levelGems: 0, enemiesKilled: 0, secretsFound: 0, levelCoins: 0, hintText: null, hintHold: null,
       combo: 0, comboTimer: 0, comboMult: 1, activeBoss: null, bossCall: false, bossEnd: 0, bird: null,
       shakeTime: 0, flashTime: 0, flashColor: '#ffffff', food: this.food || 0, rushMusic: false,
     });
@@ -196,6 +197,7 @@ export class Game {
       if (o.type === 'exit') this.props.push(new Sign(o.tx, o.ty, true));
       if (o.type === 'pole') this.props.push(new Pole(o.tx, o.ty, o.vertical, true));
       if (o.type === 'bumper') this.props.push(new Bumper(o));
+      if (o.type === 'cheshire') this.props.push(new Cheshire(o));
       if (o.type === 'note') this.props.push(new SteamNote(o));
       if (o.type === 'paddle') { const pd = new Paddle(o); this.settleSpring(pd); this.props.push(pd); }
       // JJ2 bombs: TNT lying in wait.
@@ -701,7 +703,13 @@ export class Game {
       e.reset();
       if (this.activeBoss === e) this.activeBoss = null;
     }
+    // What a JJ2 generator made comes back a while after it is gone.
+    for (const e of this.enemies) if (e.dead && e.src && e.src.gen && !this.party) this.regen.push({ src: e.src, at: this.levelTime + Math.round(e.src.gen * 71.4) });
     this.enemies = this.enemies.filter((e) => !e.dead && e.y < this.level.pixelH + 200);
+    if (this.regen.length && this.regen[0].at <= this.levelTime) {
+      for (const r of this.regen.filter((q) => q.at <= this.levelTime)) { const e = this.makeFoe(r.src); if (e) { e.counted = true; this.enemies.push(e); } }
+      this.regen = this.regen.filter((q) => q.at > this.levelTime);
+    }
     this.shots = this.shots.filter((s) => !s.dead);
     this.enemyShots = this.enemyShots.filter((s) => !s.dead);
     this.pickups = this.pickups.filter((k) => !k.taken);

@@ -190,6 +190,15 @@
     },
     "steamNote": {
       "j2a": "Common/steam_note"
+    },
+    "butterfly": {
+      "j2a": "Unimplemented/butterfly"
+    },
+    "cheshirePlatform": {
+      "j2a": "Cheshire/platform_idle"
+    },
+    "cheshireHook": {
+      "j2a": "Cheshire/hook_idle"
     }
   }
 }

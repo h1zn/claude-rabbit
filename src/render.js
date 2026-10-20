@@ -447,7 +447,7 @@ export class Renderer {
       const y = lerp(e.prevY, e.y, alpha) + e.h + 2;
       // Sheet sprites face right; flying enemies hang from their centre.
       if (e.type === 'bat' && !e.awake) this.sprite(f, x, lerp(e.prevY, e.y, alpha) + f.ay - 4, e.facing > 0);
-      else if (e.type === 'bat' || e.type === 'dragonfly') this.centred(f, x, y - e.h / 2, e.facing > 0);
+      else if (e.type === 'bat' || e.type === 'dragonfly' || e.type === 'butterfly') this.centred(f, x, y - e.h / 2, e.facing > 0);
       else this.sprite(f, x, y, e.facing > 0);
     }
   }

@@ -561,7 +561,36 @@ export class Caterpillar extends Enemy {
   }
 }
 
-const ENEMIES = { w: Turtle, k: Lizard, n: Demon, h: Frog, f: Bat, d: Dragonfly, J: Monkey, G: Bomber, K: Caterpillar };
+// TSF's butterfly: flutters about its spot and harms nobody. Stomp it to
+// bounce (a staircase of them leads up in some levels); a shot kills it.
+export class Butterfly extends Enemy {
+  constructor(x, y) {
+    super('butterfly', x + 7, y + 7, 18, 18, 1, 100);
+    this.homeX = this.x; this.homeY = this.y;
+    this.color = '#ffd0f0';
+  }
+
+  update(game) {
+    this.begin();
+    // A lazy loop a few tiles across about its spot, through the scenery
+    // like any small flier.
+    const k = this.t / 70;
+    this.x = this.homeX + Math.sin(k) * 80;
+    this.y = this.homeY + Math.sin(k * 2.3) * 20;
+    this.facing = Math.cos(k) > 0 ? 1 : -1;
+  }
+
+  touch(game, p, fromAbove, input) {
+    if (!fromAbove) return;
+    p.y = this.y - p.h;
+    p.bounce(input.held('jump'));
+    game.sound('stomp', this.cx, this.y);
+  }
+
+  sprite(art) { return this.anim(art, 'dragonfly', 3); }
+}
+
+const ENEMIES = { w: Turtle, k: Lizard, n: Demon, h: Frog, f: Bat, d: Dragonfly, J: Monkey, G: Bomber, K: Caterpillar, Y: Butterfly };
 
 export function makeEnemy(ch, px, py) {
   const Kind = ENEMIES[ch];
@@ -1009,6 +1038,25 @@ export class Paddle {
   draw(r) {
     const f = r.art.jj2e.anims.paddle.frames[this.flick > 0 ? Math.min(r.art.jj2e.anims.paddle.frames.length - 1, Math.floor((20 - this.flick) / 3)) : 0];
     r.sprite(f, this.x + this.w / 2, this.y + this.h, this.dir < 0);
+  }
+}
+
+// The Cheshire cat (a platform or a hook, set in the level's tiles): drawn
+// grinning where its event is.
+export class Cheshire {
+  constructor({ tx, ty, hook }) {
+    Object.assign(this, { kind: 'cheshire', tx, ty, hook: !!hook, t: 0 });
+    this.x = tx * TILE; this.y = ty * TILE; this.w = TILE; this.h = TILE;
+  }
+
+  update() { this.t++; }
+
+  draw(r) {
+    const a = r.art.jj2e.anims[this.hook ? 'cheshireHook' : 'cheshirePlatform'];
+    if (!a) return;
+    // The platform's back is the cell's ledge; the hook hangs from its top.
+    if (this.hook) r.sprite(frameAt(a, this.t, a.speed || 7), this.x + TILE / 2, this.y + 64);
+    else r.sprite(frameAt(a, this.t, a.speed || 7), this.x + TILE / 2, this.y + 41);
   }
 }
 
