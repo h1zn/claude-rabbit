@@ -86,7 +86,9 @@ In **PARTY** choose **HOST A GAME**, **JOIN A GAME** or **SAME COMPUTER**
 (split screen for two), and set **NAME** to the nickname the others see over
 your head, on the scoreboard and in the messages (it's asked for before you
 first host or join). On **SAME COMPUTER** each player sets their own:
-**PLAYER 1** and **PLAYER 2** rows above START.
+**PLAYER 1** and **PLAYER 2** rows above START, and START asks each player
+for a name if it is still blank. Esc during a game asks first (Enter leaves,
+Esc plays on).
 
 **Players and characters**: up to five per room. Slot 1 (the host) plays
 Jazz, 2 Spaz, 3 Lori, 4 purple Jazz and 5 blue Spaz. In team games odd slots
@@ -99,8 +101,11 @@ with a password. Everyone in the lobby sees the settings change.
 **Modes** (the manual's multiplayer games):
 
 - **Treasure Hunt**: collect 100 gems (or 50/150/200), then reach the exit.
-  Red gems count 1; there are 10 green gems worth 3, 8 purple worth 5 and
-  one gold worth 10. Taken gems come back after 45 seconds.
+  The map holds gems worth twice the goal (red 1, green 3, purple 5, gold
+  10), and taken gems never come back, so the race is on. Gold gems sit in
+  the hardest places to reach. One **armor** lies somewhere on the map: it
+  blocks every hit for 10 seconds, and 2 minutes after it is taken it turns
+  up somewhere else.
 - **Battle**: the first to roast the others 10 times (5/15/20) wins.
 - **Capture the Flag**: take the other team's flag from its base and bring
   it home to yours while your own flag is there.
@@ -114,6 +119,12 @@ spawn spot farthest from the other players (never near the exit). During
 the opening truce shots pass through players; the clock counts down and
 **FIGHT!** is announced when it ends. The HUD shows your gems (or roasts,
 laps, flags), the clock, the standings and a feed of who roasted whom.
+
+**Airboard**: every map has one airboard. Whoever takes it flies for 30
+seconds (the HUD counts down); a hit or a knockout drops it where the rider
+was, for anyone to grab, and when the time runs out it flies off and lands
+somewhere else on the map. Over a rival's head you see their name and
+hearts, and they blink and show "-1" when a hit lands.
 
 **Party items**: "?" boxes on the map hand out a random item; FIRE uses it
 instead of shooting. Banana peel (dropped: whoever steps on it spins out),
@@ -349,11 +360,18 @@ fireballs), Bubba (hops, spits arcing fireballs, spins into a tornado),
 Bolly (a flying tank firing homing rockets), the Rocket Turtle (dives and
 swoops past) and Tweedle (magnet pull, your own stolen blaster, cartwheel
 spin; he also guards the exit of Candy Clouds). A level that ends with its
-boss ends when you beat it.
+boss ends when you beat it. Pinball bumpers and paddles, steam notes that
+carry you up a shaft, and springs on rails work as in the original; a warp
+whose target the level forgot finishes the level instead of doing nothing.
+
+**Checkpoints**: dying returns you to the last checkpoint with the level as
+it was when you touched it: enemies you beat after it are back, and so are
+the gems and food you took after it (your score and gems go back too).
 
 **Frog and birds**: JJ2's frog areas turn you into a frog (slow, no
 shooting, copter or specials; FIRE standing still flicks the tongue) until
-a revert area or a death turns you back. Breaking a bird cage or the bird
+a revert area or a death turns you back. The bird morph (Birdland) turns
+you into a bird: JUMP flaps, DOWN dives, FIRE shoots. Breaking a bird cage or the bird
 monitor brings a companion: Chuck shoots at enemies ahead, Birdy dives at
 them, and either flies off when you get hit.
 
