@@ -11,8 +11,11 @@ export const MISSIONS = ['Reach the exit', 'Collect 75% of the gems', 'Find ever
 
 // Video: `scale` fit (fill the window) or pixel (whole multiples only);
 // `filter` sharp or smooth; shake and flashes can be turned off.
-// `size` is the share of the window the game fills (F3 / F4).
-export const VIDEO_DEFAULTS = { scale: 'fit', filter: 'sharp', shake: true, flash: true, size: 1 };
+// `size` is the share of the window the game fills (F3 / F4). `res`: the
+// render resolution, 'auto' or 1-4 times 640x360. `gpu`: the WebGL effects
+// (src/gpu.js), with their `upscale` (sharp, smooth, hd, crt) and `bloom`
+// glow (off, low, high).
+export const VIDEO_DEFAULTS = { scale: 'fit', filter: 'sharp', shake: true, flash: true, size: 1, res: 'auto', gpu: true, upscale: 'sharp', bloom: 'low' };
 
 // The manual's difficulty levels: the higher, the more baddies.
 export const DIFFICULTIES = ['easy', 'medium', 'hard'];

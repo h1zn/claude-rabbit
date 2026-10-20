@@ -51,8 +51,16 @@ action; a key already in use swaps over): **Keyboard 1** for playing alone,
 **Keyboard 2** for the second player in split screen (the manual's: WASD,
 G jump, H fire, J run, F next weapon), and a page showing the gamepad
 buttons and which pads are connected. **OPTIONS > VIDEO** has fullscreen,
-fit-window or pixel-perfect scaling, sharp or smooth filtering, the screen
-size (F3 / F4) and switches for screen shake and flashes. **OPTIONS >
+fit-window or pixel-perfect scaling, the screen size (F3 / F4) and switches
+for screen shake and flashes. RESOLUTION draws the game at 360p, 720p, 1080p
+or 1440p (AUTO matches the window and the screen's pixel density), so
+lights, glows and text stay sharp on big screens. GPU EFFECTS (WebGL2,
+`src/gpu.js`) finish each frame on the graphics card at the screen's full
+resolution, with a choice of UPSCALER (sharp pixels, smooth, HD smooth,
+which rounds the pixel art with a 4x EPX pass, or CRT, an arcade monitor with
+scanlines and curvature) and GLOW (bloom on lights, lava, gems and
+explosions). Without WebGL2 the game falls back to the plain canvas, with
+sharp or smooth filtering. **OPTIONS >
 LANGUAGE** switches the on-screen text between the manual's six languages:
 English, German, French, Spanish, Italian and Dutch. (Level names, hint
 signs and story text stay as their levels have them; the JJ2 fonts have no

@@ -10,6 +10,7 @@ import { Audio } from './audio.js';
 import { parseJ2V } from './cinematic.js';
 import { MAX_CATCHUP_TICKS, TICK_MS, VIEW_H, VIEW_W } from './config.js';
 import { Game } from './game.js';
+import { PostFX } from './gpu.js';
 import { bindKey, defaultKeys, Input } from './input.js';
 import { cinematicFile, nextPlayable, songKey } from './jj2/catalog.js';
 import { setLang, tr } from './lang.js';
@@ -37,6 +38,37 @@ let split = null;           // splitKit while two play on one computer
 
 // ---------------------------------------------------------------- video options
 
+// The GPU's canvas (src/gpu.js): shown instead of the 2D one while its
+// effects are on, the 2D picture going through its shaders each frame.
+const gpuCanvas = document.createElement('canvas');
+gpuCanvas.id = 'gpu';
+gpuCanvas.setAttribute('aria-label', "Kip's Gem Rush game screen");
+canvas.after(gpuCanvas);
+let post = null;              // PostFX once made; false: no WebGL2 here
+gpuCanvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); post = false; layout(); });
+function gpuOn() {
+  if (!save.options.video.gpu) return false;
+  if (post === null) post = PostFX.create(gpuCanvas) || false;
+  return !!post;
+}
+// How much glow each setting gives.
+const GLOW = { off: 0, low: 0.4, high: 0.8 };
+screens.gpuState = () => (gpuOn() ? 'on' : post === false ? 'none' : 'off');
+
+// The render resolution: the game is drawn at 640x360 times this (its
+// drawing code works in 640x360 units, scaled up), so lighting, glows and
+// text are sharp at 720p, 1080p or 1440p. AUTO: as many times as the
+// screen's own pixels allow, at most 3 (1080p). The HD smoothing upscaler
+// works on the original pixels, so it draws at 1x.
+let renderScale = 1;
+function pickScale() {
+  const v = save.options.video;
+  if (gpuOn() && v.upscale === 'hd') return 1;
+  if (typeof v.res === 'number') return v.res;
+  const k = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H) * (v.size || 1) * (window.devicePixelRatio || 1);
+  return Math.max(1, Math.min(3, Math.round(k)));
+}
+
 // Size the canvas: fill the window at 16:9, or (pixel perfect) the largest
 // whole multiple of 640x360 that fits; sharp or smooth scaling.
 function layout() {
@@ -44,8 +76,18 @@ function layout() {
   // F3 / F4 shrink and grow the game inside the window.
   let k = Math.min(window.innerWidth / VIEW_W, window.innerHeight / VIEW_H) * (v.size || 1);
   if (v.scale === 'pixel' && k >= 1) k = Math.floor(k);
-  canvas.style.width = `${Math.floor(VIEW_W * k)}px`;
-  canvas.style.height = `${Math.floor(VIEW_H * k)}px`;
+  const cssW = Math.floor(VIEW_W * k); const cssH = Math.floor(VIEW_H * k);
+  renderScale = pickScale();
+  if (canvas.width !== VIEW_W * renderScale) { canvas.width = VIEW_W * renderScale; canvas.height = VIEW_H * renderScale; }
+  const gpu = gpuOn();
+  for (const c of [canvas, gpuCanvas]) { c.style.width = `${cssW}px`; c.style.height = `${cssH}px`; }
+  canvas.style.display = gpu ? 'none' : 'block';
+  gpuCanvas.style.display = gpu ? 'block' : 'none';
+  if (gpu) {
+    // The screen's own pixels: the final picture is made at full resolution.
+    const dpr = window.devicePixelRatio || 1;
+    gpuCanvas.width = Math.max(1, Math.round(cssW * dpr)); gpuCanvas.height = Math.max(1, Math.round(cssH * dpr));
+  }
   canvas.style.imageRendering = v.filter === 'smooth' ? 'auto' : 'pixelated';
 }
 window.addEventListener('resize', layout);
@@ -87,11 +129,12 @@ let cinema = null;         // the films playing: { reels, i, film, next, then }
 
 // Debug handle for playtesting from the browser console.
 window.kip = {
-  game, input, audio, screens,
+  game, input, audio, screens, save,
   go: (s) => go(s),
   scene: () => scene,
   cinema: () => cinema,
   split: () => split,
+  startSplit: () => startSplit(),
   play: async (index = 0) => {
     const def = levelDef(index);
     if (def.prepare) await def.prepare();
@@ -216,6 +259,7 @@ function endFilms() {
 }
 window.addEventListener('keydown', unlock);
 canvas.addEventListener('pointerdown', unlock);
+gpuCanvas.addEventListener('pointerdown', unlock);
 
 // The level card shows while an original JJ2 level's files load.
 function showCard(index, fresh) {
@@ -684,6 +728,11 @@ function loop(now) {
     if (++steps > MAX_CATCHUP_TICKS) { acc = 0; break; }
   }
   // Never let one bad frame freeze the game: report it and keep going.
+  // Everything draws in 640x360 units, scaled to the render resolution.
+  ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  renderer.scale = renderScale;
+  if (splitKit) splitKit.renderer.scale = renderScale;
   try {
     render(acc / TICK_MS);
     screens.drawToast();
@@ -694,6 +743,11 @@ function loop(now) {
     ctx.fillStyle = '#ff8a8a';
     ctx.font = '11px sans-serif';
     ctx.fillText(`Error: ${e.message} (see the browser console)`, 8, VIEW_H - 16);
+  }
+  // Through the GPU's shaders to the screen (or the 2D canvas as it is).
+  if (post && save.options.video.gpu) {
+    const v = save.options.video;
+    try { post.draw(canvas, { upscale: v.upscale, bloom: GLOW[v.bloom] ?? 0, lines: VIEW_H }); } catch (e) { console.warn('GPU effects off:', e.message); post = false; layout(); }
   }
   requestAnimationFrame(loop);
 }

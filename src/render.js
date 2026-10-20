@@ -44,6 +44,7 @@ export class Renderer {
     this.art = art;
     this.iced = iced;
     this.w = VIEW_W;          // the view's width: half the screen in split screen
+    this.scale = 1;           // the render resolution, times 640x360 (src/main.js)
     ctx.imageSmoothingEnabled = false;
   }
 
@@ -131,11 +132,14 @@ export class Renderer {
   // then the lights' own colours added on top. `meta.dark` may set the
   // darkness colour and strength ({ color: 'r,g,b', amount }).
   lighting(game, cam, alpha) {
-    if (!this.dark) {
+    // At the render resolution, so the light falls off smoothly.
+    const S = this.scale;
+    if (!this.dark || this.dark.width !== VIEW_W * S) {
       this.dark = document.createElement('canvas');
-      this.dark.width = VIEW_W; this.dark.height = VIEW_H;
+      this.dark.width = VIEW_W * S; this.dark.height = VIEW_H * S;
     }
     const d = this.dark.getContext('2d');
+    d.setTransform(S, 0, 0, S, 0, 0);
     const ctx = this.ctx;
     const p = game.player;
     const def = typeof game.level.meta.dark === 'object' ? game.level.meta.dark : {};
@@ -187,7 +191,7 @@ export class Renderer {
       }
     }
     for (const q of game.particles) if (q.glow) light(q.x, q.y, 16, 0.5);
-    ctx.drawImage(this.dark, 0, 0);
+    ctx.drawImage(this.dark, 0, 0, VIEW_W, VIEW_H);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const [x, y, r, color, strength] of glows) {
@@ -202,17 +206,19 @@ export class Renderer {
 
   // Soft darkening toward the screen edges.
   vignette() {
-    if (!this.vig || this.vig.width !== this.w) {
+    const S = this.scale;
+    if (!this.vig || this.vig.width !== this.w * S) {
       this.vig = document.createElement('canvas');
-      this.vig.width = this.w; this.vig.height = VIEW_H;
+      this.vig.width = this.w * S; this.vig.height = VIEW_H * S;
       const v = this.vig.getContext('2d');
+      v.setTransform(S, 0, 0, S, 0, 0);
       const g = v.createRadialGradient(this.w / 2, VIEW_H / 2, VIEW_H * 0.45, this.w / 2, VIEW_H / 2, this.w * 0.62);
       g.addColorStop(0, 'rgba(0,0,0,0)');
       g.addColorStop(1, 'rgba(0,0,0,0.38)');
       v.fillStyle = g;
       v.fillRect(0, 0, this.w, VIEW_H);
     }
-    this.ctx.drawImage(this.vig, 0, 0);
+    this.ctx.drawImage(this.vig, 0, 0, this.w, VIEW_H);
   }
 
   // Lava: a glowing, rippling surface over a hot body.

@@ -848,28 +848,37 @@ export class Screens {
   videoScreen(t, save) {
     const v = save.options.video;
     this.big('VIDEO', VIEW_W / 2, 10, { align: 'center', scale: 0.5 });
-    this.panel(100, 46, VIEW_W - 200, 262, 0.85);
+    this.panel(100, 46, VIEW_W - 200, 268, 0.85);
     const onOff = (b) => (b ? 'ON' : 'OFF');
+    const gpu = this.gpuState ? this.gpuState() : 'none';
+    const RES = { auto: 'AUTO', 1: '360P', 2: '720P', 3: '1080P', 4: '1440P' };
+    const UP = { sharp: 'SHARP', smooth: 'SMOOTH', hd: 'HD SMOOTH', crt: 'CRT' };
     const list = [
       ['FULLSCREEN', onOff(!!document.fullscreenElement)],
       ['SCALING', v.scale === 'pixel' ? 'PIXEL PERFECT' : 'FIT WINDOW'],
-      ['FILTER', v.filter === 'smooth' ? 'SMOOTH' : 'SHARP'],
+      ['RESOLUTION', v.upscale === 'hd' && gpu === 'on' ? '360P (HD)' : RES[v.res] || 'AUTO'],
+      ['GPU EFFECTS', gpu === 'none' ? 'UNAVAILABLE' : onOff(gpu === 'on')],
+      ['UPSCALER', gpu === 'on' ? UP[v.upscale] || 'SHARP' : v.filter === 'smooth' ? 'SMOOTH' : 'SHARP'],
+      ['GLOW', gpu === 'on' ? ({ off: 'OFF', low: 'LOW', high: 'HIGH' })[v.bloom] || 'LOW' : '-'],
       ['SCREEN SHAKE', onOff(v.shake)],
       ['FLASHES', onOff(v.flash)],
       ['SCREEN SIZE', `${Math.round((v.size || 1) * 10)} / 10`],
       ['BACK'],
     ];
-    this.rows(list, this.menu, 150, VIEW_W - 140, 60, 31, t);
+    this.rows(list, this.menu, 150, VIEW_W - 140, 54, 23, t);
     const tips = [
       'Fill the screen: ALT and ENTER, or F11',
       'Fit: fill the window   Pixel perfect: whole-number scale, no uneven pixels',
-      'Sharp: crisp pixels   Smooth: softened',
+      'How finely the game is drawn: lights, glows and text sharpen at 720p and up (AUTO: what your screen shows)',
+      'The graphics card finishes every frame at your screen\'s full resolution',
+      'Sharp: crisp pixels   Smooth: softened   HD smooth: rounded pixel art   CRT: an arcade monitor',
+      'Lights, lava, gems and explosions glow',
       'Shake the screen on explosions and stomps',
       'Flash the screen on big hits and explosions',
       'How much of the window the game fills: F3 / F4',
       '',
     ];
-    this.wrapTo(tips[this.menu], VIEW_W - 240, 0.5).forEach((line, i) => this.med(line, VIEW_W / 2, 282 + i * 12, { align: 'center', scale: 0.5, color: '#c8b8e8' }));
+    this.wrapTo(tips[this.menu], VIEW_W - 220, 0.5).forEach((line, i) => this.med(line, VIEW_W / 2, 286 + i * 12, { align: 'center', scale: 0.5, color: '#c8b8e8' }));
   }
 
   // The party game being set up: { mode, level, goal, truce }.
@@ -1166,11 +1175,11 @@ export class Screens {
         return 'capture';
       }
       case 'video': {
-        if (input.pressed('up')) move(-1, 7);
-        if (input.pressed('down')) move(1, 7);
-        if (back || (choose && this.menu === 6)) { this.sub = 'options'; this.menu = 3; return null; }
+        if (input.pressed('up')) move(-1, 10);
+        if (input.pressed('down')) move(1, 10);
+        if (back || (choose && this.menu === 9)) { this.sub = 'options'; this.menu = 3; return null; }
         const v = save.options.video;
-        if (this.menu === 5) {
+        if (this.menu === 8) {
           const d = (input.pressed('right') ? 1 : 0) - (input.pressed('left') ? 1 : 0);
           if (!d) return null;
           this.audio.play('menu');
@@ -1179,11 +1188,20 @@ export class Screens {
         const flip = choose || input.pressed('left') || input.pressed('right');
         if (!flip) return null;
         this.audio.play('menu');
+        // Left steps back through a list, right and choose go on.
+        const step = (list, cur) => list[(list.indexOf(cur) + (input.pressed('left') ? list.length - 1 : 1)) % list.length];
+        const gpu = this.gpuState ? this.gpuState() : 'none';
         if (this.menu === 0) return 'fullscreen';
         if (this.menu === 1) v.scale = v.scale === 'pixel' ? 'fit' : 'pixel';
-        if (this.menu === 2) v.filter = v.filter === 'smooth' ? 'sharp' : 'smooth';
-        if (this.menu === 3) v.shake = !v.shake;
-        if (this.menu === 4) v.flash = !v.flash;
+        if (this.menu === 2) v.res = step(['auto', 1, 2, 3, 4], v.res ?? 'auto');
+        if (this.menu === 3) { if (gpu === 'none') { this.audio.play('denied'); return null; } v.gpu = !v.gpu; }
+        if (this.menu === 4) {
+          if (gpu === 'on') v.upscale = step(['sharp', 'smooth', 'hd', 'crt'], v.upscale || 'sharp');
+          else v.filter = v.filter === 'smooth' ? 'sharp' : 'smooth';
+        }
+        if (this.menu === 5) { if (gpu !== 'on') { this.audio.play('denied'); return null; } v.bloom = step(['off', 'low', 'high'], v.bloom || 'low'); }
+        if (this.menu === 6) v.shake = !v.shake;
+        if (this.menu === 7) v.flash = !v.flash;
         return 'video';
       }
       case 'party':
