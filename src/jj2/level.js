@@ -269,7 +269,11 @@ export class JJ2Level extends Level {
             const [, , , , reverse] = eventFields(ev.params, [1, 1, 1, 4, 1]);
             // Horizontal springs push away from the wall they stand against.
             const wallLeft = this.solidCell(tx - 1, ty);
-            put(tx, ty, reverse ? (wallLeft ? '<' : '>') : (wallLeft ? '>' : '<'));
+            const ch = reverse ? (wallLeft ? '<' : '>') : (wallLeft ? '>' : '<');
+            // One drawn in the wall itself stands out of it, on the open side
+            // it throws to (the player could never touch it otherwise).
+            const out = ch === '>' ? 1 : -1;
+            put(this.solidCell(tx, ty) && !this.solidCell(tx + out, ty) ? tx + out : tx, ty, ch);
             break;
           }
           case EV.GEM_RING: {
