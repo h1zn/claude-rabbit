@@ -8,7 +8,7 @@ import { tr } from './lang.js';
 import { THEME_TILESET } from './tilesets.js';
 import { CAMERA, PHYS, PLAYER, TILE, VIEW_H, VIEW_W } from './config.js';
 import {
-  Checkpoint, Effect, Hint, ScriptArea, makeEnemy, overlap, Particle, Pickup, Pole, SecretZone, Sign, Spring, SPRING_CHARS, Warp,
+  Bumper, Checkpoint, Effect, Hint, ScriptArea, makeEnemy, overlap, Paddle, Particle, Pickup, Pole, SecretZone, Sign, Spring, SPRING_CHARS, Warp,
 } from './entities.js';
 import { jj2Tick } from './jj2/play.js';
 import { cleanText } from './jj2/files.js';
@@ -163,7 +163,14 @@ export class Game {
       const py = e.ty * TILE;
       const enemy = this.makeFoe(e);
       if (enemy) { this.enemies.push(enemy); totals.enemies++; continue; }
-      if (SPRING_CHARS.includes(e.ch)) { this.props.push(new Spring(e.tx, e.ty, e.ch)); continue; }
+      if (SPRING_CHARS.includes(e.ch)) {
+        const spring = new Spring(e.tx, e.ty, e.ch);
+        // A JJ2 spring stands on whatever floor is under it (a rail can sit
+        // a few pixels lower than its tile's bottom, out of the spring's reach).
+        if (this.level.jj2 && !spring.dir) this.settleSpring(spring);
+        this.props.push(spring);
+        continue;
+      }
       switch (e.ch) {
         case 'P': start = { x: px + (TILE - PLAYER.w) / 2, y: py + TILE - playerH }; break;
         case 'H': this.props.push(new Pole(e.tx, e.ty, false)); break;
@@ -187,6 +194,8 @@ export class Game {
       if (o.type === 'script') this.props.push(new ScriptArea(o));
       if (o.type === 'exit') this.props.push(new Sign(o.tx, o.ty, true));
       if (o.type === 'pole') this.props.push(new Pole(o.tx, o.ty, o.vertical, true));
+      if (o.type === 'bumper') this.props.push(new Bumper(o));
+      if (o.type === 'paddle') { const pd = new Paddle(o); this.settleSpring(pd); this.props.push(pd); }
       // JJ2 bombs: TNT lying in wait.
       if (o.type === 'bomb') { const t = new Bullet(TNT, false, o.tx * TILE + 9, o.ty * TILE + 18, 0, 0); t.placed = true; t.armed = 0; this.shots.push(t); }
       const k = Pickup.fromObject(o);
@@ -236,6 +245,14 @@ export class Game {
   }
 
   // Stand `k` on the floor surface nearest `y` in its middle column.
+  settleSpring(k) {
+    const L = this.level; const cx = k.x + k.w / 2;
+    const solid = (y) => (L.solidPx ? L.solidPx(cx, y, true) : L.solidAt(cx, y));
+    const top = k.y + k.h - 16;
+    if (solid(top)) return;
+    for (let y = top; y < top + 72; y++) if (solid(y)) { k.y = y - k.h; return; }
+  }
+
   settle(k, y) {
     const L = this.level; const cx = k.x + k.w / 2;
     let floor = null;

@@ -162,5 +162,5 @@ export function explore(game, { maxNodes = 5000 } = {}) {
   traps.sort((a, b) => b.size - a.size);
   const outOf = (x, y) => [...(fwd.get(y * w + x) || [])].map((n) => (n < 0 ? n : `${n % w},${Math.floor(n / w)}${home.has(n) ? 'h' : ''}`));
   const far = (n) => queue.filter((i) => fwd.has(i)).sort((a, b) => (b % w) - (a % w)).slice(0, n).map((i) => [i % w, Math.floor(i / w)]);
-  return { far, outOf, nodes: queue.length, explored: fwd.size, start: [start % w, Math.floor(start / w)], exitReached, traps, home: [...home] };
+  return { far, outOf, nodes: queue.length, explored: fwd.size, start: [start % w, Math.floor(start / w)], exitReached, traps, home: [...home], reached: queue };
 }

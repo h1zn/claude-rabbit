@@ -239,6 +239,9 @@ export class JJ2Level extends Level {
           }
           // The bird morph monitor: it turns the player into a bird.
           case EV.BIRD_MONITOR: this.objects.push({ type: 'birdmorph', tx, ty }); break;
+          // Pinball paddles (137 left, 138 right) and bumpers (139, 140 carrot).
+          case 137: case 138: this.objects.push({ type: 'paddle', tx, ty, dir: id === 137 ? 1 : -1 }); break;
+          case 139: case 140: this.objects.push({ type: 'bumper', tx, ty, carrot: id === 140 }); break;
           case EV.WARP_ORIGIN: {
             // SetLap: a race counts a lap here.
             const [wid, coins, setLap] = eventFields(ev.params, [8, 8, 1]);

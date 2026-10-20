@@ -166,6 +166,21 @@
     },
     "bilsyXmasFireball": {
       "j2a": "Bilsy/xmas_bullet_fireball"
+    },
+    "bumper500": {
+      "j2a": "Pinball/bumper_500"
+    },
+    "bumper500Hit": {
+      "j2a": "Pinball/bumper_500_hit"
+    },
+    "bumperCarrot": {
+      "j2a": "Pinball/bumper_carrot"
+    },
+    "bumperCarrotHit": {
+      "j2a": "Pinball/bumper_carrot_hit"
+    },
+    "paddle": {
+      "j2a": "Pinball/paddle_left"
     }
   }
 }

@@ -54,6 +54,8 @@ export const JJ2_SFX = {
   crate: ['Object/container_crate_break'],
   oneUp: ['Pickup/1up'],
   spring: ['Spring/spring'],
+  bumper: ['Pinball/bumper_hit'],
+  paddle: ['Pinball/paddle_hit_1', 'Pinball/paddle_hit_2', 'Pinball/paddle_hit_3', 'Pinball/paddle_hit_4'],
   jump: ['Common/char_jump'],
   doubleJump: ['Common/char_double_jump'],
   land: ['Common/char_land'],

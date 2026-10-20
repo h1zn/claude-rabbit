@@ -849,6 +849,70 @@ export class Spring {
   }
 }
 
+// JJ2 pinball bumpers (Tubelectric): a touch knocks the player away from
+// the middle, always with a lift, so a column of them can be bounced up.
+// 500 points a bump; the carrot one heals a heart the first time.
+export class Bumper {
+  constructor({ tx, ty, carrot }) {
+    Object.assign(this, { kind: 'bumper', carrot, cx: tx * TILE + TILE / 2, cy: ty * TILE + TILE / 2, cool: 0, lit: 0, healed: false });
+    this.x = this.cx - 20; this.y = this.cy - 20; this.w = 40; this.h = 40;
+  }
+
+  update(game) {
+    if (this.cool > 0) this.cool--;
+    if (this.lit > 0) this.lit--;
+    const p = game.player;
+    if (p.dead || this.cool > 0) return;
+    const dx = p.cx - this.cx; const dy = p.cy - this.cy;
+    const d = Math.hypot(dx, dy);
+    if (d > 30) return;
+    const nx = d ? dx / d : 0; const ny = d ? dy / d : -1;
+    p.vx = nx * 12;
+    p.vy = Math.min(ny * 12, -10);
+    Object.assign(p, { jumping: false, jumpCut: false, onGround: false, stomping: false, hovering: false, doubleJumped: false });
+    this.cool = 12; this.lit = 14;
+    game.audio.play('bumper');
+    game.addScore(500, this.cx, this.cy - 20);
+    if (this.carrot && !this.healed && p.health < PLAYER.maxHealth) { this.healed = true; p.health++; }
+  }
+
+  sprite(art) {
+    const a = art.jj2e.anims;
+    const anim = this.carrot ? (this.lit ? a.bumperCarrotHit : a.bumperCarrot) : (this.lit ? a.bumper500Hit : a.bumper500);
+    return frameAt(anim, this.lit ? 14 - this.lit : 0, 3);
+  }
+
+  draw(r) { r.sprite(this.sprite(r.art), this.cx, this.cy + 16); }
+}
+
+// JJ2 pinball paddles: land on one and it flicks the player up and across
+// (the left paddle throws to the right).
+export class Paddle {
+  constructor({ tx, ty, dir }) {
+    Object.assign(this, { kind: 'paddle', dir, flick: 0 });
+    this.x = tx * TILE - 8; this.y = ty * TILE + 12; this.w = 48; this.h = 20;
+  }
+
+  update(game) {
+    if (this.flick > 0) this.flick--;
+    const p = game.player;
+    if (p.dead || this.flick > 0) return;
+    const feet = p.y + p.h;
+    if (p.vy < 0 || feet < this.y - 4 || feet > this.y + 20 || p.x + p.w < this.x || p.x > this.x + this.w) return;
+    p.y = this.y - p.h;
+    p.vx = this.dir * 8;
+    p.vy = -22;
+    Object.assign(p, { jumping: false, jumpCut: false, onGround: false, stomping: false, hovering: false, doubleJumped: false });
+    this.flick = 20;
+    game.audio.play('paddle');
+  }
+
+  draw(r) {
+    const f = r.art.jj2e.anims.paddle.frames[this.flick > 0 ? Math.min(r.art.jj2e.anims.paddle.frames.length - 1, Math.floor((20 - this.flick) / 3)) : 0];
+    r.sprite(f, this.x + this.w / 2, this.y + this.h, this.dir < 0);
+  }
+}
+
 export class Checkpoint {
   constructor(tx, ty) {
     this.kind = 'checkpoint';
