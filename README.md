@@ -371,7 +371,10 @@ without the toaster), spring crates leave their spring behind when broken,
 vertical poles throw as hard as you came in plus a fixed boost, stacked
 poles chain into each other, a boss woken by a boss area ends the
 level when beaten, and a level marked for it has a floor under its bottom
-row instead of a pit.
+row instead of a pit (otherwise the bottom row carries on down, so nobody
+slips under its walls). TSF's butterflies flutter about harmlessly and
+bounce whoever stomps them, the Cheshire cat is a platform or a hook, and
+what a generator makes comes back a while after it is gone.
 
 **Checkpoints**: dying returns you to the last checkpoint with the level as
 it was when you touched it: enemies you beat after it are back, and so are
