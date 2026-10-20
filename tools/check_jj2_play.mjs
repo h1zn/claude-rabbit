@@ -30,6 +30,7 @@ for (const d of ['left', 'right']) {
   MOVES.push({ vx: d === 'left' ? -8 : 8, steps: [[45, 'jump', d]] });
   MOVES.push({ steps: [[18, 'down'], [2, 'down', 'jump'], [43, 'jump', d]] });   // crouch super jump
   MOVES.push({ as: 'jazz', steps: [[24, 'jump', d], [2, d], [150, 'jump', d]] });
+  MOVES.push({ as: 'jazz', steps: [[62, d], [2, d], [150, 'jump', d]] });         // copter at a spring's top
   MOVES.push({ as: 'spaz', steps: [[16, 'jump', d], [2, d], [45, 'jump', d]] });
   MOVES.push({ steps: [[40, d, 'up']] }, { steps: [[40, d, 'down']] });
   const back = d === 'left' ? 'right' : 'left';
