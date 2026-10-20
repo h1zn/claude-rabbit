@@ -861,12 +861,14 @@ export class Spring {
       this.x = tx * TILE; this.y = ty * TILE + 12; this.w = TILE; this.h = 20;
     }
     this.squash = 0;
+    this.frozen = 0;           // ticks frozen (Infinity: until thawed)
   }
 
   update(game) {
     if (this.squash > 0) this.squash--;
+    if (this.frozen > 0 && --this.frozen === 0) { game.audio.play('iceBreak'); game.effect('sparkle', this.x + this.w / 2, this.y + this.h / 2); }
     const p = game.player;
-    if (p.dead || p.pole || p.hang) return;
+    if (p.dead || p.pole || p.hang || this.frozen > 0) return;
     if (this.dir) {
       if (!overlap(this, p)) return;
       p.vx = this.dir * PHYS.springSide;
@@ -978,24 +980,29 @@ export class SteamNote {
 }
 
 // JJ2 pinball paddles: land on one and it flicks the player up and across
-// (the left paddle throws to the right).
+// (the left paddle throws to the right), harder across the nearer the tip
+// they land, like a flipper.
 export class Paddle {
   constructor({ tx, ty, dir }) {
-    Object.assign(this, { kind: 'paddle', dir, flick: 0 });
+    Object.assign(this, { kind: 'paddle', dir, flick: 0, cool: 0 });
     this.x = tx * TILE - 8; this.y = ty * TILE + 12; this.w = 48; this.h = 20;
   }
 
   update(game) {
     if (this.flick > 0) this.flick--;
+    if (this.cool > 0) { this.cool--; return; }
     const p = game.player;
-    if (p.dead || this.flick > 0) return;
+    if (p.dead || p.pole || p.hang || p.inTube || p.birdForm || p.flyCarrot || p.copter > 0) return;
     const feet = p.y + p.h;
     if (p.vy < 0 || feet < this.y - 4 || feet > this.y + 20 || p.x + p.w < this.x || p.x > this.x + this.w) return;
+    // 0 at the hinge, 1 at the tip.
+    const tip = Math.min(1, Math.max(0, (this.dir > 0 ? p.cx - this.x : this.x + this.w - p.cx) / this.w));
     p.y = this.y - p.h;
-    p.vx = this.dir * 8;
+    p.vx = this.dir * (7 + 2 * tip);
     p.vy = -22;
     Object.assign(p, { jumping: false, jumpCut: false, onGround: false, stomping: false, hovering: false, doubleJumped: false });
-    this.flick = 20;
+    this.flick = 20; this.cool = 20;
+    game.addScore(100, p.cx, p.y);
     game.audio.play('paddle');
   }
 
